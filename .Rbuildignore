@@ -1,0 +1,5 @@
+^\.claude$
+^LICENSE$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.github$

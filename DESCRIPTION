@@ -1,0 +1,44 @@
+Package: Medusa
+Title: Federated Mendelian Randomization on OMOP Common Data Model
+Version: 0.1.0
+Authors@R: person("First", "Last", email = "author@institution.edu",
+           role = c("aut", "cre"))
+Description: Implements two-sample Mendelian Randomization within the OHDSI
+    ecosystem using the OMOP Common Data Model. Supports federated analysis
+    across distributed health networks via one-shot profile likelihood pooling.
+    Includes instrument validation diagnostics leveraging OMOP covariate richness,
+    integration with public GWAS databases via OpenGWAS, and comprehensive
+    sensitivity analyses. Designed for drug target validation in pharmacoepidemiology.
+License: Apache License (>= 2)
+Encoding: UTF-8
+RoxygenNote: 7.3.3
+VignetteBuilder: knitr
+Depends:
+    R (>= 4.1.0)
+Imports:
+    ggplot2,
+    dplyr,
+    checkmate,
+    rlang,
+    stats
+Suggests:
+    patchwork,
+    Cyclops,
+    FeatureExtraction,
+    DatabaseConnector,
+    SqlRender,
+    ieugwasr,
+    TwoSampleMR,
+    rmarkdown,
+    knitr,
+    testthat (>= 3.0.0),
+    withr,
+    mockery,
+    survival
+Config/testthat/edition: 3
+Remotes:
+    ohdsi/Cyclops,
+    ohdsi/FeatureExtraction,
+    ohdsi/DatabaseConnector,
+    ohdsi/SqlRender,
+    mrcieu/TwoSampleMR

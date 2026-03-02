@@ -1,0 +1,215 @@
+test_that("Wald ratio formula: beta_MR = beta_ZY / beta_ZX", {
+  betaGrid <- seq(-3, 3, by = 0.01)
+  trueBetaZY <- 0.5
+  se <- 0.1
+  logLikProfile <- -0.5 * ((betaGrid - trueBetaZY) / se)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+  class(combined) <- "medusaCombinedProfile"
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.25,
+    se_ZX = 0.02,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  result <- computeMREstimate(combined, instruments)
+
+  # beta_MR should equal beta_ZY / beta_ZX = 0.5 / 0.25 = 2.0
+  expect_equal(result$betaMR, trueBetaZY / 0.25, tolerance = 0.05)
+  expect_equal(result$betaZY, trueBetaZY, tolerance = 0.02)
+})
+
+test_that("delta method standard error formula", {
+  betaGrid <- seq(-3, 3, by = 0.01)
+  betaZY <- 0.5
+  seZY <- 0.1
+  logLikProfile <- -0.5 * ((betaGrid - betaZY) / seZY)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  betaZX <- 0.25
+  seZX <- 0.02
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = betaZX,
+    se_ZX = seZX,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  result <- computeMREstimate(combined, instruments)
+
+  # Expected delta method SE
+  expectedSE <- sqrt((seZY / betaZX)^2 + (betaZY * seZX / betaZX^2)^2)
+  expect_equal(result$seMR, expectedSE, tolerance = 0.1 * expectedSE)
+})
+
+test_that("95% CI from likelihood profile contains true parameter in simulation", {
+  set.seed(42)
+  nReps <- 50
+  trueEffect <- 0.5
+  covered <- logical(nReps)
+
+  for (rep in seq_len(nReps)) {
+    betaGrid <- seq(-3, 3, by = 0.01)
+    # Simulate a betaZY estimate with some noise
+    betaZYSim <- trueEffect + rnorm(1, 0, 0.15)
+    seSim <- 0.15
+    logLikProfile <- -0.5 * ((betaGrid - betaZYSim) / seSim)^2
+    logLikProfile <- logLikProfile - max(logLikProfile)
+
+    combined <- list(
+      betaGrid = betaGrid,
+      logLikProfile = logLikProfile,
+      siteContributions = data.frame(siteId = "A", nCases = 200, nControls = 800),
+      nSites = 1,
+      totalCases = 200,
+      totalControls = 800
+    )
+
+    instruments <- data.frame(
+      snp_id = "rs1",
+      effect_allele = "A",
+      other_allele = "C",
+      beta_ZX = 1.0,  # Use 1.0 so betaMR = betaZY
+      se_ZX = 0.01,
+      pval_ZX = 1e-50,
+      eaf = 0.3,
+      stringsAsFactors = FALSE
+    )
+
+    result <- suppressMessages(computeMREstimate(combined, instruments))
+    covered[rep] <- result$ciLower <= trueEffect && result$ciUpper >= trueEffect
+  }
+
+  # Should cover at least 85% of the time (with some slack for simulation noise)
+  coverage <- mean(covered)
+  expect_true(coverage >= 0.80,
+              info = sprintf("Coverage was %.1f%%, expected >= 80%%", coverage * 100))
+})
+
+test_that("CI level parameter correctly changes threshold", {
+  betaGrid <- seq(-3, 3, by = 0.01)
+  logLikProfile <- -0.5 * (betaGrid / 0.2)^2  # peak at 0
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 1.0,
+    se_ZX = 0.01,
+    pval_ZX = 1e-50,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  result90 <- suppressMessages(computeMREstimate(combined, instruments, ciLevel = 0.90))
+  result99 <- suppressMessages(computeMREstimate(combined, instruments, ciLevel = 0.99))
+
+  # 99% CI should be wider than 90% CI
+  width90 <- result90$ciUpper - result90$ciLower
+  width99 <- result99$ciUpper - result99$ciLower
+  expect_true(width99 > width90)
+})
+
+test_that("odds ratio is computed correctly", {
+  betaGrid <- seq(-3, 3, by = 0.01)
+  logLikProfile <- -0.5 * ((betaGrid - 0.5) / 0.1)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 1.0,
+    se_ZX = 0.01,
+    pval_ZX = 1e-50,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  result <- suppressMessages(computeMREstimate(combined, instruments))
+
+  expect_equal(result$oddsRatio, exp(result$betaMR))
+  expect_equal(result$orCiLower, exp(result$ciLower))
+  expect_equal(result$orCiUpper, exp(result$ciUpper))
+})
+
+test_that("warning issued for profile with multiple local maxima", {
+  betaGrid <- seq(-3, 3, by = 0.01)
+  # Create bimodal profile
+  logLikProfile <- pmax(
+    -0.5 * ((betaGrid - (-1)) / 0.2)^2,
+    -0.5 * ((betaGrid - 1) / 0.2)^2
+  )
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 1.0,
+    se_ZX = 0.01,
+    pval_ZX = 1e-50,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  expect_warning(
+    computeMREstimate(combined, instruments),
+    "multiple local maxima"
+  )
+})

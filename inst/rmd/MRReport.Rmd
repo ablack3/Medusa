@@ -1,0 +1,279 @@
+---
+title: "Medusa: Mendelian Randomization Analysis Report"
+output:
+  html_document:
+    self_contained: true
+    theme: flatly
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+params:
+  mrEstimate: NULL
+  sensitivityResults: NULL
+  diagnosticResults: NULL
+  combinedProfile: NULL
+  siteProfileList: NULL
+  instrumentTable: NULL
+  exposureLabel: "Exposure"
+  outcomeLabel: "Outcome"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6
+)
+library(ggplot2)
+library(Medusa)
+```
+
+# Executive Summary
+
+```{r executive-summary, results='asis'}
+est <- params$mrEstimate
+
+if (!is.null(est)) {
+  direction <- if (est$betaMR > 0) "increased" else "decreased"
+  significance <- if (est$pValue < 0.001) {
+    "strong statistical evidence"
+  } else if (est$pValue < 0.05) {
+    "moderate statistical evidence"
+  } else {
+    "insufficient statistical evidence"
+  }
+
+  # Assess sensitivity concordance
+  strength <- "inconclusive"
+  if (!is.null(params$sensitivityResults$summary)) {
+    nMethods <- nrow(params$sensitivityResults$summary)
+    nAgreeing <- sum(sign(params$sensitivityResults$summary$beta_MR) == sign(est$betaMR), na.rm = TRUE)
+    nSignificant <- sum(params$sensitivityResults$summary$pval < 0.05, na.rm = TRUE)
+    if (nSignificant >= 3 && nAgreeing == nMethods) {
+      strength <- "strong"
+    } else if (nSignificant >= 2 && nAgreeing >= nMethods - 1) {
+      strength <- "moderate"
+    } else if (nSignificant >= 1) {
+      strength <- "weak"
+    }
+  }
+
+  cat(sprintf(
+    "This analysis assessed whether genetically proxied **%s** is causally associated with **%s** using Mendelian Randomization.\n\n",
+    params$exposureLabel, params$outcomeLabel
+  ))
+
+  cat(sprintf(
+    "**Main finding**: There is %s that %s is associated with %s risk of %s (OR = %.2f, 95%% CI: %.2f--%.2f, p = %.2e).\n\n",
+    significance, params$exposureLabel, direction, params$outcomeLabel,
+    est$oddsRatio, est$orCiLower, est$orCiUpper, est$pValue
+  ))
+
+  cat(sprintf("**Strength of evidence**: %s (based on sensitivity analysis concordance).\n\n", toupper(strength)))
+  cat(sprintf("**Sites pooled**: %d | **Total cases**: %d | **Total controls**: %d | **Instruments**: %d\n",
+              params$combinedProfile$nSites,
+              params$combinedProfile$totalCases,
+              params$combinedProfile$totalControls,
+              est$nInstruments))
+}
+```
+
+# Instrument Summary
+
+```{r instrument-table}
+if (!is.null(params$instrumentTable)) {
+  instTab <- params$instrumentTable
+  displayCols <- intersect(
+    c("snp_id", "effect_allele", "other_allele", "beta_ZX", "se_ZX",
+      "pval_ZX", "eaf", "gene_region", "fStatistic", "strandAmbiguous"),
+    names(instTab)
+  )
+  knitr::kable(
+    instTab[, displayCols],
+    digits = 4,
+    caption = "Genetic instruments used in the analysis"
+  )
+}
+```
+
+# Likelihood Profile
+
+```{r likelihood-profile, fig.cap="Profile log-likelihood curves. Light blue: individual sites. Dark blue: combined profile. Dashed vertical line: MLE. Dotted horizontal line: CI threshold."}
+if (!is.null(params$combinedProfile)) {
+  plotLikelihoodProfile(
+    combinedProfile = params$combinedProfile,
+    siteProfileList = params$siteProfileList,
+    mrEstimate = params$mrEstimate,
+    title = sprintf("Profile Log-Likelihood: %s on %s",
+                    params$exposureLabel, params$outcomeLabel)
+  )
+}
+```
+
+# Main MR Result
+
+```{r main-result, results='asis'}
+if (!is.null(est)) {
+  resultTable <- data.frame(
+    Metric = c("beta_ZY (SNP-outcome)", "SE(beta_ZY)",
+               "beta_MR (causal estimate)", "SE(beta_MR)",
+               "95% CI lower", "95% CI upper", "P-value",
+               "Odds ratio", "OR 95% CI lower", "OR 95% CI upper"),
+    Value = c(
+      sprintf("%.4f", est$betaZY),
+      sprintf("%.4f", est$seZY),
+      sprintf("%.4f", est$betaMR),
+      sprintf("%.4f", est$seMR),
+      sprintf("%.4f", est$ciLower),
+      sprintf("%.4f", est$ciUpper),
+      sprintf("%.2e", est$pValue),
+      sprintf("%.3f", est$oddsRatio),
+      sprintf("%.3f", est$orCiLower),
+      sprintf("%.3f", est$orCiUpper)
+    ),
+    stringsAsFactors = FALSE
+  )
+  knitr::kable(resultTable, caption = "Primary MR estimate")
+}
+```
+
+# Sensitivity Analyses
+
+```{r sensitivity-table}
+if (!is.null(params$sensitivityResults$summary) &&
+    nrow(params$sensitivityResults$summary) > 0) {
+  knitr::kable(
+    params$sensitivityResults$summary,
+    digits = 4,
+    caption = "Sensitivity analysis comparison"
+  )
+}
+```
+
+```{r sensitivity-forest, fig.cap="Forest plot comparing MR estimation methods."}
+if (!is.null(params$sensitivityResults)) {
+  plotSensitivityForest(params$sensitivityResults)
+}
+```
+
+```{r egger-intercept, results='asis'}
+if (!is.null(params$sensitivityResults$mrEgger)) {
+  egger <- params$sensitivityResults$mrEgger
+  cat(sprintf(
+    "\n**MR-Egger intercept**: %.4f (SE = %.4f, p = %.4f). %s\n",
+    egger$intercept, egger$intercept_se, egger$intercept_pval,
+    if (egger$intercept_pval < 0.05) "Evidence for directional pleiotropy." else "No evidence for directional pleiotropy."
+  ))
+}
+```
+
+## Leave-One-Out Analysis
+
+```{r leave-one-out, fig.cap="Leave-one-out analysis: IVW estimate after removing each SNP."}
+if (!is.null(params$sensitivityResults$leaveOneOut)) {
+  loo <- params$sensitivityResults$leaveOneOut
+  loo$snp_removed <- factor(loo$snp_removed, levels = rev(loo$snp_removed))
+
+  ggplot2::ggplot(loo, ggplot2::aes(
+    x = beta_MR, y = snp_removed,
+    xmin = beta_MR - 1.96 * se_MR,
+    xmax = beta_MR + 1.96 * se_MR
+  )) +
+    ggplot2::geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+    ggplot2::geom_errorbarh(height = 0.2) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::labs(title = "Leave-One-Out Analysis",
+                  x = expression(beta[MR]), y = "SNP removed") +
+    mrTheme()
+}
+```
+
+# Instrument Diagnostics
+
+```{r diagnostics-flags, results='asis'}
+if (!is.null(params$diagnosticResults)) {
+  flags <- params$diagnosticResults$diagnosticFlags
+  if (any(flags)) {
+    cat("**Diagnostic warnings:**\n\n")
+    if (flags["weakInstruments"]) cat("- Weak instruments detected (F < 10)\n")
+    if (flags["phewasSignificant"]) cat("- PheWAS found significant pleiotropic associations\n")
+    if (flags["negativeControlFailure"]) cat("- Negative control outcomes showed significant associations\n")
+    if (flags["alleleFreqDiscrepancy"]) cat("- Allele frequency discrepancies detected\n")
+    if (flags["highMissingness"]) cat("- High genotype missingness for some SNPs\n")
+  } else {
+    cat("All instrument diagnostics passed.\n")
+  }
+}
+```
+
+```{r phewas-plot, fig.cap="Instrument PheWAS: SNP associations across OMOP covariate domains. Red line: Bonferroni threshold."}
+if (!is.null(params$diagnosticResults$phewasResults) &&
+    nrow(params$diagnosticResults$phewasResults) > 0) {
+  phewas <- params$diagnosticResults$phewasResults
+  phewas$neglogp <- -log10(phewas$pval)
+  bonferroni <- -log10(0.05 / nrow(phewas))
+
+  ggplot2::ggplot(phewas, ggplot2::aes(
+    x = seq_len(nrow(phewas)), y = neglogp
+  )) +
+    ggplot2::geom_point(ggplot2::aes(color = significant), size = 1.5) +
+    ggplot2::geom_hline(yintercept = bonferroni, color = "red",
+                         linetype = "dashed") +
+    ggplot2::scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "red")) +
+    ggplot2::labs(title = "Instrument PheWAS",
+                  x = "Covariate index", y = "-log10(p-value)") +
+    mrTheme() +
+    ggplot2::theme(legend.position = "none")
+}
+```
+
+# Site Contributions
+
+```{r site-table}
+if (!is.null(params$combinedProfile$siteContributions)) {
+  knitr::kable(
+    params$combinedProfile$siteContributions,
+    caption = "Per-site summary"
+  )
+}
+```
+
+# Methods
+
+```{r methods-text, results='asis'}
+cat(sprintf(
+"## Auto-generated Methods Text
+
+Two-sample Mendelian Randomization was performed using the Medusa R package.
+Genetic instruments for %s were obtained from published GWAS summary statistics
+(%d independent SNPs at genome-wide significance, p < 5e-8, after LD clumping
+at r-squared < 0.001 within 10,000 kb windows using a European reference panel).
+
+The outcome (%s) was ascertained from OMOP Common Data Model electronic health
+record data across %d federated sites. Each site fit a regularized logistic
+regression of the outcome on the genetic instrument(s) adjusted for covariates
+including age, sex, and ancestry principal components, then evaluated the
+profile log-likelihood across a grid of SNP-outcome association values.
+
+Site-level profile log-likelihood vectors were pooled at a central coordinator
+via pointwise summation (equivalent to multiplying likelihoods under inter-site
+independence). No individual-level data left any site.
+
+The causal odds ratio was estimated via the Wald ratio with delta method
+standard errors. Sensitivity analyses included the inverse variance weighted
+method, MR-Egger regression, weighted median estimation, Steiger directional
+filtering, and leave-one-out analysis.
+",
+params$exposureLabel,
+ifelse(is.null(est), 0, est$nInstruments),
+params$outcomeLabel,
+ifelse(is.null(params$combinedProfile), 0, params$combinedProfile$nSites)
+))
+```
+
+---
+
+*Report generated by Medusa v`r utils::packageVersion("Medusa")` on `r Sys.Date()`.*
