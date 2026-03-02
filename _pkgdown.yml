@@ -1,0 +1,19 @@
+# pkgdown config for Medusa (devtools::build_site())
+# https://pkgdown.r-lib.org/reference/build_site.html
+
+destination: docs
+
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#244268"   # navbar / primary
+    fg: "#333333"
+    bg: "#ffffff"
+    base_font: {google: "Source Sans 3"}
+    heading_font: {google: "Source Sans 3"}
+navbar:
+  structure:
+    left: [intro, reference, articles, tutorials, news]
+    right: [search, github]
+  bg: primary
+  type: dark

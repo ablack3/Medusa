@@ -1,7 +1,7 @@
 Package: Medusa
 Title: Federated Mendelian Randomization on OMOP Common Data Model
 Version: 0.1.0
-Authors@R: person("First", "Last", email = "author@institution.edu",
+Authors@R: person("Adam", "Black", email = "black@ohdsi.org",
            role = c("aut", "cre"))
 Description: Implements two-sample Mendelian Randomization within the OHDSI
     ecosystem using the OMOP Common Data Model. Supports federated analysis

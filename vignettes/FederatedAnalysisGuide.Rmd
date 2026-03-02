@@ -110,7 +110,7 @@ genomicLinkageTable <- "genotype_data"
 siteId <- "site_A"                    # Unique identifier for this site
 
 # ----- Load instrument table (provided by coordinator) -----
-instrumentTable <- readRDS("instruments.rds")
+instrumentTable <- read.csv("instruments.csv", stringsAsFactors = FALSE)
 
 # ----- Step 1: Build cohort -----
 cohortData <- buildMRCohort(
@@ -165,30 +165,28 @@ profilePerSnp <- fitOutcomeModel(
   analysisType = "perSNP"
 )
 
-# ----- Step 5: Save and share -----
-# ONLY these files leave the site:
-saveRDS(profile, file = sprintf("medusa_profile_%s.rds", siteId))
-saveRDS(diagnostics$diagnosticFlags,
-        file = sprintf("medusa_diagnosticFlags_%s.rds", siteId))
+# ----- Step 5: Export and share -----
+# ONLY these CSV files leave the site:
+exportSiteProfile(profile, outputDir = ".", prefix = "medusa")
 
-message("Analysis complete. Share the RDS files with the coordinator.")
+message("Analysis complete. Share the CSV files with the coordinator.")
 ```
 
 ## Coordinator Pooling Script
 
-After collecting profile RDS files from all sites:
+After collecting profile CSV files from all sites:
 
 ```{r coordinator-script}
 library(Medusa)
 
 # Load instrument table
-instrumentTable <- readRDS("instruments.rds")
+instrumentTable <- read.csv("instruments.csv", stringsAsFactors = FALSE)
 
-# Load site profiles
+# Import site profiles from CSV files
 siteProfiles <- list(
-  site_A = readRDS("medusa_profile_site_A.rds"),
-  site_B = readRDS("medusa_profile_site_B.rds"),
-  site_C = readRDS("medusa_profile_site_C.rds")
+  site_A = importSiteProfile("medusa_profile_site_A.csv"),
+  site_B = importSiteProfile("medusa_profile_site_B.csv"),
+  site_C = importSiteProfile("medusa_profile_site_C.csv")
 )
 
 # Pool
@@ -213,15 +211,16 @@ generateMRReport(
 
 ## Secure File Transfer
 
-Profile RDS files should be transferred securely between sites and coordinator.
+Profile CSV files should be transferred securely between sites and coordinator.
 Options include:
 
 - SFTP with encrypted credentials
 - Institutional secure file sharing (e.g., Box, SharePoint with encryption)
 - OHDSI network file transfer protocols (if available)
 
-The RDS files are typically very small (< 100 KB) as they contain only numeric
-vectors and summary statistics.
+The CSV files are human-readable and typically very small (< 100 KB) as they
+contain only numeric grid values and summary statistics. Using CSV ensures that
+every value leaving a site can be inspected and audited before transfer.
 
 ## Handling Different OMOP Versions
 

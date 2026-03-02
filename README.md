@@ -1,4 +1,4 @@
-# Medusa <img src="man/figures/logo.png" align="right" height="139" />
+# Medusa <img src="man/figures/logo.png" align="right" height="80" />
 
 **Mendelian Estimation in Distributed Standardized Analytics**
 
