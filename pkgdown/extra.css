@@ -1,0 +1,168 @@
+/* Medusa / OHDSI custom theme
+ * OHDSI colors: blue #264553, orange #E69528
+ */
+
+:root {
+  --ohdsi-blue: #264553;
+  --ohdsi-orange: #E69528;
+  --ohdsi-blue-light: #3d6573;
+}
+
+/* ----- Logo: moderate size on home and reference index ----- */
+.page-header img[src*="logo.png"],
+.page-header img[src*="figures/logo"] {
+  max-height: 80px !important;
+  height: 80px !important;
+  width: auto !important;
+}
+
+/* ----- Scientific, clean typography ----- */
+.contents {
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+.contents h1, .contents h2, .contents h3, .contents h4 {
+  color: var(--ohdsi-blue);
+  font-weight: 600;
+  border-bottom: none;
+  margin-bottom: 0.6em;
+}
+.contents h2 {
+  padding-top: 1.2em;
+  margin-top: 1.2em;
+  border-bottom: 1px solid #e8ecef;
+  padding-bottom: 0.25em;
+}
+.contents h3 {
+  font-size: 1.25rem;
+}
+
+/* ----- Links: OHDSI orange accent ----- */
+.contents a,
+a[href]:not(.btn) {
+  color: var(--ohdsi-blue);
+}
+.contents a:hover,
+a[href]:not(.btn):hover {
+  color: var(--ohdsi-orange);
+  text-decoration: underline;
+}
+
+/* ----- Navbar: #244268, all text white ----- */
+.navbar-default,
+.navbar-inverse,
+.navbar,
+.navbar.bg-primary,
+[class*="navbar"] {
+  background-color: #244268 !important;
+  border-color: #244268;
+}
+.navbar .navbar-brand,
+.navbar .navbar-link,
+.navbar .navbar-nav > li > a:not(.dropdown-item),
+.navbar .nav-link:not(.dropdown-item),
+.navbar a.navbar-link,
+.navbar .dropdown-toggle {
+  color: #ffffff !important;
+}
+.navbar .navbar-nav > li > a:hover,
+.navbar .navbar-nav > .active > a,
+.navbar .nav-link:hover,
+.navbar .dropdown-toggle:hover {
+  color: var(--ohdsi-orange) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.navbar .version.label {
+  background-color: var(--ohdsi-orange);
+  color: #fff !important;
+}
+
+/* Bootstrap 5 navbar */
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-nav .nav-link,
+.navbar-dark .nav-link,
+.navbar-dark .dropdown-toggle {
+  color: #ffffff !important;
+}
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .dropdown-toggle:hover {
+  color: var(--ohdsi-orange) !important;
+}
+/* Dropdown menu (when open): white panel, dark grey text */
+.navbar .dropdown-menu {
+  background-color: #fff;
+}
+.navbar .dropdown-menu .nav-link,
+.navbar .dropdown-menu a.dropdown-item {
+  color: #333 !important;
+}
+/* Subheadings / section headers inside dropdown: dark grey */
+.navbar .dropdown-menu .dropdown-header,
+.navbar .dropdown-menu h6,
+.navbar .dropdown-menu .text-muted {
+  color: #444 !important;
+  font-weight: 600;
+}
+
+/* ----- Code and pre: subtle, readable ----- */
+pre, code, pre code {
+  background-color: #f6f8fa;
+  color: #24292f;
+  border-radius: 4px;
+}
+pre {
+  border: 1px solid #e8ecef;
+  padding: 1em 1.2em;
+}
+code {
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+}
+
+/* ----- Tables: clean borders ----- */
+.contents table {
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+.contents th,
+.contents td {
+  border: 1px solid #e8ecef;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.contents th {
+  background-color: #f6f8fa;
+  color: var(--ohdsi-blue);
+  font-weight: 600;
+}
+
+/* ----- Footer ----- */
+footer {
+  border-top: 1px solid #e8ecef;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* ----- Sidebar / TOC ("On this page") - hidden on all pages ----- */
+body .row aside.col-md-3,
+body .container aside.col-md-3,
+aside.col-md-3,
+#toc,
+nav#toc,
+[aria-label="Table of contents"] {
+  display: none !important;
+}
+
+/* ----- Buttons / badges ----- */
+.btn-primary {
+  background-color: var(--ohdsi-blue);
+  border-color: var(--ohdsi-blue);
+}
+.btn-primary:hover {
+  background-color: var(--ohdsi-blue-light);
+  border-color: var(--ohdsi-blue-light);
+}
+.badge-primary,
+.label-primary {
+  background-color: var(--ohdsi-blue);
+}
