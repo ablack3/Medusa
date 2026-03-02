@@ -14,23 +14,23 @@ The core innovation is **one-shot federated pooling** via profile likelihood agg
 
 ```
     ┌──────────────────────────────────────────────────────────┐
-    │                    COORDINATOR NODE                       │
+    │                    COORDINATOR NODE                      │
     │                                                          │
-    │  getMRInstruments()  ──────►  Instrument Table            │
+    │  getMRInstruments()  ──────►  Instrument Table           │
     │       │                       (from OpenGWAS)            │
     │       │ distribute                                       │
     │       ▼                                                  │
-    │  ┌─────────┐  ┌─────────┐  ┌─────────┐                 │
-    │  │ Site A   │  │ Site B   │  │ Site C   │   OMOP CDM     │
-    │  │─────────│  │─────────│  │─────────│   Sites          │
-    │  │buildMR  │  │buildMR  │  │buildMR  │                  │
-    │  │Cohort() │  │Cohort() │  │Cohort() │                  │
-    │  │    ▼    │  │    ▼    │  │    ▼    │                  │
-    │  │fitOut   │  │fitOut   │  │fitOut   │                  │
-    │  │come     │  │come     │  │come     │                  │
-    │  │Model()  │  │Model()  │  │Model()  │                  │
-    │  │    │    │  │    │    │  │    │    │                  │
-    │  └────┼────┘  └────┼────┘  └────┼────┘                  │
+    │  ┌─────────┐  ┌─────────┐  ┌─────────┐                   │
+    │  │ Site A  │  │ Site B  │  │ Site C  │   OMOP CDM        │
+    │  │─────────│  │─────────│  │─────────│   Sites           │
+    │  │buildMR  │  │buildMR  │  │buildMR  │                   │
+    │  │Cohort() │  │Cohort() │  │Cohort() │                   │
+    │  │    ▼    │  │    ▼    │  │    ▼    │                   │
+    │  │fitOut   │  │fitOut   │  │fitOut   │                   │
+    │  │come     │  │come     │  │come     │                   │
+    │  │Model()  │  │Model()  │  │Model()  │                   │
+    │  │    │    │  │    │    │  │    │    │                   │
+    │  └────┼────┘  └────┼────┘  └────┼────┘                   │
     │       │            │            │                        │
     │       ▼            ▼            ▼                        │
     │    Profile       Profile      Profile   ◄── Only these   │
