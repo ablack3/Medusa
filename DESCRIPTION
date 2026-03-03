@@ -3,6 +3,8 @@ Title: Federated Mendelian Randomization on OMOP Common Data Model
 Version: 0.1.0
 Authors@R: person("Adam", "Black", email = "black@ohdsi.org",
            role = c("aut", "cre"))
+Author: Adam Black [aut, cre]
+Maintainer: Adam Black <black@ohdsi.org>
 Description: Implements two-sample Mendelian Randomization within the OHDSI
     ecosystem using the OMOP Common Data Model. Supports federated analysis
     across distributed health networks via one-shot profile likelihood pooling.

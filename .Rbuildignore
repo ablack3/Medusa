@@ -3,3 +3,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.github$
+^_pkgdown\.yml$
+^docs$
+^extras$
+^pkgdown$
+^\.DS_Store$
+^\.Rhistory$
+^\.gitignore$
+^\.{2}Rcheck$

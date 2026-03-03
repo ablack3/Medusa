@@ -24,12 +24,15 @@ set.seed(42)
 nSnps <- 10
 perSnp <- data.frame(
   snp_id = paste0("rs", 1:nSnps),
+  effect_allele = rep(c("A", "C", "G", "T", "A"), length.out = nSnps),
+  other_allele = rep(c("C", "G", "T", "A", "C"), length.out = nSnps),
+  eaf = seq(0.1, 0.7, length.out = nSnps),
   beta_ZY = rnorm(nSnps, 0.15, 0.02),
   se_ZY = rep(0.02, nSnps),
   beta_ZX = rnorm(nSnps, 0.3, 0.05),
   se_ZX = rep(0.05, nSnps)
 )
-results <- runSensitivityAnalyses(perSnp)
+results <- runSensitivityAnalyses(perSnp, engine = "internal")
 plotSensitivityForest(results)
 
 }
