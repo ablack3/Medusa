@@ -25,8 +25,9 @@
 #' the joint likelihood under independence across sites.
 #'
 #' Before summing, the function validates that all sites used identical beta
-#' grid vectors. If grids differ, linear interpolation to a common grid is
-#' applied with a warning.
+#' grid vectors. If grids differ, linear interpolation to a common grid over
+#' the overlapping beta range is applied with a warning. Pooling never
+#' extrapolates beyond a site's evaluated range.
 #'
 #' @param siteProfileList Named list of site profile objects, each the output
 #'   of \code{\link{fitOutcomeModel}}.
@@ -52,9 +53,10 @@
 #'
 #' This pooling is exact under the assumption that observations are independent
 #' across sites and every site uses the same beta grid. If interpolation is
-#' needed, pooling remains a close numerical approximation on the common grid.
-#' No iterative communication protocol is needed: each site computes its
-#' profile once and shares only the numeric vector.
+#' needed, pooling remains a close numerical approximation on the common grid,
+#' but only over the beta range evaluated by every site. No iterative
+#' communication protocol is needed: each site computes its profile once and
+#' shares only the numeric vector.
 #'
 #' @references
 #' Luo, Y., et al. (2022). dPQL: a lossless distributed algorithm for
@@ -117,13 +119,24 @@ poolLikelihoodProfiles <- function(siteProfileList,
 
   # Determine common grid
   if (needsInterpolation) {
-    # Use the finest grid as the common grid
-    commonGrid <- referenceGrid
-    for (i in 2:nSites) {
-      siteGrid <- siteProfileList[[i]]$betaGrid
-      if (length(siteGrid) > length(commonGrid)) {
-        commonGrid <- siteGrid
-      }
+    gridLower <- max(vapply(siteProfileList, function(profile) {
+      min(profile$betaGrid)
+    }, numeric(1)))
+    gridUpper <- min(vapply(siteProfileList, function(profile) {
+      max(profile$betaGrid)
+    }, numeric(1)))
+    if (!is.finite(gridLower) || !is.finite(gridUpper) || gridLower >= gridUpper) {
+      stop(
+        "Site betaGrid ranges do not overlap. Pooling requires a shared beta range."
+      )
+    }
+
+    gridStep <- min(vapply(siteProfileList, function(profile) {
+      stats::median(diff(profile$betaGrid))
+    }, numeric(1)))
+    commonGrid <- seq(from = gridLower, to = gridUpper, by = gridStep)
+    if (tail(commonGrid, 1) < gridUpper - (gridStep / 1000)) {
+      commonGrid <- c(commonGrid, gridUpper)
     }
   } else {
     commonGrid <- referenceGrid
@@ -153,9 +166,17 @@ poolLikelihoodProfiles <- function(siteProfileList,
         y = profile$logLikProfile,
         xout = commonGrid,
         method = "linear",
-        rule = 2,
+        rule = 1,
         ties = "ordered"
       )
+      if (anyNA(interpolated$y)) {
+        stop(
+          sprintf(
+            "Site '%s' does not cover the common beta range after interpolation.",
+            profile$siteId
+          )
+        )
+      }
       combinedLogLik <- combinedLogLik + interpolated$y
     } else {
       combinedLogLik <- combinedLogLik + profile$logLikProfile

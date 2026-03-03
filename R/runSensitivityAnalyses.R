@@ -711,6 +711,18 @@ computeWeightedMedian <- function(perSnpEstimates, nBoot = 1000) {
 
   # Parametric bootstrap on the ratio scale, using the same first-order ratio
   # standard errors that define the weighted-median weights in Bowden et al.
+  hadSeed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (hadSeed) {
+    oldSeed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  }
+  on.exit({
+    if (hadSeed) {
+      assign(".Random.seed", oldSeed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+
   set.seed(42)
   bootEstimates <- numeric(nBoot)
   for (b in seq_len(nBoot)) {

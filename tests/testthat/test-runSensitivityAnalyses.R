@@ -671,3 +671,29 @@ test_that("IVW and weighted median remain close to the true effect in repeated l
   expect_lt(mean(ivwErrors), 0.03)
   expect_lt(mean(wmErrors), 0.04)
 })
+
+test_that("computeWeightedMedian preserves the caller RNG state", {
+  perSnp <- with_harmonisation_columns(data.frame(
+    snp_id = paste0("rs", 1:5),
+    beta_ZY = c(0.05, 0.06, 0.04, 0.07, 0.05),
+    se_ZY = rep(0.02, 5),
+    beta_ZX = c(0.20, 0.22, 0.18, 0.24, 0.21),
+    se_ZX = rep(0.03, 5),
+    stringsAsFactors = FALSE
+  ))
+
+  set.seed(123)
+  baselineDraw <- rnorm(1)
+  stateBefore <- get(".Random.seed", envir = .GlobalEnv)
+  ignore <- computeWeightedMedian(perSnp, nBoot = 20)
+  stateAfter <- get(".Random.seed", envir = .GlobalEnv)
+  nextDraw <- rnorm(1)
+
+  set.seed(123)
+  expectedBaseline <- rnorm(1)
+  expectedNext <- rnorm(1)
+
+  expect_equal(baselineDraw, expectedBaseline)
+  expect_equal(stateAfter, stateBefore)
+  expect_equal(nextDraw, expectedNext)
+})

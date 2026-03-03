@@ -23,7 +23,8 @@
 #' \pkg{TwoSampleMR} estimates computed from the same site's per-SNP summary
 #' statistics. This is a calibration check: agreement is expected when the
 #' profile is close to quadratic and the allele-score approximation aligns with
-#' standard summarized-data MR assumptions.
+#' standard summarized-data MR assumptions. This helper requires the optional
+#' \pkg{TwoSampleMR} package.
 #'
 #' @param siteProfile A single \code{medusaSiteProfile} object produced by
 #'   \code{\link{fitOutcomeModel}} with \code{analysisType = "perSNP"}.
@@ -47,15 +48,17 @@
 #'   Medusa estimate.
 #'
 #' @examples
-#' simData <- simulateMRData(n = 3000, nSnps = 5, trueEffect = 0.3)
-#' siteProfile <- fitOutcomeModel(
-#'   cohortData = simData$data,
-#'   instrumentTable = simData$instrumentTable,
-#'   analysisType = "perSNP",
-#'   betaGrid = seq(-2, 2, by = 0.05)
-#' )
-#' comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
-#' comparison
+#' if (requireNamespace("TwoSampleMR", quietly = TRUE)) {
+#'   simData <- simulateMRData(n = 3000, nSnps = 5, trueEffect = 0.3)
+#'   siteProfile <- fitOutcomeModel(
+#'     cohortData = simData$data,
+#'     instrumentTable = simData$instrumentTable,
+#'     analysisType = "perSNP",
+#'     betaGrid = seq(-2, 2, by = 0.05)
+#'   )
+#'   comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
+#'   comparison
+#' }
 #'
 #' @seealso \code{\link{fitOutcomeModel}}, \code{\link{computeMREstimate}},
 #'   \code{\link{runSensitivityAnalyses}}
@@ -75,6 +78,13 @@ validateAgainstTwoSampleMR <- function(siteProfile,
                             "Steiger", "LeaveOneOut"))
   checkmate::assertChoice(outcomeType, c("binary", "continuous"))
   checkmate::assertNumber(ciLevel, lower = 0.5, upper = 0.999)
+  if (!requireNamespace("TwoSampleMR", quietly = TRUE)) {
+    stop(
+      "Package 'TwoSampleMR' is required for validateAgainstTwoSampleMR(). ",
+      "Install it with: remotes::install_github('mrcieu/TwoSampleMR')",
+      call. = FALSE
+    )
+  }
 
   if (is.null(siteProfile$perSnpEstimates)) {
     stop(

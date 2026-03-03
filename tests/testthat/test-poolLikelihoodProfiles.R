@@ -168,6 +168,69 @@ test_that("poolLikelihoodProfiles adopts a finer grid from a later site when nee
   expect_equal(combined$betaGrid, fineGrid)
 })
 
+test_that("poolLikelihoodProfiles restricts interpolation to the overlapping beta range", {
+  gridA <- seq(-2, 2, by = 0.2)
+  gridB <- seq(-1, 1, by = 0.1)
+  profiles <- list(
+    site_A = list(
+      siteId = "site_A",
+      betaGrid = gridA,
+      logLikProfile = -0.5 * (gridA - 0.2)^2,
+      nCases = 50,
+      nControls = 150,
+      snpIds = "rs1"
+    ),
+    site_B = list(
+      siteId = "site_B",
+      betaGrid = gridB,
+      logLikProfile = -0.5 * (gridB - 0.2)^2,
+      nCases = 60,
+      nControls = 140,
+      snpIds = "rs1"
+    )
+  )
+
+  expect_warning(
+    combined <- poolLikelihoodProfiles(profiles),
+    "different betaGrid"
+  )
+
+  expect_gte(min(combined$betaGrid), -1)
+  expect_lte(max(combined$betaGrid), 1)
+  expect_equal(combined$betaGrid, gridB)
+})
+
+test_that("poolLikelihoodProfiles errors when site grids do not overlap", {
+  gridA <- seq(-2, -1, by = 0.1)
+  gridB <- seq(1, 2, by = 0.1)
+  profiles <- list(
+    site_A = list(
+      siteId = "site_A",
+      betaGrid = gridA,
+      logLikProfile = -0.5 * gridA^2,
+      nCases = 50,
+      nControls = 150,
+      snpIds = "rs1"
+    ),
+    site_B = list(
+      siteId = "site_B",
+      betaGrid = gridB,
+      logLikProfile = -0.5 * gridB^2,
+      nCases = 60,
+      nControls = 140,
+      snpIds = "rs1"
+    )
+  )
+
+  expect_warning(
+    expect_error(
+      poolLikelihoodProfiles(profiles),
+      "do not overlap"
+    ),
+    "different betaGrid"
+  )
+})
+
 test_that("poolLikelihoodProfiles is invariant to site order", {
   profiles <- simulateSiteProfiles(nSites = 4, trueBeta = 0.35, seed = 1201)
   reversedProfiles <- rev(profiles)

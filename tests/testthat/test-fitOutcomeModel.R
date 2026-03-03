@@ -223,6 +223,62 @@ test_that("fitOutcomeModel helper utilities align instruments and evaluate finit
   expect_error(computeAlleleScoreWeights(zeroWeightTable), "not finite")
 })
 
+test_that("appendCovariatesToModelData aligns plain covariate data by person_id", {
+  simData <- Medusa::simulateMRData(n = 60, nSnps = 2, trueEffect = 0.2, seed = 560)
+  baseModel <- data.frame(
+    outcome = simData$data$outcome,
+    alleleScore = seq_len(nrow(simData$data)),
+    stringsAsFactors = FALSE
+  )
+  covariateData <- data.frame(
+    person_id = rev(simData$data$person_id),
+    covariate_1 = seq_len(nrow(simData$data)),
+    stringsAsFactors = FALSE
+  )
+
+  modelParts <- appendCovariatesToModelData(
+    modelData = baseModel,
+    cohortData = simData$data,
+    covariateData = covariateData
+  )
+
+  expected <- covariateData$covariate_1[match(simData$data$person_id, covariateData$person_id)]
+  expect_equal(modelParts$modelData$covariate_1, expected)
+})
+
+test_that("fitOutcomeModel imputes missing genotypes to expected dosage instead of zero", {
+  simData <- Medusa::simulateMRData(n = 300, nSnps = 3, trueEffect = 0.2, seed = 561)
+  snpCols <- grep("^snp_", names(simData$data), value = TRUE)
+  withMissing <- simData$data
+  withMissing[1:10, snpCols[1]] <- NA_real_
+  withExpected <- withMissing
+  withExpected[1:10, snpCols[1]] <- 2 * simData$instrumentTable$eaf[[1]]
+
+  profileMissing <- suppressWarnings(
+    suppressMessages(
+      fitOutcomeModel(
+        cohortData = withMissing,
+        covariateData = NULL,
+        instrumentTable = simData$instrumentTable,
+        betaGrid = seq(-1.5, 1.5, by = 0.1)
+      )
+    )
+  )
+  profileExpected <- suppressWarnings(
+    suppressMessages(
+      fitOutcomeModel(
+        cohortData = withExpected,
+        covariateData = NULL,
+        instrumentTable = simData$instrumentTable,
+        betaGrid = seq(-1.5, 1.5, by = 0.1)
+      )
+    )
+  )
+
+  expect_equal(profileMissing$betaHat, profileExpected$betaHat, tolerance = 1e-10)
+  expect_equal(profileMissing$logLikProfile, profileExpected$logLikProfile, tolerance = 1e-10)
+})
+
 test_that("fitOutcomeModel validates missing SNPs and no-case cohorts", {
   simData <- Medusa::simulateMRData(n = 120, nSnps = 2, trueEffect = 0.2, seed = 557)
   noSnp <- simData$data[, setdiff(names(simData$data), grep("^snp_", names(simData$data), value = TRUE))]
@@ -438,10 +494,13 @@ test_that("fitOutcomeModel covers warning and internal fallback branches", {
   expect_equal(nrow(perSnpError$perSnpEstimates), 0)
   expect_true(all(is.infinite(perSnpError$perSnpProfiles)))
 
-  appendResult <- appendCovariatesToModelData(
-    modelData = data.frame(outcome = simData$data$outcome, alleleScore = 0),
-    cohortData = simData$data,
-    covariateData = data.frame(other_id = 1:80, cov_x = rnorm(80))
+  expect_warning(
+    appendResult <- appendCovariatesToModelData(
+      modelData = data.frame(outcome = simData$data$outcome, alleleScore = 0),
+      cohortData = simData$data,
+      covariateData = data.frame(other_id = 1:80, cov_x = rnorm(80))
+    ),
+    "aligning covariates by row order"
   )
   expect_true("cov_x" %in% names(appendResult$modelData))
 

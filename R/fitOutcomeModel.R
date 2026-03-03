@@ -97,6 +97,11 @@
 #' \eqn{\sum_j |w_j|}. The same weights are reused downstream so that the
 #' MR denominator matches the exact score fitted at each site.
 #'
+#' Missing SNP dosages in the allele-score model are imputed to the expected
+#' dosage \eqn{2 \times \mathrm{EAF}_j} from the instrument table, rather than
+#' being treated as homozygous reference. This avoids a systematic downward
+#' bias in the score when genotype missingness is present.
+#'
 #' @references
 #' Suchard, M. A., et al. (2013). Massive parallelization of serial inference
 #' algorithms for a complex generalized linear model. \emph{ACM Transactions
@@ -241,9 +246,18 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
   weights <- computeAlleleScoreWeights(alignedInstruments)
 
   snpMatrix <- as.matrix(cohortData[, snpCols, drop = FALSE])
-  # Replace NA with 0 for score computation (common imputation for missing genotypes)
+  # Impute missing additive dosages to their expected allele count (2 * EAF),
+  # rather than coding them as homozygous reference (0).
   snpMatrixImputed <- snpMatrix
-  snpMatrixImputed[is.na(snpMatrixImputed)] <- 0
+  if (anyNA(snpMatrixImputed)) {
+    expectedDosage <- 2 * alignedInstruments$eaf
+    for (j in seq_len(ncol(snpMatrixImputed))) {
+      missingMask <- is.na(snpMatrixImputed[, j])
+      if (any(missingMask)) {
+        snpMatrixImputed[missingMask, j] <- expectedDosage[[j]]
+      }
+    }
+  }
 
   alleleScore <- as.numeric(snpMatrixImputed %*% weights)
 
@@ -474,14 +488,29 @@ appendCovariatesToModelData <- function(modelData, cohortData, covariateData) {
 
   if (!is.null(covariateData) && is.data.frame(covariateData)) {
     covCols <- setdiff(names(covariateData), c("person_id", "personId", "rowId"))
+    joinKey <- intersect(
+      c("person_id", "personId", "rowId"),
+      intersect(names(covariateData), names(cohortData))
+    )
 
-    if ("personId" %in% names(covariateData) && "personId" %in% names(cohortData)) {
+    if (length(joinKey) > 0) {
+      joinKey <- joinKey[[1]]
+      mergeIndex <- data.frame(joinValue = cohortData[[joinKey]])
+      names(mergeIndex) <- joinKey
       mergedCov <- dplyr::left_join(
-        data.frame(personId = cohortData$personId),
+        mergeIndex,
         covariateData,
-        by = "personId"
+        by = joinKey
       )
     } else {
+      if (nrow(covariateData) != nrow(cohortData)) {
+        stop(
+          "covariateData must either share a join key (person_id, personId, or rowId) with cohortData or have the same number of rows for explicit row-wise alignment."
+        )
+      }
+      warning(
+        "covariateData has no join key in common with cohortData; aligning covariates by row order."
+      )
       mergedCov <- covariateData
     }
 
