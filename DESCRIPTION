@@ -22,10 +22,10 @@ Imports:
     dplyr,
     checkmate,
     rlang,
-    stats
+    stats,
+    Cyclops
 Suggests:
     patchwork,
-    Cyclops,
     FeatureExtraction,
     DatabaseConnector,
     SqlRender,

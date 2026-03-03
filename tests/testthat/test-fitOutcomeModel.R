@@ -146,8 +146,6 @@ test_that("fitOutcomeModel aligns SNP columns by SNP ID instead of column order"
 })
 
 test_that("fitOutcomeModel supports the optional Cyclops backend", {
-  skip_if_not_installed("Cyclops")
-
   simData <- simulateMRData(n = 1200, nSnps = 3, trueEffect = 0.2, seed = 555)
   profile <- fitOutcomeModel(
     cohortData = simData$data,
@@ -373,19 +371,6 @@ test_that("fitOutcomeModel covers warning and internal fallback branches", {
     "Only 20 cases"
   )
 
-  cyclopsCheckFn <- fitOutcomeModel
-  mockery::stub(cyclopsCheckFn, "requireNamespace", function(...) FALSE)
-  expect_error(
-    cyclopsCheckFn(
-      cohortData = simData$data,
-      covariateData = NULL,
-      instrumentTable = simData$instrumentTable,
-      betaGrid = seq(-1, 1, by = 0.1),
-      modelBackend = "cyclops"
-    ),
-    "Package 'Cyclops' is required"
-  )
-
   flatProfileFn <- fitOutcomeModel
   mockery::stub(
     flatProfileFn,
@@ -516,7 +501,6 @@ test_that("fitOutcomeModel covers warning and internal fallback branches", {
 
 test_that("fitOutcomeModel helper branches cover Cyclops and profile-point fallbacks", {
   skip_if_not_installed("mockery")
-  skip_if_not_installed("Cyclops")
 
   simData <- Medusa::simulateMRData(n = 120, nSnps = 2, trueEffect = 0.2, seed = 560)
   modelData <- data.frame(

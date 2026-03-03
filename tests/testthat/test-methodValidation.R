@@ -207,7 +207,6 @@ test_that("fitOutcomeModel matches a brute-force constrained glm profile on a fi
 test_that("glm and unpenalized Cyclops backends agree on low-dimensional fits", {
   # Backend equivalence checks are useful before release, but are too costly by default.
   skip_if_not_full_validation()
-  skip_if_not_installed("Cyclops")
 
   simData <- simulateMRData(n = 800, nSnps = 4, trueEffect = 0.2, seed = 9200)
   covariateData <- simData$data[, c("person_id", "confounder_1", "confounder_2"), drop = FALSE]

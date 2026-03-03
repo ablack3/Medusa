@@ -143,15 +143,6 @@ fitOutcomeModel <- function(cohortData,
   checkmate::assertString(siteId)
   checkmate::assertChoice(modelBackend, c("glm", "cyclops"))
 
-  if (identical(modelBackend, "cyclops") &&
-      !requireNamespace("Cyclops", quietly = TRUE)) {
-    stop(
-      "Package 'Cyclops' is required when modelBackend = 'cyclops'. ",
-      "Install it with: remotes::install_github('ohdsi/Cyclops')",
-      call. = FALSE
-    )
-  }
-
   checkmate::assertSubset("outcome", names(cohortData))
   if (length(grep("^snp_", names(cohortData), value = TRUE)) == 0) {
     stop("No SNP columns (snp_*) found in cohortData.")

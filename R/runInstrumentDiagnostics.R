@@ -212,95 +212,131 @@ runInstrumentPheWAS <- function(cohortData, covariateData, instrumentTable,
                                  pValueThreshold = NULL) {
   snpCols <- grep("^snp_", names(cohortData), value = TRUE)
 
-  # Get covariates as a data frame
-  if (inherits(covariateData, "medusaCovariateData")) {
-    # Extract from FeatureExtraction object
-    covDf <- as.data.frame(covariateData$covariateData$covariates)
-    covRef <- as.data.frame(covariateData$covariateData$covariateRef)
-  } else if (is.data.frame(covariateData)) {
-    covDf <- covariateData
-    covariateCols <- setdiff(names(covDf), "person_id")
-    covRef <- data.frame(
-      covariateId = seq_along(covariateCols),
-      covariateName = covariateCols,
-      domainId = "Unknown",
-      stringsAsFactors = FALSE
-    )
-  } else {
-    covDf <- covariateData
-    covRef <- data.frame(covariateId = integer(0),
-                          covariateName = character(0),
-                          domainId = character(0),
-                          stringsAsFactors = FALSE)
-  }
-
-  if (is.data.frame(covDf)) {
-    covariateCols <- setdiff(names(covDf), c("person_id", "personId", "rowId"))
-  } else {
-    covariateCols <- character(0)
-  }
-
-  nTests <- length(snpCols) * length(covariateCols)
-  if (is.null(pValueThreshold)) {
-    pValueThreshold <- if (nTests > 0) 0.05 / nTests else 0.05
-  }
-
-  results <- data.frame(
-    snp_id = character(0),
-    covariate_name = character(0),
-    beta = numeric(0),
-    se = numeric(0),
-    pval = numeric(0),
-    significant = logical(0),
-    stringsAsFactors = FALSE
+  emptyResults <- data.frame(
+    snp_id = character(0), covariate_name = character(0),
+    beta = numeric(0), se = numeric(0), pval = numeric(0),
+    significant = logical(0), stringsAsFactors = FALSE
   )
 
-  if (length(covariateCols) == 0 || length(snpCols) == 0) {
-    return(results)
-  }
+  if (length(snpCols) == 0) return(emptyResults)
 
-  # Merge cohort data with covariates if needed
-  if ("personId" %in% names(covDf)) {
-    mergedData <- dplyr::left_join(cohortData, covDf, by = "personId")
-  } else if ("person_id" %in% names(covDf)) {
-    mergedData <- dplyr::left_join(
-      cohortData, covDf,
-      by = c("personId" = "person_id")
-    )
-  } else {
-    mergedData <- cohortData
-  }
+  # --- Determine covariate input format ---
+  isSparse <- FALSE
+  covTable <- NULL
+  covRef <- NULL
+  covDf <- NULL
 
-  for (snpCol in snpCols) {
-    for (covCol in covariateCols) {
-      validIdx <- !is.na(mergedData[[snpCol]]) & !is.na(mergedData[[covCol]])
-      if (sum(validIdx) < 20) next
+  if (inherits(covariateData, "medusaCovariateData")) {
+    covObj <- covariateData$covariateData
+    rawCovariates <- covObj$covariates
+    covRef <- tryCatch(as.data.frame(covObj$covariateRef), error = function(e) NULL)
 
-      y <- mergedData[[covCol]][validIdx]
-      x <- mergedData[[snpCol]][validIdx]
-
-      tryCatch({
-        isBinary <- all(y %in% c(0, 1))
-        if (isBinary) {
-          if (length(unique(y)) < 2) next
-          fit <- glm(y ~ x, family = binomial())
-        } else {
-          fit <- lm(y ~ x)
-        }
-        coefs <- summary(fit)$coefficients
-        if (nrow(coefs) >= 2) {
-          results <- rbind(results, data.frame(
-            snp_id = sub("^snp_", "", snpCol),
-            covariate_name = covCol,
-            beta = coefs[2, 1],
-            se = coefs[2, 2],
-            pval = coefs[2, 4],
-            significant = coefs[2, 4] < pValueThreshold,
-            stringsAsFactors = FALSE
-          ))
-        }
-      }, error = function(e) NULL)
+    # Detect sparse format (rowId, covariateId, covariateValue)
+    covColNames <- if (inherits(rawCovariates, "tbl")) {
+      colnames(rawCovariates)
+    } else if (is.data.frame(rawCovariates)) {
+      names(rawCovariates)
+    } else {
+      character(0)
     }
+
+    if (all(c("covariateId", "covariateValue") %in% covColNames)) {
+      isSparse <- TRUE
+      covTable <- rawCovariates
+    } else if (is.data.frame(rawCovariates)) {
+      covDf <- rawCovariates
+    }
+  } else if (is.data.frame(covariateData)) {
+    covDf <- covariateData
+  } else {
+    return(emptyResults)
+  }
+
+  # --- Sparse path: iterate over covariateIds without materializing ---
+  if (isSparse) {
+    if (is.null(covRef) || nrow(covRef) == 0) return(emptyResults)
+
+    covariateIds <- unique(covRef$covariateId)
+    nCovariates <- length(covariateIds)
+    nTests <- length(snpCols) * nCovariates
+
+    if (is.null(pValueThreshold)) {
+      pValueThreshold <- if (nTests > 0) 0.05 / nTests else 0.05
+    }
+
+    personIds <- if ("personId" %in% names(cohortData)) cohortData$personId
+                 else if ("person_id" %in% names(cohortData)) cohortData$person_id
+                 else seq_len(nrow(cohortData))
+
+    resultsList <- vector("list", nCovariates)
+
+    for (i in seq_along(covariateIds)) {
+      covId <- covariateIds[i]
+      covName <- covRef$covariateName[covRef$covariateId == covId][1]
+      if (is.na(covName)) covName <- as.character(covId)
+
+      # Pull one covariate (only non-zero rows)
+      oneCov <- if (inherits(covTable, "tbl")) {
+        dplyr::collect(dplyr::filter(covTable, .data$covariateId == covId))
+      } else {
+        covTable[covTable$covariateId == covId, , drop = FALSE]
+      }
+
+      # Build dense vector (0 for absent = standard sparse convention)
+      covValues <- rep(0, nrow(cohortData))
+      rowIdCol <- if ("rowId" %in% names(oneCov)) "rowId" else "person_id"
+      matchIdx <- match(personIds, oneCov[[rowIdCol]])
+      covValues[!is.na(matchIdx)] <- oneCov$covariateValue[matchIdx[!is.na(matchIdx)]]
+
+      modelDf <- data.frame(y = covValues)
+      for (sc in snpCols) modelDf[[sc]] <- cohortData[[sc]]
+
+      resultsList[[i]] <- fitPheWASModel(modelDf, snpCols, covName, pValueThreshold)
+    }
+
+    results <- do.call(rbind, resultsList)
+    if (is.null(results)) results <- emptyResults
+
+  } else if (!is.null(covDf)) {
+    # --- Wide path: merge covariates and iterate over columns ---
+
+    if ("personId" %in% names(covDf)) {
+      mergedData <- dplyr::left_join(cohortData, covDf, by = "personId")
+    } else if ("person_id" %in% names(covDf)) {
+      mergedData <- dplyr::left_join(
+        cohortData, covDf, by = c("personId" = "person_id")
+      )
+    } else {
+      mergedData <- cohortData
+    }
+
+    covariateCols <- setdiff(names(covDf), c("person_id", "personId", "rowId"))
+    nCovariates <- length(covariateCols)
+    nTests <- length(snpCols) * nCovariates
+
+    if (is.null(pValueThreshold)) {
+      pValueThreshold <- if (nTests > 0) 0.05 / nTests else 0.05
+    }
+
+    if (nCovariates == 0) return(emptyResults)
+
+    resultsList <- vector("list", nCovariates)
+
+    for (i in seq_along(covariateCols)) {
+      covCol <- covariateCols[i]
+      if (!(covCol %in% names(mergedData))) next
+
+      modelDf <- data.frame(y = mergedData[[covCol]])
+      for (sc in snpCols) modelDf[[sc]] <- mergedData[[sc]]
+
+      resultsList[[i]] <- fitPheWASModel(modelDf, snpCols, covCol, pValueThreshold)
+    }
+
+    results <- do.call(rbind, resultsList)
+    if (is.null(results)) results <- emptyResults
+
+  } else {
+    return(emptyResults)
   }
 
   nTested <- nrow(results)
@@ -309,6 +345,73 @@ runInstrumentPheWAS <- function(cohortData, covariateData, instrumentTable,
                   nTested, nTests, nSkipped))
 
   results
+}
+
+
+#' Fit a single PheWAS model for one covariate against all SNPs using Cyclops
+#'
+#' @param modelDf Data frame with column \code{y} (covariate values) and one
+#'   column per SNP.
+#' @param snpCols Character vector of SNP column names in \code{modelDf}.
+#' @param covariateName Character. Name of the covariate being tested.
+#' @param pValueThreshold Numeric. Bonferroni-corrected significance threshold.
+#'
+#' @return A data frame with one row per SNP (columns: snp_id, covariate_name,
+#'   beta, se, pval, significant), or NULL if the model cannot be fit.
+#'
+#' @keywords internal
+fitPheWASModel <- function(modelDf, snpCols, covariateName, pValueThreshold) {
+  complete <- stats::complete.cases(modelDf)
+  if (sum(complete) < 20) return(NULL)
+  modelDf <- modelDf[complete, , drop = FALSE]
+
+  isBinary <- all(modelDf$y %in% c(0, 1))
+  if (isBinary && length(unique(modelDf$y)) < 2) return(NULL)
+
+  tryCatch({
+    modelType <- if (isBinary) "lr" else "ls"
+    cyclopsFormula <- stats::as.formula(
+      paste("y ~", paste(snpCols, collapse = " + "))
+    )
+    cyclopsData <- Cyclops::createCyclopsData(
+      formula = cyclopsFormula, modelType = modelType, data = modelDf
+    )
+    fit <- Cyclops::fitCyclopsModel(
+      cyclopsData,
+      prior = Cyclops::createPrior("none"),
+      control = Cyclops::createControl(noiseLevel = "silent"),
+      warnings = FALSE
+    )
+
+    coefs <- stats::coef(fit)
+    vcovMat <- tryCatch(stats::vcov(fit), error = function(e) NULL)
+    if (is.null(vcovMat)) return(NULL)
+
+    rows <- vector("list", length(snpCols))
+    for (j in seq_along(snpCols)) {
+      sc <- snpCols[j]
+      if (!(sc %in% names(coefs))) next
+
+      beta <- coefs[sc]
+      se <- sqrt(vcovMat[sc, sc])
+      if (!is.finite(se) || se <= 0) next
+
+      z <- beta / se
+      pval <- 2 * stats::pnorm(abs(z), lower.tail = FALSE)
+
+      rows[[j]] <- data.frame(
+        snp_id = sub("^snp_", "", sc),
+        covariate_name = covariateName,
+        beta = unname(beta),
+        se = unname(se),
+        pval = pval,
+        significant = pval < pValueThreshold,
+        stringsAsFactors = FALSE
+      )
+    }
+
+    do.call(rbind, rows)
+  }, error = function(e) NULL)
 }
 
 

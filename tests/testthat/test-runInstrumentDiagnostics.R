@@ -154,6 +154,85 @@ test_that("runInstrumentPheWAS covers personId joins, no-join fallback, and skip
   expect_equal(nrow(skippedPhewas), 0)
 })
 
+test_that("runInstrumentPheWAS handles sparse FeatureExtraction format", {
+  simData <- simulateMRData(n = 150, nSnps = 2, seed = 710)
+  cohortData <- simData$data
+  cohortData$personId <- cohortData$person_id
+
+  # Create sparse long format matching real FeatureExtraction output
+  # Only persons with the condition have a row (covariateValue = 1)
+  affectedIds <- cohortData$personId[cohortData$personId %% 3 == 0]
+
+  medusaCovariates <- list(
+    covariateData = list(
+      covariates = data.frame(
+        rowId = affectedIds,
+        covariateId = rep(2001L, length(affectedIds)),
+        covariateValue = rep(1, length(affectedIds)),
+        stringsAsFactors = FALSE
+      ),
+      covariateRef = data.frame(
+        covariateId = 2001L,
+        covariateName = "condition_group_era:diabetes",
+        domainId = "Condition",
+        stringsAsFactors = FALSE
+      )
+    )
+  )
+  class(medusaCovariates) <- "medusaCovariateData"
+
+  phewas <- runInstrumentPheWAS(
+    cohortData = cohortData,
+    covariateData = medusaCovariates,
+    instrumentTable = simData$instrumentTable
+  )
+
+  expect_s3_class(phewas, "data.frame")
+  expect_true(all(c("snp_id", "covariate_name", "pval") %in% names(phewas)))
+  # One model with 2 SNPs → 2 result rows
+  expect_equal(nrow(phewas), 2)
+  expect_true(all(phewas$covariate_name == "condition_group_era:diabetes"))
+})
+
+test_that("runInstrumentPheWAS handles multiple sparse covariates", {
+  simData <- simulateMRData(n = 200, nSnps = 2, seed = 711)
+  cohortData <- simData$data
+  cohortData$personId <- cohortData$person_id
+
+  # Two covariates in sparse format
+  ids1 <- cohortData$personId[cohortData$personId %% 2 == 0]
+  ids2 <- cohortData$personId[cohortData$personId %% 4 == 0]
+
+  medusaCovariates <- list(
+    covariateData = list(
+      covariates = data.frame(
+        rowId = c(ids1, ids2),
+        covariateId = c(rep(3001L, length(ids1)), rep(3002L, length(ids2))),
+        covariateValue = rep(1, length(ids1) + length(ids2)),
+        stringsAsFactors = FALSE
+      ),
+      covariateRef = data.frame(
+        covariateId = c(3001L, 3002L),
+        covariateName = c("condition:hypertension", "drug:aspirin"),
+        domainId = c("Condition", "Drug"),
+        stringsAsFactors = FALSE
+      )
+    )
+  )
+  class(medusaCovariates) <- "medusaCovariateData"
+
+  phewas <- runInstrumentPheWAS(
+    cohortData = cohortData,
+    covariateData = medusaCovariates,
+    instrumentTable = simData$instrumentTable
+  )
+
+  expect_s3_class(phewas, "data.frame")
+  # 2 covariates × 2 SNPs = 4 result rows
+  expect_equal(nrow(phewas), 4)
+  expect_true(all(c("condition:hypertension", "drug:aspirin") %in% phewas$covariate_name))
+})
+
 test_that("negative controls, allele frequencies, and missingness helpers return expected frames", {
   simData <- simulateMRData(n = 100, nSnps = 2, seed = 808)
   cohortData <- simData$data
