@@ -14,7 +14,8 @@ test_that("Monte Carlo MR benchmark returns calibration summaries", {
   expect_equal(nrow(benchmark$replicates), 12)
   expect_equal(sort(benchmark$summary$method), sort(c("IVW", "Medusa", "Weighted Median")))
   expect_true(all(c(
-    "bias", "rmse", "coverage", "type1_error", "mean_reported_se"
+    "bias", "rmse", "coverage", "rejection_rate", "type1_error",
+    "power", "mean_reported_se", "empirical_sd"
   ) %in% names(benchmark$summary)))
   expect_true(all(is.finite(benchmark$summary$rmse)))
 })
@@ -69,10 +70,14 @@ test_that("Monte Carlo benchmark gives broadly acceptable coverage and null cali
   expect_gte(getBenchmarkMetric(signalBenchmark, "Weighted Median", "coverage"), 0.75)
   expect_lte(abs(getBenchmarkMetric(signalBenchmark, "IVW", "bias")), 0.10)
   expect_lte(abs(getBenchmarkMetric(signalBenchmark, "Weighted Median", "bias")), 0.10)
+  expect_true(is.na(getBenchmarkMetric(signalBenchmark, "IVW", "type1_error")))
+  expect_gte(getBenchmarkMetric(signalBenchmark, "IVW", "power"), 0.05)
+  expect_gte(getBenchmarkMetric(signalBenchmark, "Weighted Median", "power"), 0.05)
 
   expect_lte(getBenchmarkMetric(nullBenchmark, "Medusa", "type1_error"), 0.20)
   expect_lte(getBenchmarkMetric(nullBenchmark, "IVW", "type1_error"), 0.20)
   expect_lte(getBenchmarkMetric(nullBenchmark, "Weighted Median", "type1_error"), 0.20)
+  expect_true(is.na(getBenchmarkMetric(nullBenchmark, "Medusa", "power")))
   expect_lte(abs(getBenchmarkMetric(nullBenchmark, "IVW", "mean_estimate")), 0.10)
   expect_lte(abs(getBenchmarkMetric(nullBenchmark, "Weighted Median", "mean_estimate")), 0.10)
   expect_gt(

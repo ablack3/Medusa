@@ -95,6 +95,7 @@ runMonteCarloMRBenchmark <- function(nRep = 8,
     ci_lower <= trueEffect & ci_upper >= trueEffect
   )
   replicateResults$reject_null <- replicateResults$pval < alpha
+  replicateResults$detect_signal <- replicateResults$reject_null
   replicateResults$abs_error <- abs(replicateResults$beta_MR - trueEffect)
   replicateResults$sq_error <- (replicateResults$beta_MR - trueEffect)^2
 
@@ -110,7 +111,17 @@ runMonteCarloMRBenchmark <- function(nRep = 8,
       mean_reported_se = mean(methodRows$se_MR),
       rmse = sqrt(mean(methodRows$sq_error)),
       coverage = mean(methodRows$covered),
-      type1_error = mean(methodRows$reject_null),
+      rejection_rate = mean(methodRows$reject_null),
+      type1_error = if (isTRUE(all.equal(trueEffect, 0))) {
+        mean(methodRows$reject_null)
+      } else {
+        NA_real_
+      },
+      power = if (!isTRUE(all.equal(trueEffect, 0))) {
+        mean(methodRows$detect_signal)
+      } else {
+        NA_real_
+      },
       mean_pval = mean(methodRows$pval),
       stringsAsFactors = FALSE
     )
