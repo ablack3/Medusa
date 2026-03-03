@@ -12,6 +12,9 @@ test_that("IVW estimator is approximately unbiased for n=50000", {
   trueEffect <- 0.5
   nSnps <- 10
   estimates <- numeric(nSims)
+  effectAllele <- rep_len(c("A", "C", "G", "T"), nSnps)
+  otherAllele <- rep_len(c("C", "A", "T", "G"), nSnps)
+  eaf <- seq(0.10, by = 0.02, length.out = nSnps)
 
   for (sim in seq_len(nSims)) {
     betaZX <- rnorm(nSnps, 0.3, 0.05)
@@ -25,7 +28,10 @@ test_that("IVW estimator is approximately unbiased for n=50000", {
       beta_ZY = betaZY,
       se_ZY = seZY,
       beta_ZX = betaZX,
-      se_ZX = seZX
+      se_ZX = seZX,
+      effect_allele = effectAllele,
+      other_allele = otherAllele,
+      eaf = eaf
     )
 
     ivw <- suppressMessages(
@@ -121,6 +127,9 @@ test_that("type I error is controlled under the null", {
   trueEffect <- 0.0
   nSnps <- 10
   significant <- logical(nSims)
+  effectAllele <- rep_len(c("A", "C", "G", "T"), nSnps)
+  otherAllele <- rep_len(c("C", "A", "T", "G"), nSnps)
+  eaf <- seq(0.10, by = 0.02, length.out = nSnps)
 
   for (sim in seq_len(nSims)) {
     betaZX <- rnorm(nSnps, 0.3, 0.05)
@@ -133,7 +142,10 @@ test_that("type I error is controlled under the null", {
       beta_ZY = betaZY,
       se_ZY = seZY,
       beta_ZX = betaZX,
-      se_ZX = seZX
+      se_ZX = seZX,
+      effect_allele = effectAllele,
+      other_allele = otherAllele,
+      eaf = eaf
     )
 
     ivw <- suppressMessages(

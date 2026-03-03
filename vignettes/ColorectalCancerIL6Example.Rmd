@@ -21,14 +21,23 @@ Interleukin-6 (IL-6) is a pleiotropic cytokine involved in inflammation, immune
 regulation, and hematopoiesis. Elevated IL-6 levels have been associated with
 colorectal cancer risk in observational studies, but these associations may be
 confounded by lifestyle factors, adiposity, or reverse causation (cancer causing
-inflammation rather than vice versa).
+inflammation rather than vice versa). The IL6R missense variant rs2228145
+(Asp358Ala) is a biologically well-characterized perturbation of the pathway:
+it increases soluble IL-6 receptor levels and alters downstream signaling
+(Ferreira et al., 2013).
 
 Mendelian Randomization can address this question: **Does genetically proxied
 IL-6 signaling causally affect colorectal cancer risk?**
 
 The IL-6 receptor (IL6R) gene region on chromosome 1q21 contains well-characterized
 variants (notably rs2228145/Asp358Ala) that alter IL-6 signaling. These serve as
-strong genetic instruments for MR analysis.
+strong genetic instruments for MR analysis. Recent MR work on circulating
+interleukins and colorectal cancer has not established a clear causal signal for
+IL-6/IL-6 receptor traits, so this vignette should be read as a realistic
+workflow example anchored in a real scientific question, not as a claim that the
+synthetic estimate below reproduces a published effect size ("Circulating
+interleukins and risk of colorectal cancer: a Mendelian randomization study",
+2023).
 
 ## Step 1: Instrument Assembly
 
@@ -47,11 +56,16 @@ instruments <- getMRInstruments(
 )
 ```
 
-For this vignette, we create instruments from known IL6R-region SNPs:
+For this vignette, we use real IL6R-region SNP identifiers but fixed,
+deterministic summary-statistic values so the document builds offline. In a real
+analysis, the exact `beta_ZX` and `se_ZX` values should come from the external
+GWAS used to define the score.
 
 ```{r instruments-simulated}
 library(Medusa)
 
+# These are literature-grounded IL6R variants. The summary-statistic values
+# below are illustrative placeholders for a reproducible offline vignette.
 instruments <- createInstrumentTable(
   snpId = c("rs2228145", "rs4129267", "rs7529229", "rs4845625",
             "rs6689306", "rs12118721", "rs4453032"),
@@ -97,39 +111,89 @@ cohort <- buildMRCohort(
 
 ## Step 3: Simulated Analysis
 
-For this vignette, we use simulated data to demonstrate the full pipeline:
+To keep the vignette fully executable, we simulate a local site dataset while
+preserving the same IL6R score definition used in the instrument table above.
+This avoids a common MR mistake: fitting the outcome model with one score and
+then computing the Wald ratio with a different denominator.
 
 ```{r simulate-and-fit}
-# Simulate data with a modest protective effect (OR ~ 0.85, beta ~ -0.16)
-simData <- simulateMRData(
-  n = 8000,
-  nSnps = 7,
-  trueEffect = -0.16,
-  seed = 2026
+# Simulate one site using the same allele-score definition that Medusa fits
+set.seed(2026)
+n <- 8000
+
+snpMatrix <- sapply(instruments$eaf, function(maf) rbinom(n, 2, maf))
+colnames(snpMatrix) <- paste0("snp_", gsub("[^a-zA-Z0-9]", "_", instruments$snp_id))
+
+scoreWeights <- instruments$beta_ZX / (instruments$se_ZX^2)
+scoreWeights <- scoreWeights / sum(abs(scoreWeights))
+scoreBetaZX <- sum(scoreWeights * instruments$beta_ZX)
+
+confounder1 <- rnorm(n)
+confounder2 <- rbinom(n, 1, 0.5)
+
+exposure <- scoreBetaZX * as.numeric(snpMatrix %*% scoreWeights) +
+  0.3 * confounder1 + 0.3 * confounder2 + rnorm(n)
+
+trueEffect <- -0.16
+logOdds <- trueEffect * exposure + 0.3 * confounder1 + 0.3 * confounder2
+outcome <- rbinom(n, 1, 1 / (1 + exp(-logOdds)))
+
+cohortData <- data.frame(
+  person_id = seq_len(n),
+  outcome = outcome,
+  snpMatrix,
+  confounder_1 = confounder1,
+  confounder_2 = confounder2,
+  stringsAsFactors = FALSE
 )
 
-# Fit outcome model
+betaGrid <- seq(-2, 2, by = 0.02)
+
+# Fit the site-specific outcome model
 profile <- fitOutcomeModel(
-  cohortData = simData$data,
+  cohortData = cohortData,
   covariateData = NULL,
-  instrumentTable = simData$instrumentTable,
-  betaGrid = seq(-2, 2, by = 0.02),
-  siteId = "site_vignette"
+  instrumentTable = instruments,
+  betaGrid = betaGrid,
+  siteId = "site_A"
 )
 ```
 
 ## Step 4: Federated Pooling
 
-Simulating three sites pooling their results:
+To illustrate federated pooling without requiring three live data partners, we
+retain the observed `site_A` profile and create two additional site profiles
+with the same score definition but slightly different information content.
 
 ```{r pool-profiles}
-# Simulate profiles from 3 sites
-siteProfiles <- simulateSiteProfiles(
-  nSites = 3,
-  betaGrid = seq(-2, 2, by = 0.02),
-  trueBeta = -0.16,
-  nPerSite = 5000,
-  seed = 2026
+makeSyntheticSite <- function(baseProfile, siteId, infoScale, betaShift, caseScale) {
+  peak <- baseProfile$betaHat + betaShift
+  info <- (1 / (baseProfile$seHat^2)) * infoScale
+  logLik <- -0.5 * info * (baseProfile$betaGrid - peak)^2
+  logLik <- logLik - max(logLik)
+
+  synthetic <- list(
+    siteId = siteId,
+    betaGrid = baseProfile$betaGrid,
+    logLikProfile = logLik,
+    nCases = max(50L, as.integer(round(baseProfile$nCases * caseScale))),
+    nControls = max(50L, as.integer(round(baseProfile$nControls * caseScale))),
+    snpIds = baseProfile$snpIds,
+    diagnosticFlags = baseProfile$diagnosticFlags,
+    betaHat = peak,
+    seHat = sqrt(1 / info),
+    scoreDefinition = baseProfile$scoreDefinition
+  )
+  class(synthetic) <- "medusaSiteProfile"
+  synthetic
+}
+
+siteProfiles <- list(
+  site_A = profile,
+  site_B = makeSyntheticSite(profile, "site_B", infoScale = 0.9,
+                             betaShift = 0.01, caseScale = 0.85),
+  site_C = makeSyntheticSite(profile, "site_C", infoScale = 1.1,
+                             betaShift = -0.01, caseScale = 1.15)
 )
 
 # Pool
@@ -156,45 +220,75 @@ cat(sprintf("P-value: %.2e\n", estimate$pValue))
 
 ## Step 6: Sensitivity Analyses
 
+Because the one-shot pooled likelihood is defined on the shared allele score,
+pleiotropy-robust summarized-data methods are a secondary analysis. Here we use
+per-SNP estimates from the same synthetic site. We omit Steiger filtering
+because `runSensitivityAnalyses()` currently does not implement it for binary
+outcomes.
+
 ```{r sensitivity}
-# Create per-SNP estimates (simulated)
-set.seed(2026)
-nSnps <- 7
-betaZX <- instruments$beta_ZX
-perSnp <- data.frame(
-  snp_id = instruments$snp_id,
-  beta_ZY = -0.16 * betaZX + rnorm(nSnps, 0, 0.01),
-  se_ZY = runif(nSnps, 0.015, 0.030),
-  beta_ZX = betaZX,
-  se_ZX = instruments$se_ZX
+# Fit the same site in per-SNP mode for summarized-data sensitivity methods
+profilePerSnp <- fitOutcomeModel(
+  cohortData = cohortData,
+  covariateData = NULL,
+  instrumentTable = instruments,
+  betaGrid = betaGrid,
+  analysisType = "perSNP",
+  siteId = "site_A"
 )
 
-sensitivity <- runSensitivityAnalyses(perSnp)
+sensitivity <- runSensitivityAnalyses(
+  profilePerSnp$perSnpEstimates,
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut")
+)
 
 # Summary
 print(sensitivity$summary)
-
-# Forest plot
-plotSensitivityForest(sensitivity)
 ```
 
 ## Interpretation for Drug Development
 
 The MR analysis provides genetic evidence regarding the causal role of IL-6
-signaling in colorectal cancer risk. Key considerations for translating MR
-findings to drug development:
+signaling in colorectal cancer risk, but the numerical result in this vignette
+comes from synthetic outcome data. The worked example is therefore about correct
+analysis mechanics, not about claiming a real protective or harmful effect.
 
-1. **Direction of effect**: A protective OR < 1 for genetically increased IL-6
-   signaling would suggest that IL-6 *inhibition* could increase cancer risk,
-   relevant for anti-IL-6 drug safety monitoring.
+In a real target-validation study, the primary interpretation would rest on
+four checks:
 
-2. **Sensitivity analysis concordance**: If IVW, MR-Egger, and weighted median
-   estimates agree in direction and significance, this strengthens the causal
-   interpretation.
+1. **Instrument fidelity**: The same allele score must define the local outcome
+   model and the external `beta_ZX` denominator.
 
-3. **MR-Egger intercept**: A non-significant intercept suggests no evidence of
-   directional pleiotropy, supporting the validity of the MR assumptions.
+2. **Pleiotropy robustness**: Concordance across IVW, MR-Egger, weighted
+   median, and leave-one-out analyses is more informative than a single point
+   estimate.
 
-4. **Comparison to clinical trials**: MR estimates represent lifelong genetic
-   differences, while drug effects are time-limited. The direction should agree,
-   but magnitudes may differ.
+3. **Clinical triangulation**: Any MR signal should be compared against human
+   genetics, disease biology, and trial safety data for IL-6 pathway blockade.
+
+4. **Literature context**: The current colorectal-cancer MR literature for
+   circulating interleukins remains mixed, so this is best treated as a
+   motivating oncology use case rather than a settled causal claim.
+
+## References
+
+- [Burgess, S., Butterworth, A., & Thompson, S. G. (2013). Mendelian
+  randomization analysis with multiple genetic variants using summarized data.
+  *Genetic Epidemiology*, 37(7), 658-665.](https://pmc.ncbi.nlm.nih.gov/articles/PMC4377079/)
+
+- [Bowden, J., Davey Smith, G., & Burgess, S. (2015). Mendelian randomization
+  with invalid instruments: effect estimation and bias detection through Egger
+  regression. *International Journal of Epidemiology*, 44(2), 512-525.](https://pubmed.ncbi.nlm.nih.gov/26050253/)
+
+- [Bowden, J., et al. (2016). Consistent estimation in Mendelian randomization
+  with some invalid instruments using a weighted median estimator. *Genetic
+  Epidemiology*, 40(4), 304-314.](https://pmc.ncbi.nlm.nih.gov/articles/PMC4849733/)
+
+- [Ferreira, R. C., Freitag, D. F., Cutler, A. J., Howson, J. M. M., et al.
+  (2013). Functional IL6R 358Ala allele impairs classical IL-6 receptor
+  signaling and influences risk of diverse inflammatory diseases. *PLoS
+  Genetics*, 9(4), e1003444.](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1003444)
+
+- [Circulating interleukins and risk of colorectal cancer: a Mendelian
+  randomization study. (2023). *Journal of Cancer Research and Clinical
+  Oncology*. PMID: 37525405.](https://pubmed.ncbi.nlm.nih.gov/37525405/)

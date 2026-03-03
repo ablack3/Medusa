@@ -1,17 +1,27 @@
-# Regularized outcome model with grid likelihood evaluation
+<div id="main" class="col-md-9" role="main">
 
-Fits a regularized logistic regression of the binary outcome on SNP
-genotype(s) plus covariates, then evaluates the profile log-likelihood
-across a pre-specified grid of beta_ZY values. This is the core
-methodological function for federated MR: each site runs this locally
-and shares only the resulting log-likelihood profile vector.
+# Outcome model with exact grid likelihood evaluation
+
+<div class="ref-description section level2">
+
+Fits a logistic regression of the binary outcome on SNP genotype(s) plus
+covariates, then evaluates the profile log-likelihood across a
+pre-specified grid of beta\_ZY values. This is the core methodological
+function for federated MR: each site runs this locally and shares only
+the resulting log-likelihood profile vector.
 
 Two analysis modes are supported: `alleleScore` fits a single model
 using a weighted allele score as the genetic exposure variable, while
 `perSNP` fits separate models for each SNP (needed for multi-SNP
 sensitivity analyses).
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 fitOutcomeModel(
@@ -23,98 +33,130 @@ fitOutcomeModel(
   instrumentRegularization = FALSE,
   outcomeType = "binary",
   analysisType = "alleleScore",
-  siteId = "site_1"
+  siteId = "site_1",
+  modelBackend = "glm"
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- cohortData:
+-   cohortData:
 
-  Data frame. Output of [`buildMRCohort`](buildMRCohort.md).
+    Data frame. Output of `buildMRCohort`.
 
-- covariateData:
+-   covariateData:
 
-  Covariate data. Output of [`buildMRCovariates`](buildMRCovariates.md)
-  or a data frame with person_id and covariate columns.
+    Covariate data. Output of `buildMRCovariates` or a data frame with
+    person\_id and covariate columns.
 
-- instrumentTable:
+-   instrumentTable:
 
-  Data frame. Output of [`getMRInstruments`](getMRInstruments.md).
+    Data frame. Output of `getMRInstruments`.
 
-- betaGrid:
+-   betaGrid:
 
-  Numeric vector. Grid of beta_ZY values at which to evaluate the
-  profile log-likelihood. Default is `seq(-3, 3, by = 0.01)` (601 grid
-  points).
+    Numeric vector. Grid of beta\_ZY values at which to evaluate the
+    profile log-likelihood. Default is `seq(-3, 3, by = 0.01)` (601 grid
+    points).
 
-- regularizationVariance:
+-   regularizationVariance:
 
-  Numeric. Prior variance for Cyclops regularization of covariate
-  coefficients. Default is 0.1.
+    Numeric. Deprecated placeholder for a future regularized fitter.
+    When `modelBackend = "cyclops"`, this is the variance of the normal
+    prior applied to nuisance coefficients. Smaller values imply
+    stronger shrinkage. Ignored by the `"glm"` backend. Default is 0.1.
 
-- instrumentRegularization:
+-   instrumentRegularization:
 
-  Logical. If FALSE (default), the SNP/allele score coefficient is NOT
-  regularized (no shrinkage). Covariates are still regularized.
+    Logical. When `modelBackend = "cyclops"`, whether the exposure
+    coefficient is included in the Cyclops prior. Default is FALSE so
+    the profiled exposure coefficient remains unpenalized. Ignored by
+    the `"glm"` backend.
 
-- outcomeType:
+-   outcomeType:
 
-  Character. Type of outcome: "binary" for logistic regression. Default
-  is "binary".
+    Character. Type of outcome: "binary" for logistic regression.
+    Default is "binary".
 
-- analysisType:
+-   analysisType:
 
-  Character. "alleleScore" for single weighted score model or "perSNP"
-  for separate per-SNP models. Default is "alleleScore".
+    Character. "alleleScore" for single weighted score model or "perSNP"
+    for separate per-SNP models. Default is "alleleScore".
 
-- siteId:
+-   siteId:
 
-  Character. Identifier for this site. Included in the returned profile
-  object. Default is "site_1".
+    Character. Identifier for this site. Included in the returned
+    profile object. Default is "site\_1".
+
+-   modelBackend:
+
+    Character. Outcome-model fitting backend: `"glm"` uses base R
+    logistic regression, while `"cyclops"` uses Cyclops for scalable
+    logistic regression with optional Gaussian shrinkage on nuisance
+    covariates. Default is `"glm"`.
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 A list with class "medusaSiteProfile" containing:
 
-- siteId:
+-   siteId:
 
-  Character site identifier.
+    Character site identifier.
 
-- betaGrid:
+-   betaGrid:
 
-  Numeric vector of grid points (same as input).
+    Numeric vector of grid points (same as input).
 
-- logLikProfile:
+-   logLikProfile:
 
-  Numeric vector of profile log-likelihood values, same length as
-  betaGrid. For perSNP mode, a matrix with one column per SNP.
+    Numeric vector of profile log-likelihood values, same length as
+    betaGrid. In `perSNP` mode this remains the valid allele-score
+    profile used for pooling.
 
-- nCases:
+-   nCases:
 
-  Number of outcome cases.
+    Number of outcome cases.
 
-- nControls:
+-   nControls:
 
-  Number of controls.
+    Number of controls.
 
-- snpIds:
+-   snpIds:
 
-  Character vector of SNP IDs used.
+    Character vector of SNP IDs used.
 
-- diagnosticFlags:
+-   diagnosticFlags:
 
-  List of diagnostic flags from the model fit.
+    List of diagnostic flags from the model fit.
 
-- betaHat:
+-   betaHat:
 
-  Point estimate of beta_ZY (MLE from profile).
+    Point estimate of beta\_ZY (MLE from profile).
 
-- seHat:
+-   seHat:
 
-  Approximate standard error from profile curvature.
+    Approximate standard error from profile curvature.
+
+-   perSnpEstimates:
+
+    When `analysisType = "perSNP"`, a data frame of per-SNP beta\_ZY /
+    se\_ZY estimates for summarized-data sensitivity analyses.
 
 This object contains no individual-level data and is safe to share.
+
+</div>
+
+<div class="section level2">
 
 ## Details
 
@@ -122,18 +164,29 @@ Fit Outcome Model and Evaluate Profile Log-Likelihood
 
 The profile log-likelihood evaluation works as follows:
 
-1.  Fit the unconstrained model to obtain initial estimates.
+1.  Fit the unconstrained model to obtain the MLE and its Wald SE.
 
-2.  At each grid point, fix beta_ZY to that value and evaluate the
-    log-likelihood (optimizing over all other parameters).
+2.  At each grid point, fix beta\_ZY to that value and re-fit the
+    nuisance parameters using the fixed term as an offset.
 
-3.  The implementation uses a quadratic approximation to the profile
-    log-likelihood:
-    `logLik(beta) = logLik_max - 0.5 * (beta - beta_hat)^2 / se^2`,
-    which is efficient and accurate for large samples.
+3.  Record the maximized constrained log-likelihood at each grid point.
+    This is the exact profile likelihood for the coefficient in a
+    logistic generalized linear model.
 
-When using the allele score, weights are beta_ZX / se_ZX^2, normalized
-to sum to 1.
+When `modelBackend = "cyclops"` and `regularizationVariance` is finite,
+the nuisance parameters are estimated under a Gaussian prior at both the
+unconstrained optimum and every grid point. In that configuration the
+returned objective is a penalized profile, not an unpenalized MLE
+profile.
+
+When using the allele score, weights are \\(w\_j = \\gamma\_j /
+\\mathrm{SE}(\\gamma\_j)^2\\), normalized by \\(\\sum\_j \|w\_j\|\\).
+The same weights are reused downstream so that the MR denominator
+matches the exact score fitted at each site.
+
+</div>
+
+<div class="section level2">
 
 ## References
 
@@ -141,13 +194,25 @@ Suchard, M. A., et al. (2013). Massive parallelization of serial
 inference algorithms for a complex generalized linear model. *ACM
 Transactions on Modeling and Computer Simulation*, 23(1), 1-17.
 
+</div>
+
+<div class="section level2">
+
 ## See also
 
-[`poolLikelihoodProfiles`](poolLikelihoodProfiles.md),
-[`computeMREstimate`](computeMREstimate.md),
-[`buildMRCohort`](buildMRCohort.md)
+<div class="dont-index">
+
+`poolLikelihoodProfiles`, `computeMREstimate`, `buildMRCohort`
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 simData <- simulateMRData(n = 2000, nSnps = 5, trueEffect = 0.3)
@@ -163,3 +228,9 @@ plot(profile$betaGrid, profile$logLikProfile, type = "l",
      xlab = "beta_ZY", ylab = "Profile log-likelihood")
 
 ```
+
+</div>
+
+</div>
+
+</div>

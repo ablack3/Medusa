@@ -58,9 +58,9 @@
 #'     \item{age_at_index}{Age in years at index date.}
 #'     \item{gender_concept_id}{OMOP concept ID for gender.}
 #'     \item{index_date}{Date of cohort entry.}
-#'     \item{snp_1 through snp_K}{Integer genotype values (0, 1, or 2) for each
-#'       instrument SNP, coded as count of the effect allele after harmonization.
-#'       Missing genotypes are NA, not 0.}
+#'     \item{snp_<sanitized rsID>}{Integer genotype values (0, 1, or 2) for
+#'       each instrument SNP, coded as count of the effect allele after
+#'       harmonization. Missing genotypes are NA, not 0.}
 #'   }
 #'
 #' @details
@@ -268,7 +268,7 @@ reshapeGenotypes <- function(genotypeData, instrumentTable) {
 
   wideData <- data.frame(personId = personIds)
   for (snp in snpIds) {
-    colName <- paste0("snp_", gsub("[^a-zA-Z0-9]", "_", snp))
+    colName <- makeSnpColumnName(snp)
     snpSubset <- genotypeData[genotypeData$snpId == snp, ]
     snpMerge <- data.frame(
       personId = snpSubset$personId,

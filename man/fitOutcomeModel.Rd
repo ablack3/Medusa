@@ -13,7 +13,8 @@ fitOutcomeModel(
   instrumentRegularization = FALSE,
   outcomeType = "binary",
   analysisType = "alleleScore",
-  siteId = "site_1"
+  siteId = "site_1",
+  modelBackend = "glm"
 )
 }
 \arguments{
@@ -28,12 +29,16 @@ or a data frame with person_id and covariate columns.}
 the profile log-likelihood. Default is \code{seq(-3, 3, by = 0.01)} (601
 grid points).}
 
-\item{regularizationVariance}{Numeric. Prior variance for Cyclops
-regularization of covariate coefficients. Default is 0.1.}
+\item{regularizationVariance}{Numeric. Deprecated placeholder for a future
+regularized fitter. When \code{modelBackend = "cyclops"}, this is the
+variance of the normal prior applied to nuisance coefficients. Smaller
+values imply stronger shrinkage. Ignored by the \code{"glm"} backend.
+Default is 0.1.}
 
-\item{instrumentRegularization}{Logical. If FALSE (default), the SNP/allele
-score coefficient is NOT regularized (no shrinkage). Covariates are still
-regularized.}
+\item{instrumentRegularization}{Logical. When
+\code{modelBackend = "cyclops"}, whether the exposure coefficient is
+included in the Cyclops prior. Default is FALSE so the profiled exposure
+coefficient remains unpenalized. Ignored by the \code{"glm"} backend.}
 
 \item{outcomeType}{Character. Type of outcome: "binary" for logistic
 regression. Default is "binary".}
@@ -43,6 +48,11 @@ or "perSNP" for separate per-SNP models. Default is "alleleScore".}
 
 \item{siteId}{Character. Identifier for this site. Included in the returned
 profile object. Default is "site_1".}
+
+\item{modelBackend}{Character. Outcome-model fitting backend:
+\code{"glm"} uses base R logistic regression, while \code{"cyclops"} uses
+\pkg{Cyclops} for scalable logistic regression with optional Gaussian
+shrinkage on nuisance covariates. Default is \code{"glm"}.}
 }
 \value{
 A list with class "medusaSiteProfile" containing:
@@ -89,6 +99,11 @@ The profile log-likelihood evaluation works as follows:
     This is the exact profile likelihood for the coefficient in a logistic
     generalized linear model.
 }
+
+When \code{modelBackend = "cyclops"} and \code{regularizationVariance} is
+finite, the nuisance parameters are estimated under a Gaussian prior at both
+the unconstrained optimum and every grid point. In that configuration the
+returned objective is a penalized profile, not an unpenalized MLE profile.
 
 When using the allele score, weights are
 \eqn{w_j = \gamma_j / \mathrm{SE}(\gamma_j)^2}, normalized by

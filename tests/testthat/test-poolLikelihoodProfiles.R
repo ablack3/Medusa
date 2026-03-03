@@ -97,3 +97,42 @@ test_that("poolLikelihoodProfiles validates input", {
     "missing required"
   )
 })
+
+test_that("poolLikelihoodProfiles rejects mismatched score definitions", {
+  grid <- seq(-1, 1, by = 0.1)
+  profiles <- list(
+    site_A = list(
+      siteId = "site_A",
+      betaGrid = grid,
+      logLikProfile = -0.5 * (grid - 0.2)^2,
+      nCases = 100,
+      nControls = 900,
+      snpIds = c("rs1", "rs2"),
+      scoreDefinition = list(
+        snpIds = c("rs1", "rs2"),
+        scoreWeights = c(0.4, 0.6),
+        betaZX = 0.3,
+        seZX = 0.02
+      )
+    ),
+    site_B = list(
+      siteId = "site_B",
+      betaGrid = grid,
+      logLikProfile = -0.5 * (grid - 0.2)^2,
+      nCases = 100,
+      nControls = 900,
+      snpIds = c("rs1", "rs3"),
+      scoreDefinition = list(
+        snpIds = c("rs1", "rs3"),
+        scoreWeights = c(0.4, 0.6),
+        betaZX = 0.3,
+        seZX = 0.02
+      )
+    )
+  )
+
+  expect_error(
+    poolLikelihoodProfiles(profiles),
+    "different allele-score definition"
+  )
+})

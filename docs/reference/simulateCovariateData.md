@@ -1,33 +1,59 @@
+<div id="main" class="col-md-9" role="main">
+
 # Simulate Covariate Data
+
+<div class="ref-description section level2">
 
 Generates a covariate matrix mimicking FeatureExtraction output.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 simulateCovariateData(n = 1000, nCovariates = 50, seed = 42)
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- n:
+-   n:
 
-  Number of individuals.
+    Number of individuals.
 
-- nCovariates:
+-   nCovariates:
 
-  Number of covariates to generate.
+    Number of covariates to generate.
 
-- seed:
+-   seed:
 
-  Random seed for reproducibility.
+    Random seed for reproducibility.
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
-A data frame with person_id and nCovariates columns of binary or
+A data frame with person\_id and nCovariates columns of binary or
 continuous covariates.
 
+</div>
+
+<div class="section level2">
+
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 covData <- simulateCovariateData(n = 100, nCovariates = 10)
@@ -47,3 +73,9 @@ head(covData)
 #> 5  -0.5089338   0.6364922   1.3443038   0.6579949   -0.4493756
 #> 6  -0.4272471   0.5952489   0.7001235  -1.2361387   -0.4379546
 ```
+
+</div>
+
+</div>
+
+</div>

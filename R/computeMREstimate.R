@@ -33,7 +33,8 @@
 #'
 #' @param combinedProfile Output of \code{\link{poolLikelihoodProfiles}}.
 #' @param instrumentTable Data frame. Output of \code{\link{getMRInstruments}}.
-#'   Used for beta_ZX and se_ZX values.
+#'   Used as a fallback for beta_ZX and se_ZX values when the pooled profile
+#'   does not carry a stored score definition.
 #' @param ciLevel Numeric. Confidence interval level. Default is 0.95.
 #'
 #' @return A list with class "medusaMREstimate" containing:
@@ -118,25 +119,26 @@ computeMREstimate <- function(combinedProfile,
   # Step 3: Likelihood-based CI for beta_ZY
   chiSqThreshold <- qchisq(ciLevel, df = 1) / 2
   ciMask <- logLikProfile >= (max(logLikProfile) - chiSqThreshold)
-  ciIndices <- which(ciMask)
+  ciBounds <- findProfileInterval(ciMask, peakIdx)
 
-  if (length(ciIndices) > 0) {
-    betaZYCILower <- betaGrid[min(ciIndices)]
-    betaZYCIUpper <- betaGrid[max(ciIndices)]
+  if (!is.null(ciBounds)) {
+    betaZYCILower <- betaGrid[ciBounds$lower]
+    betaZYCIUpper <- betaGrid[ciBounds$upper]
   } else {
     betaZYCILower <- betaZYHat - qnorm(1 - (1 - ciLevel) / 2) * seZY
     betaZYCIUpper <- betaZYHat + qnorm(1 - (1 - ciLevel) / 2) * seZY
   }
 
-  # Step 4: Compute the exposure association of the exact allele score fitted
-  # at each site. Following Burgess et al. (2013), if S = sum_j w_j G_j, then
-  # gamma_S = sum_j w_j gamma_j.
-  scoreWeights <- computeAlleleScoreWeights(instrumentTable)
-  betaZX <- sum(scoreWeights * instrumentTable$beta_ZX)
-
-  # Under the standard LD-pruned approximation for uncorrelated variants,
-  # Var(gamma_S) = sum_j w_j^2 Var(gamma_j).
-  seZX <- sqrt(sum((scoreWeights^2) * (instrumentTable$se_ZX^2)))
+  # Step 4: Use the exact score definition from the pooled profiles when
+  # available; otherwise reconstruct it from the provided instrument table.
+  if (!is.null(combinedProfile$scoreDefinition)) {
+    betaZX <- combinedProfile$scoreDefinition$betaZX
+    seZX <- combinedProfile$scoreDefinition$seZX
+  } else {
+    scoreWeights <- computeAlleleScoreWeights(instrumentTable)
+    betaZX <- sum(scoreWeights * instrumentTable$beta_ZX)
+    seZX <- sqrt(sum((scoreWeights^2) * (instrumentTable$se_ZX^2)))
+  }
 
   if (!is.finite(betaZX) || abs(betaZX) < .Machine$double.eps^0.5) {
     stop("The fitted allele score has an exposure association too close to zero for a stable Wald ratio.")
@@ -195,4 +197,33 @@ computeMREstimate <- function(combinedProfile,
   class(result) <- "medusaMREstimate"
 
   result
+}
+
+
+#' @keywords internal
+findProfileInterval <- function(ciMask, peakIdx) {
+  if (!isTRUE(ciMask[peakIdx])) {
+    return(NULL)
+  }
+
+  lower <- peakIdx
+  upper <- peakIdx
+
+  while (lower > 1 && isTRUE(ciMask[lower - 1])) {
+    lower <- lower - 1
+  }
+  while (upper < length(ciMask) && isTRUE(ciMask[upper + 1])) {
+    upper <- upper + 1
+  }
+
+  hasLowerComponent <- lower > 1 && any(ciMask[seq_len(lower - 1)])
+  hasUpperComponent <- upper < length(ciMask) &&
+    any(ciMask[seq.int(upper + 1, length(ciMask))])
+  if (hasLowerComponent || hasUpperComponent) {
+    warning(
+      "Likelihood-based CI is disjoint; reporting only the connected interval containing the MLE."
+    )
+  }
+
+  list(lower = lower, upper = upper)
 }

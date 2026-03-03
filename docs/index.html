@@ -65,6 +65,7 @@
 <img src="logo.png" class="logo" alt=""><h1 id="medusa-">Medusa <a class="anchor" aria-label="anchor" href="#medusa-"></a>
 </h1>
 </div>
+<!-- badges: start -->
 <p><strong>Mendelian Estimation in Distributed Standardized Analytics</strong></p>
 <p>Federated two-sample Mendelian Randomization on the OMOP Common Data Model.</p>
 <div class="section level2">
@@ -171,58 +172,58 @@
 <col width="25%">
 <col width="41%">
 </colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Function</th>
 <th>Module</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code><a href="reference/getMRInstruments.html">getMRInstruments()</a></code></td>
 <td>Instrument Assembly</td>
 <td>Query OpenGWAS for instruments, LD clump</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code><a href="reference/createInstrumentTable.html">createInstrumentTable()</a></code></td>
 <td>Instrument Assembly</td>
 <td>Build instruments from local data</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code><a href="reference/buildMRCohort.html">buildMRCohort()</a></code></td>
 <td>Cohort Extraction</td>
 <td>Extract cohort + genotypes from OMOP CDM</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code><a href="reference/buildMRCovariates.html">buildMRCovariates()</a></code></td>
 <td>Covariate Assembly</td>
 <td>Assemble covariates via FeatureExtraction</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code><a href="reference/runInstrumentDiagnostics.html">runInstrumentDiagnostics()</a></code></td>
 <td>Diagnostics</td>
 <td>F-stats, PheWAS, negative controls</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code><a href="reference/fitOutcomeModel.html">fitOutcomeModel()</a></code></td>
 <td>Outcome Model</td>
 <td>Fit model, evaluate profile likelihood</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code><a href="reference/poolLikelihoodProfiles.html">poolLikelihoodProfiles()</a></code></td>
 <td>Pooling</td>
 <td>Sum log-likelihood profiles across sites</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code><a href="reference/computeMREstimate.html">computeMREstimate()</a></code></td>
 <td>Estimation</td>
 <td>Wald ratio with delta method SE</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code><a href="reference/runSensitivityAnalyses.html">runSensitivityAnalyses()</a></code></td>
 <td>Sensitivity</td>
 <td>IVW, MR-Egger, weighted median, etc.</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code><a href="reference/generateMRReport.html">generateMRReport()</a></code></td>
 <td>Reporting</td>
 <td>Self-contained HTML report</td>
@@ -290,7 +291,12 @@
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>

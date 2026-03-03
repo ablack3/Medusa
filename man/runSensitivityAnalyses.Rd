@@ -8,12 +8,18 @@ runSensitivityAnalyses(
   perSnpEstimates,
   methods = c("IVW", "MREgger", "WeightedMedian", "Steiger", "LeaveOneOut"),
   outcomeSampleSize = NULL,
-  exposureSampleSize = NULL
+  exposureSampleSize = NULL,
+  outcomeType = "binary",
+  engine = "auto"
 )
 }
 \arguments{
 \item{perSnpEstimates}{Data frame with per-SNP summary statistics. Required
-columns: snp_id, beta_ZY, se_ZY, beta_ZX, se_ZX.}
+columns: \code{snp_id}, \code{beta_ZY}, \code{se_ZY}, \code{beta_ZX},
+\code{se_ZX}, \code{effect_allele}, \code{other_allele}, and \code{eaf}.
+These allele fields make the object harmonisation-ready for delegation to
+\pkg{TwoSampleMR}. Optional columns \code{pval_ZX} and \code{pval_ZY} are
+used when present and otherwise derived from the reported estimates.}
 
 \item{methods}{Character vector of methods to run. Default is
 \code{c("IVW", "MREgger", "WeightedMedian", "Steiger", "LeaveOneOut")}.}
@@ -23,6 +29,17 @@ GWAS/analysis. Needed for Steiger filtering.}
 
 \item{exposureSampleSize}{Optional integer. Total sample size for exposure
 GWAS. Needed for Steiger filtering.}
+
+\item{outcomeType}{Character. Type of outcome summary statistics represented
+in \code{perSnpEstimates}. Medusa's internal Steiger implementation is
+available only for \code{"continuous"} outcomes, while
+\code{engine = "TwoSampleMR"} delegates to \pkg{TwoSampleMR}'s Steiger
+implementation on the harmonised data. Default is \code{"binary"}.}
+
+\item{engine}{Character. \code{"auto"} prefers \pkg{TwoSampleMR} when
+installed and otherwise falls back to Medusa's internal implementations.
+Use \code{"TwoSampleMR"} to require delegation, or \code{"internal"} to
+force Medusa's built-in implementations. Default is \code{"auto"}.}
 }
 \value{
 A named list with class "medusaSensitivity" containing:
@@ -67,8 +84,11 @@ using first-order inverse-variance weights for the ratio estimates
 estimate if fewer than 50% of the total weight comes from invalid instruments.
 
 \strong{Steiger}: Tests whether each SNP explains more variance in the
-exposure than the outcome (the expected causal direction). SNPs failing
-this test are removed and IVW is re-run.
+exposure than the outcome (the expected causal direction). With
+\code{engine = "internal"}, Medusa applies the continuous-trait
+correlation-based approximation described by Hemani et al. (2017). With
+\code{engine = "TwoSampleMR"}, Medusa delegates to
+\code{TwoSampleMR::steiger_filtering()} on the harmonised summary data.
 
 \strong{Leave-One-Out}: Drops each SNP in turn and recomputes the IVW
 estimate. Identifies influential outlier instruments.
@@ -81,6 +101,9 @@ betaZX <- rnorm(nSnps, 0.3, 0.05)
 betaZY <- 0.5 * betaZX + rnorm(nSnps, 0, 0.02)
 perSnp <- data.frame(
   snp_id = paste0("rs", 1:nSnps),
+  effect_allele = c("A", "C", "G", "T", "A", "C", "G", "T", "A", "C"),
+  other_allele = c("C", "G", "T", "A", "C", "G", "T", "A", "C", "G"),
+  eaf = seq(0.1, 0.55, length.out = nSnps),
   beta_ZY = betaZY,
   se_ZY = rep(0.02, nSnps),
   beta_ZX = betaZX,
@@ -89,7 +112,8 @@ perSnp <- data.frame(
 results <- runSensitivityAnalyses(
   perSnp,
   outcomeSampleSize = 10000,
-  exposureSampleSize = 10000
+  exposureSampleSize = 10000,
+  outcomeType = "continuous"
 )
 results$summary
 

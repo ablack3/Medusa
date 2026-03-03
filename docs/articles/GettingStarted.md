@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Getting Started with Medusa
+
+<div class="section level2">
 
 ## What is Medusa?
 
@@ -15,14 +19,21 @@ observational data.
 
 **Two-sample MR** separates the analysis into two parts:
 
-1.  **SNP-exposure associations** (beta_ZX): Obtained from published
+1.  **SNP-exposure associations** (beta\_ZX): Obtained from published
     GWAS (typically from large biobank studies)
-2.  **SNP-outcome associations** (beta_ZY): Estimated from your own
+2.  **SNP-outcome associations** (beta\_ZY): Estimated from your own
     cohort data
 
-The causal estimate is the **Wald ratio**: beta_MR = beta_ZY / beta_ZX.
+The causal estimate is the **Wald ratio**: beta\_MR = beta\_ZY /
+beta\_ZX.
+
+</div>
+
+<div class="section level2">
 
 ## Installation
+
+<div id="cb1" class="sourceCode">
 
 ``` r
 # Install from GitHub
@@ -32,6 +43,12 @@ remotes::install_github("OHDSI/Medusa")
 # DatabaseConnector, SqlRender, Cyclops, FeatureExtraction
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## The Federated Approach
 
 Medusa’s key innovation is **one-shot federated pooling**. Here’s how it
@@ -40,10 +57,12 @@ works:
 1.  The **coordinator** assembles genetic instruments from public GWAS
     data
 2.  Each **site** (hospital/biobank with OMOP CDM + genomic data):
-    - Extracts the outcome cohort and genotype data locally
-    - Fits a regression model locally
-    - Computes a **profile log-likelihood curve** (a vector of numbers)
-    - Shares ONLY this vector — no individual-level data leaves the site
+    -   Extracts the outcome cohort and genotype data locally
+    -   Fits a regression model locally
+    -   Computes a **profile log-likelihood curve** (a vector of
+        numbers)
+    -   Shares ONLY this vector — no individual-level data leaves the
+        site
 3.  The **coordinator** sums the log-likelihood vectors across sites
 4.  The causal estimate is extracted from the combined curve
 
@@ -51,9 +70,15 @@ This is privacy-preserving by design: the shared data is a smooth
 numeric vector that cannot be reverse-engineered to identify individual
 patients.
 
+</div>
+
+<div class="section level2">
+
 ## Quick Start with Simulated Data
 
 No database connection needed for this example.
+
+<div id="cb2" class="sourceCode">
 
 ``` r
 library(Medusa)
@@ -77,7 +102,13 @@ head(simData$instrumentTable[, c("snp_id", "beta_ZX", "se_ZX", "eaf")])
 #> 6    rs6 0.4793527 0.06068079 0.1473405
 ```
 
+</div>
+
+<div class="section level3">
+
 ### Fit the Outcome Model
+
+<div id="cb3" class="sourceCode">
 
 ``` r
 # Fit the outcome model and get the profile likelihood
@@ -93,14 +124,22 @@ profile <- fitOutcomeModel(
 
 # The profile contains no individual-level data
 names(profile)
-#> [1] "siteId"          "betaGrid"        "logLikProfile"   "nCases"         
-#> [5] "nControls"       "snpIds"          "diagnosticFlags" "betaHat"        
-#> [9] "seHat"
+#>  [1] "siteId"          "betaGrid"        "logLikProfile"   "nCases"         
+#>  [5] "nControls"       "snpIds"          "diagnosticFlags" "betaHat"        
+#>  [9] "seHat"           "scoreDefinition"
 cat(sprintf("beta_ZY estimate: %.3f (SE: %.3f)\n", profile$betaHat, profile$seHat))
 #> beta_ZY estimate: 0.614 (SE: 0.141)
 ```
 
+</div>
+
+</div>
+
+<div class="section level3">
+
 ### Pool Profiles (Simulating Federation)
+
+<div id="cb4" class="sourceCode">
 
 ``` r
 # Simulate 3 sites with similar data
@@ -121,60 +160,89 @@ cat(sprintf("Pooled %d sites: %d total cases, %d total controls\n",
 #> Pooled 3 sites: 955 total cases, 8045 total controls
 ```
 
+</div>
+
+</div>
+
+<div class="section level3">
+
 ### Compute the MR Estimate
+
+<div id="cb5" class="sourceCode">
 
 ``` r
 instruments <- simulateInstrumentTable(nSnps = 5)
 estimate <- computeMREstimate(combined, instruments)
-#> MR estimate: beta = 3.1823 (95% CI: 2.3144, 4.3395), p = 1.33e-05
-#> Odds ratio: 24.102 (95% CI: 10.119, 76.667)
+#> MR estimate: beta = 2.0646 (95% CI: 1.5015, 2.8154), p = 2.55e-06
+#> Odds ratio: 7.882 (95% CI: 4.489, 16.699)
 
 cat(sprintf("Causal estimate (beta_MR): %.3f\n", estimate$betaMR))
-#> Causal estimate (beta_MR): 3.182
+#> Causal estimate (beta_MR): 2.065
 cat(sprintf("95%% CI: [%.3f, %.3f]\n", estimate$ciLower, estimate$ciUpper))
-#> 95% CI: [2.314, 4.339]
+#> 95% CI: [1.502, 2.815]
 cat(sprintf("P-value: %.2e\n", estimate$pValue))
-#> P-value: 1.33e-05
+#> P-value: 2.55e-06
 cat(sprintf("Odds ratio: %.3f\n", estimate$oddsRatio))
-#> Odds ratio: 24.102
+#> Odds ratio: 7.882
 ```
 
+</div>
+
+</div>
+
+<div class="section level3">
+
 ### Run Sensitivity Analyses
+
+<div id="cb6" class="sourceCode">
 
 ``` r
 # Create per-SNP estimates for sensitivity analyses
 set.seed(42)
 nSnps <- 10
-betaZX <- rnorm(nSnps, 0.3, 0.05)
+instrumentSummary <- simulateInstrumentTable(nSnps = nSnps, seed = 42)
 perSnp <- data.frame(
-  snp_id = paste0("rs", 1:nSnps),
-  beta_ZY = 0.5 * betaZX + rnorm(nSnps, 0, 0.02),
+  snp_id = instrumentSummary$snp_id,
+  beta_ZY = 0.5 * instrumentSummary$beta_ZX + rnorm(nSnps, 0, 0.02),
   se_ZY = rep(0.02, nSnps),
-  beta_ZX = betaZX,
-  se_ZX = rep(0.05, nSnps)
+  beta_ZX = instrumentSummary$beta_ZX,
+  se_ZX = instrumentSummary$se_ZX,
+  effect_allele = instrumentSummary$effect_allele,
+  other_allele = instrumentSummary$other_allele,
+  eaf = instrumentSummary$eaf
 )
 
-results <- runSensitivityAnalyses(perSnp)
+results <- runSensitivityAnalyses(
+  perSnp,
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+  engine = "internal"
+)
 #> Running sensitivity analyses with 10 SNPs...
+#>   Engine: internal
 #>   IVW...
 #>   MR-Egger...
 #>   Weighted Median...
-#>   Steiger filtering...
-#>     Steiger filter removed 8 of 10 SNPs.
 #>   Leave-One-Out...
 #> Sensitivity analyses complete.
 print(results$summary)
-#>                 method   beta_MR      se_MR   ci_lower  ci_upper          pval
-#> 1                  IVW 0.4859306 0.01917957  0.4483387 0.5235226 1.287302e-141
-#> 2             MR-Egger 0.2072935 0.25588407 -0.2942393 0.7088263  4.413080e-01
-#> 3      Weighted Median 0.4848631 0.04409626  0.3984344 0.5712918  4.014147e-28
-#> 4 Steiger-filtered IVW 0.3577932 0.04016741  0.2790651 0.4365213  5.217304e-19
+#>            method   beta_MR      se_MR  ci_lower  ci_upper         pval
+#> 1             IVW 0.4586540 0.02188781 0.4157539 0.5015541 1.697680e-97
+#> 2        MR-Egger 0.4634544 0.03576486 0.3933553 0.5335535 1.191296e-06
+#> 3 Weighted Median 0.4764280 0.02650498 0.4244783 0.5283778 3.056401e-72
 ```
+
+</div>
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Understanding the Report
 
-The [`generateMRReport()`](../reference/generateMRReport.md) function
-creates a self-contained HTML report with:
+The `generateMRReport()` function creates a self-contained HTML report
+with:
 
 1.  **Executive Summary** — Plain-language interpretation with strength
     rating
@@ -186,12 +254,16 @@ creates a self-contained HTML report with:
 6.  **Diagnostics** — PheWAS plot, negative controls, missingness
 7.  **Methods Section** — Auto-generated text for manuscripts
 
+</div>
+
+<div class="section level2">
+
 ## FAQ
 
 **What genomic data linkage is required?** Your OMOP CDM site needs a
-genomic linkage table mapping person_id to SNP genotypes (coded as 0/1/2
-for allele count). This is increasingly common in biobank-linked health
-systems.
+genomic linkage table mapping person\_id to SNP genotypes (coded as
+0/1/2 for allele count). This is increasingly common in biobank-linked
+health systems.
 
 **What if my site has no genomic data?** Medusa requires at least one
 site with genomic data linked to OMOP CDM. Sites without genomic data
@@ -203,3 +275,7 @@ federated approach adds value with 2+ sites.
 
 **What OMOP CDM version is required?** Medusa supports OMOP CDM v5.3 and
 v5.4.
+
+</div>
+
+</div>

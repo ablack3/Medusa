@@ -1,3 +1,5 @@
+<div id="main" class="col-md-9" role="main">
+
 # License
 
                                      Apache License
@@ -175,3 +177,5 @@
           of your accepting any such warranty or additional liability.
 
        END OF TERMS AND CONDITIONS
+
+</div>

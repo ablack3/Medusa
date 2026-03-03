@@ -1,24 +1,50 @@
+<div id="main" class="col-md-9" role="main">
+
 # Get Complement of a DNA Allele
 
-Returns the Watson-Crick complement: A\<-\>T, G\<-\>C.
+<div class="ref-description section level2">
+
+Returns the Watson-Crick complement: A&lt;-&gt;T, G&lt;-&gt;C.
+
+</div>
+
+<div class="section level2">
 
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 complementAllele(allele)
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- allele:
+-   allele:
 
-  Character string representing an allele (A, T, G, or C).
+    Character string representing an allele (A, T, G, or C).
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 Character string with the complement allele.
 
+</div>
+
+<div class="section level2">
+
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 complementAllele("A")  # returns "T"
@@ -26,3 +52,9 @@ complementAllele("A")  # returns "T"
 complementAllele("G")  # returns "C"
 #> [1] "C"
 ```
+
+</div>
+
+</div>
+
+</div>

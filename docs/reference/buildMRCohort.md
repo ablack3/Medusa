@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Site-level cohort extraction from OMOP CDM
+
+<div class="ref-description section level2">
 
 Runs locally at each OMOP CDM site. Executes parameterized SQL to
 extract outcome cohort data and genotype data, performs allele
@@ -6,12 +10,18 @@ harmonization to ensure genotype coding matches the instrument table,
 and returns a local R data frame suitable for downstream analysis. The
 returned data never leaves the site.
 
-The function queries: PERSON (age, sex), CONDITION_OCCURRENCE (outcome),
-OBSERVATION_PERIOD (eligibility), and the genomic linkage table
-(genotypes). All SQL is rendered and translated via SqlRender for
+The function queries: PERSON (age, sex), CONDITION\_OCCURRENCE
+(outcome), OBSERVATION\_PERIOD (eligibility), and the genomic linkage
+table (genotypes). All SQL is rendered and translated via SqlRender for
 cross-dialect compatibility.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 buildMRCohort(
@@ -30,95 +40,109 @@ buildMRCohort(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- connectionDetails:
+-   connectionDetails:
 
-  A `DatabaseConnector::connectionDetails` object specifying the
-  database connection.
+    A `DatabaseConnector::connectionDetails` object specifying the
+    database connection.
 
-- cdmDatabaseSchema:
+-   cdmDatabaseSchema:
 
-  Character. Schema containing the OMOP CDM tables.
+    Character. Schema containing the OMOP CDM tables.
 
-- cohortDatabaseSchema:
+-   cohortDatabaseSchema:
 
-  Character. Schema containing the cohort table.
+    Character. Schema containing the cohort table.
 
-- cohortTable:
+-   cohortTable:
 
-  Character. Name of the cohort table.
+    Character. Name of the cohort table.
 
-- outcomeCohortId:
+-   outcomeCohortId:
 
-  Integer. Cohort definition ID for the outcome of interest (e.g.,
-  incident colorectal cancer).
+    Integer. Cohort definition ID for the outcome of interest (e.g.,
+    incident colorectal cancer).
 
-- instrumentTable:
+-   instrumentTable:
 
-  Data frame. Output of [`getMRInstruments`](getMRInstruments.md) or
-  [`createInstrumentTable`](createInstrumentTable.md) containing the
-  instrument SNPs.
+    Data frame. Output of `getMRInstruments` or `createInstrumentTable`
+    containing the instrument SNPs.
 
-- genomicLinkageSchema:
+-   genomicLinkageSchema:
 
-  Character. Schema containing the genomic linkage table.
+    Character. Schema containing the genomic linkage table.
 
-- genomicLinkageTable:
+-   genomicLinkageTable:
 
-  Character. Name of the table linking person_id to SNP genotypes. Must
-  contain columns for person identifier, snp_id, and genotype (coded as
-  0/1/2 count of effect alleles).
+    Character. Name of the table linking person\_id to SNP genotypes.
+    Must contain columns for person identifier, snp\_id, and genotype
+    (coded as 0/1/2 count of effect alleles).
 
-- indexDateOffset:
+-   indexDateOffset:
 
-  Integer. Days offset from cohort start date for defining the index
-  date. Default is 0.
+    Integer. Days offset from cohort start date for defining the index
+    date. Default is 0.
 
-- washoutPeriod:
+-   washoutPeriod:
 
-  Integer. Minimum days of prior observation required before index date.
-  Default is 365.
+    Integer. Minimum days of prior observation required before index
+    date. Default is 365.
 
-- excludePriorOutcome:
+-   excludePriorOutcome:
 
-  Logical. If TRUE, persons with the outcome before their index date are
-  excluded. Default is TRUE.
+    Logical. If TRUE, persons with the outcome before their index date
+    are excluded. Default is TRUE.
 
-- genomicPersonIdColumn:
+-   genomicPersonIdColumn:
 
-  Character. Name of the person identifier column in the genomic linkage
-  table if it differs from "person_id". Default is "person_id".
+    Character. Name of the person identifier column in the genomic
+    linkage table if it differs from "person\_id". Default is
+    "person\_id".
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 A data frame with one row per person and columns:
 
-- person_id:
+-   person\_id:
 
-  Integer person identifier.
+    Integer person identifier.
 
-- outcome:
+-   outcome:
 
-  Integer 0/1 outcome status.
+    Integer 0/1 outcome status.
 
-- age_at_index:
+-   age\_at\_index:
 
-  Age in years at index date.
+    Age in years at index date.
 
-- gender_concept_id:
+-   gender\_concept\_id:
 
-  OMOP concept ID for gender.
+    OMOP concept ID for gender.
 
-- index_date:
+-   index\_date:
 
-  Date of cohort entry.
+    Date of cohort entry.
 
-- snp_1 through snp_K:
+-   snp\_&lt;sanitized rsID&gt;:
 
-  Integer genotype values (0, 1, or 2) for each instrument SNP, coded as
-  count of the effect allele after harmonization. Missing genotypes are
-  NA, not 0.
+    Integer genotype values (0, 1, or 2) for each instrument SNP, coded
+    as count of the effect allele after harmonization. Missing genotypes
+    are NA, not 0.
+
+</div>
+
+<div class="section level2">
 
 ## Details
 
@@ -130,19 +154,35 @@ comparing the effect allele in the instrument table to the allele coding
 in the genotype data. If alleles are swapped, genotypes are flipped (2 -
 genotype).
 
+</div>
+
+<div class="section level2">
+
 ## References
 
 Hripcsak, G., et al. (2015). Observational Health Data Sciences and
 Informatics (OHDSI): Opportunities for Observational Researchers.
 *Studies in Health Technology and Informatics*, 216, 574-578.
 
+</div>
+
+<div class="section level2">
+
 ## See also
 
-[`getMRInstruments`](getMRInstruments.md),
-[`harmonizeAlleles`](harmonizeAlleles.md),
-[`buildMRCovariates`](buildMRCovariates.md)
+<div class="dont-index">
+
+`getMRInstruments`, `harmonizeAlleles`, `buildMRCovariates`
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 if (FALSE) { # \dontrun{
@@ -165,3 +205,9 @@ cohort <- buildMRCohort(
 )
 } # }
 ```
+
+</div>
+
+</div>
+
+</div>

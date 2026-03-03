@@ -10,7 +10,8 @@ computeMREstimate(combinedProfile, instrumentTable, ciLevel = 0.95)
 \item{combinedProfile}{Output of \code{\link{poolLikelihoodProfiles}}.}
 
 \item{instrumentTable}{Data frame. Output of \code{\link{getMRInstruments}}.
-Used for beta_ZX and se_ZX values.}
+Used as a fallback for beta_ZX and se_ZX values when the pooled profile
+does not carry a stored score definition.}
 
 \item{ciLevel}{Numeric. Confidence interval level. Default is 0.95.}
 }

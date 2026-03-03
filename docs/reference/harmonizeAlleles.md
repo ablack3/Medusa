@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Allele harmonization for Mendelian Randomization
+
+<div class="ref-description section level2">
 
 Ensures that the effect allele coding in the instrument table (from
 GWAS) matches the allele coding in the genotype data at each site.
@@ -6,12 +10,18 @@ Handles allele flipping (when alleles are swapped) and detects
 strand-ambiguous SNPs (A/T and G/C pairs) that cannot be reliably
 harmonized.
 
-When alleles need to be flipped, beta_ZX is multiplied by -1 and EAF is
+When alleles need to be flipped, beta\_ZX is multiplied by -1 and EAF is
 replaced by 1 - EAF. Palindromic SNPs with EAF near 0.5 (within
 `eafPalindromicThreshold` of 0.5) are dropped because strand cannot be
 reliably inferred from allele frequency.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 harmonizeAlleles(
@@ -21,40 +31,54 @@ harmonizeAlleles(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- instrumentTable:
+-   instrumentTable:
 
-  Data frame with columns: snp_id, effect_allele, other_allele, beta_ZX,
-  se_ZX, eaf. Typically the output of
-  [`getMRInstruments`](getMRInstruments.md).
+    Data frame with columns: snp\_id, effect\_allele, other\_allele,
+    beta\_ZX, se\_ZX, eaf. Typically the output of `getMRInstruments`.
 
-- genotypeAlleles:
+-   genotypeAlleles:
 
-  Data frame with columns: snp_id, allele_coded, allele_noncoded.
-  Describes the allele coding used in the genotype data at a particular
-  site.
+    Data frame with columns: snp\_id, allele\_coded, allele\_noncoded.
+    Describes the allele coding used in the genotype data at a
+    particular site.
 
-- eafPalindromicThreshold:
+-   eafPalindromicThreshold:
 
-  Numeric threshold for removing palindromic SNPs. Palindromic SNPs with
-  EAF between (0.5 - threshold) and (0.5 + threshold) are removed.
-  Default is 0.08 (i.e., EAF between 0.42 and 0.58).
+    Numeric threshold for removing palindromic SNPs. Palindromic SNPs
+    with EAF between (0.5 - threshold) and (0.5 + threshold) are
+    removed. Default is 0.08 (i.e., EAF between 0.42 and 0.58).
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 A list with two elements:
 
-- instrumentTable:
+-   instrumentTable:
 
-  The harmonized instrument table with updated effect_allele,
-  other_allele, beta_ZX, and eaf where allele flips were applied. A
-  logical column `flipped` is added.
+    The harmonized instrument table with updated effect\_allele,
+    other\_allele, beta\_ZX, and eaf where allele flips were applied. A
+    logical column `flipped` is added.
 
-- removedSnps:
+-   removedSnps:
 
-  Data frame of SNPs that were removed, with a column `reason`
-  indicating why (e.g., "palindromic_ambiguous_eaf", "allele_mismatch").
+    Data frame of SNPs that were removed, with a column `reason`
+    indicating why (e.g., "palindromic\_ambiguous\_eaf",
+    "allele\_mismatch").
+
+</div>
+
+<div class="section level2">
 
 ## Details
 
@@ -62,23 +86,27 @@ Harmonize Alleles Between Instrument Table and Genotype Data
 
 The harmonization algorithm proceeds as follows for each SNP:
 
-1.  If the instrument effect_allele matches the genotype allele_coded:
+1.  If the instrument effect\_allele matches the genotype allele\_coded:
     no action needed.
 
-2.  If the instrument effect_allele matches the genotype
-    allele_noncoded: flip the coding (beta_ZX \*= -1, eaf = 1 - eaf).
+2.  If the instrument effect\_allele matches the genotype
+    allele\_noncoded: flip the coding (beta\_ZX \*= -1, eaf = 1 - eaf).
 
-3.  If neither direct match is found, try complement alleles (A\<-\>T,
-    G\<-\>C):
+3.  If neither direct match is found, try complement alleles
+    (A&lt;-&gt;T, G&lt;-&gt;C):
 
-    - If the SNP is palindromic (A/T or G/C) and EAF is near 0.5, remove
-      the SNP.
+    -   If the SNP is palindromic (A/T or G/C) and EAF is near 0.5,
+        remove the SNP.
 
-    - If palindromic but EAF clearly differs from 0.5, use EAF to infer
-      strand orientation.
+    -   If palindromic but EAF clearly differs from 0.5, use EAF to
+        infer strand orientation.
 
 4.  If no match is found even with complements: remove the SNP with
-    reason "allele_mismatch".
+    reason "allele\_mismatch".
+
+</div>
+
+<div class="section level2">
 
 ## References
 
@@ -87,13 +115,25 @@ Two-sample Mendelian randomization: avoiding the downsides of a
 powerful, widely applicable but potentially fallible technique.
 *International Journal of Epidemiology*, 45(6), 1717-1726.
 
+</div>
+
+<div class="section level2">
+
 ## See also
 
-[`isStrandAmbiguous`](isStrandAmbiguous.md),
-[`getMRInstruments`](getMRInstruments.md),
-[`buildMRCohort`](buildMRCohort.md)
+<div class="dont-index">
+
+`isStrandAmbiguous`, `getMRInstruments`, `buildMRCohort`
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 instruments <- data.frame(
@@ -114,3 +154,9 @@ genotypeAlleles <- data.frame(
 )
 result <- harmonizeAlleles(instruments, genotypeAlleles)
 ```
+
+</div>
+
+</div>
+
+</div>

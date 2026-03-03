@@ -37,17 +37,25 @@
 #' @param betaGrid Numeric vector. Grid of beta_ZY values at which to evaluate
 #'   the profile log-likelihood. Default is \code{seq(-3, 3, by = 0.01)} (601
 #'   grid points).
-#' @param regularizationVariance Numeric. Prior variance for Cyclops
-#'   regularization of covariate coefficients. Default is 0.1.
-#' @param instrumentRegularization Logical. If FALSE (default), the SNP/allele
-#'   score coefficient is NOT regularized (no shrinkage). Covariates are still
-#'   regularized.
+#' @param regularizationVariance Numeric. Deprecated placeholder for a future
+#'   regularized fitter. When \code{modelBackend = "cyclops"}, this is the
+#'   variance of the normal prior applied to nuisance coefficients. Smaller
+#'   values imply stronger shrinkage. Ignored by the \code{"glm"} backend.
+#'   Default is 0.1.
+#' @param instrumentRegularization Logical. When
+#'   \code{modelBackend = "cyclops"}, whether the exposure coefficient is
+#'   included in the Cyclops prior. Default is FALSE so the profiled exposure
+#'   coefficient remains unpenalized. Ignored by the \code{"glm"} backend.
 #' @param outcomeType Character. Type of outcome: "binary" for logistic
 #'   regression. Default is "binary".
 #' @param analysisType Character. "alleleScore" for single weighted score model
 #'   or "perSNP" for separate per-SNP models. Default is "alleleScore".
 #' @param siteId Character. Identifier for this site. Included in the returned
 #'   profile object. Default is "site_1".
+#' @param modelBackend Character. Outcome-model fitting backend:
+#'   \code{"glm"} uses base R logistic regression, while \code{"cyclops"} uses
+#'   \pkg{Cyclops} for scalable logistic regression with optional Gaussian
+#'   shrinkage on nuisance covariates. Default is \code{"glm"}.
 #'
 #' @return A list with class "medusaSiteProfile" containing:
 #'   \describe{
@@ -78,6 +86,11 @@
 #'     This is the exact profile likelihood for the coefficient in a logistic
 #'     generalized linear model.
 #' }
+#'
+#' When \code{modelBackend = "cyclops"} and \code{regularizationVariance} is
+#' finite, the nuisance parameters are estimated under a Gaussian prior at both
+#' the unconstrained optimum and every grid point. In that configuration the
+#' returned objective is a penalized profile, not an unpenalized MLE profile.
 #'
 #' When using the allele score, weights are
 #' \eqn{w_j = \gamma_j / \mathrm{SE}(\gamma_j)^2}, normalized by
@@ -112,7 +125,8 @@ fitOutcomeModel <- function(cohortData,
                             instrumentRegularization = FALSE,
                             outcomeType = "binary",
                             analysisType = "alleleScore",
-                            siteId = "site_1") {
+                            siteId = "site_1",
+                            modelBackend = "glm") {
   # Input validation
   checkmate::assertDataFrame(cohortData, min.rows = 1)
   validateInstrumentTable(instrumentTable)
@@ -122,10 +136,19 @@ fitOutcomeModel <- function(cohortData,
   checkmate::assertChoice(outcomeType, c("binary"))
   checkmate::assertChoice(analysisType, c("alleleScore", "perSNP"))
   checkmate::assertString(siteId)
+  checkmate::assertChoice(modelBackend, c("glm", "cyclops"))
+
+  if (identical(modelBackend, "cyclops") &&
+      !requireNamespace("Cyclops", quietly = TRUE)) {
+    stop(
+      "Package 'Cyclops' is required when modelBackend = 'cyclops'. ",
+      "Install it with: remotes::install_github('ohdsi/Cyclops')",
+      call. = FALSE
+    )
+  }
 
   checkmate::assertSubset("outcome", names(cohortData))
-  snpCols <- grep("^snp_", names(cohortData), value = TRUE)
-  if (length(snpCols) == 0) {
+  if (length(grep("^snp_", names(cohortData), value = TRUE)) == 0) {
     stop("No SNP columns (snp_*) found in cohortData.")
   }
 
@@ -148,11 +171,11 @@ fitOutcomeModel <- function(cohortData,
   if (analysisType == "alleleScore") {
     result <- fitAlleleScoreModel(cohortData, covariateData, instrumentTable,
                                    betaGrid, regularizationVariance,
-                                   instrumentRegularization)
+                                   instrumentRegularization, modelBackend)
   } else {
     result <- fitPerSNPModels(cohortData, covariateData, instrumentTable,
                                betaGrid, regularizationVariance,
-                               instrumentRegularization)
+                               instrumentRegularization, modelBackend)
   }
 
   # Check for grid boundary MLE
@@ -182,14 +205,16 @@ fitOutcomeModel <- function(cohortData,
     logLikProfile = result$logLikProfile,
     nCases = nCases,
     nControls = nControls,
-    snpIds = instrumentTable$snp_id,
+    snpIds = result$alignedInstruments$snp_id,
     diagnosticFlags = list(
-      weakInstruments = any(instrumentTable$fStatistic < 10, na.rm = TRUE),
+      weakInstruments = "fStatistic" %in% names(result$alignedInstruments) &&
+        any(result$alignedInstruments$fStatistic < 10, na.rm = TRUE),
       lowCaseCount = nCases < 50,
       gridBoundaryMLE = gridBoundaryMLE
     ),
     betaHat = result$betaHat,
-    seHat = result$seHat
+    seHat = result$seHat,
+    scoreDefinition = result$scoreDefinition
   )
   if (!is.null(result$perSnpEstimates)) {
     profile$perSnpEstimates <- result$perSnpEstimates
@@ -206,17 +231,16 @@ fitOutcomeModel <- function(cohortData,
 #' @keywords internal
 fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
                                  betaGrid, regularizationVariance,
-                                 instrumentRegularization) {
-  snpCols <- grep("^snp_", names(cohortData), value = TRUE)
-  nSnps <- min(length(snpCols), nrow(instrumentTable))
-
+                                 instrumentRegularization,
+                                 modelBackend) {
+  alignment <- alignInstrumentColumns(cohortData, instrumentTable)
+  alignedInstruments <- alignment$instrumentTable
+  snpCols <- alignment$snpColumns
   # Burgess et al. (2013): the allele score is a weighted sum of genotypes,
   # using external SNP-exposure effects to define fixed score weights.
-  weights <- computeAlleleScoreWeights(
-    instrumentTable[seq_len(nSnps), , drop = FALSE]
-  )
+  weights <- computeAlleleScoreWeights(alignedInstruments)
 
-  snpMatrix <- as.matrix(cohortData[, snpCols[seq_len(nSnps)], drop = FALSE])
+  snpMatrix <- as.matrix(cohortData[, snpCols, drop = FALSE])
   # Replace NA with 0 for score computation (common imputation for missing genotypes)
   snpMatrixImputed <- snpMatrix
   snpMatrixImputed[is.na(snpMatrixImputed)] <- 0
@@ -239,13 +263,17 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
   modelData <- modelData[completeIdx, , drop = FALSE]
 
   # Fit unconstrained logistic regression
-  formula <- as.formula(paste("outcome ~ alleleScore",
-                               if (length(covCols) > 0) paste("+", paste(covCols, collapse = " + ")) else ""))
-
   tryCatch({
-    fit <- glm(formula, data = modelData, family = binomial())
-    betaHat <- coef(fit)["alleleScore"]
-    seHat <- summary(fit)$coefficients["alleleScore", "Std. Error"]
+    coefficientFit <- fitBinaryOutcomeCoefficient(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = covCols,
+      modelBackend = modelBackend,
+      regularizationVariance = regularizationVariance,
+      instrumentRegularization = instrumentRegularization
+    )
+    betaHat <- coefficientFit$betaHat
+    seHat <- coefficientFit$seHat
 
     # Exact profile likelihood for a fixed coefficient:
     #   l_p(beta) = max_alpha l(alpha, beta)
@@ -255,20 +283,37 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
       modelData = modelData,
       exposureColumn = "alleleScore",
       covariateColumns = covCols,
-      betaGrid = betaGrid
+      betaGrid = betaGrid,
+      modelBackend = modelBackend,
+      regularizationVariance = regularizationVariance,
+      instrumentRegularization = instrumentRegularization
     )
 
     list(
       logLikProfile = logLikProfile,
       betaHat = unname(betaHat),
-      seHat = unname(seHat)
+      seHat = unname(seHat),
+      alignedInstruments = alignedInstruments,
+      scoreDefinition = list(
+        snpIds = alignedInstruments$snp_id,
+        scoreWeights = weights,
+        betaZX = sum(weights * alignedInstruments$beta_ZX),
+        seZX = sqrt(sum((weights^2) * (alignedInstruments$se_ZX^2)))
+      )
     )
   }, error = function(e) {
     warning(sprintf("Model fitting failed: %s. Returning flat profile.", conditionMessage(e)))
     list(
       logLikProfile = rep(0, length(betaGrid)),
       betaHat = 0,
-      seHat = Inf
+      seHat = Inf,
+      alignedInstruments = alignedInstruments,
+      scoreDefinition = list(
+        snpIds = alignedInstruments$snp_id,
+        scoreWeights = weights,
+        betaZX = sum(weights * alignedInstruments$beta_ZX),
+        seZX = sqrt(sum((weights^2) * (alignedInstruments$se_ZX^2)))
+      )
     )
   })
 }
@@ -277,9 +322,12 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
 #' @keywords internal
 fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
                              betaGrid, regularizationVariance,
-                             instrumentRegularization) {
-  snpCols <- grep("^snp_", names(cohortData), value = TRUE)
-  nSnps <- min(length(snpCols), nrow(instrumentTable))
+                             instrumentRegularization,
+                             modelBackend) {
+  alignment <- alignInstrumentColumns(cohortData, instrumentTable)
+  alignedInstruments <- alignment$instrumentTable
+  snpCols <- alignment$snpColumns
+  nSnps <- nrow(alignedInstruments)
 
   # A site can provide per-SNP summary estimates for IVW / MR-Egger / weighted
   # median, but those single-SNP regressions do not form a joint likelihood that
@@ -288,10 +336,11 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
   alleleScoreFit <- fitAlleleScoreModel(
     cohortData = cohortData,
     covariateData = covariateData,
-    instrumentTable = instrumentTable,
+    instrumentTable = alignedInstruments,
     betaGrid = betaGrid,
     regularizationVariance = regularizationVariance,
-    instrumentRegularization = instrumentRegularization
+    instrumentRegularization = instrumentRegularization,
+    modelBackend = modelBackend
   )
 
   profileMatrix <- matrix(NA_real_, nrow = length(betaGrid), ncol = nSnps)
@@ -318,19 +367,26 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
       next
     }
 
-    formula <- as.formula(paste("outcome ~ snp",
-                                 if (length(covCols) > 0) paste("+", paste(covCols, collapse = " + ")) else ""))
-
     tryCatch({
-      fit <- glm(formula, data = modelData, family = binomial())
-      betaHat <- coef(fit)["snp"]
-      seHat <- summary(fit)$coefficients["snp", "Std. Error"]
+      coefficientFit <- fitBinaryOutcomeCoefficient(
+        modelData = modelData,
+        exposureColumn = "snp",
+        covariateColumns = covCols,
+        modelBackend = modelBackend,
+        regularizationVariance = regularizationVariance,
+        instrumentRegularization = instrumentRegularization
+      )
+      betaHat <- coefficientFit$betaHat
+      seHat <- coefficientFit$seHat
 
       profileMatrix[, j] <- evaluateBinaryProfile(
         modelData = modelData,
         exposureColumn = "snp",
         covariateColumns = covCols,
-        betaGrid = betaGrid
+        betaGrid = betaGrid,
+        modelBackend = modelBackend,
+        regularizationVariance = regularizationVariance,
+        instrumentRegularization = instrumentRegularization
       )
       betaHats[j] <- unname(betaHat)
       seHats[j] <- unname(seHat)
@@ -341,13 +397,22 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
     })
   }
 
-  colnames(profileMatrix) <- instrumentTable$snp_id[seq_len(nSnps)]
+  colnames(profileMatrix) <- alignedInstruments$snp_id
   perSnpEstimates <- data.frame(
-    snp_id = instrumentTable$snp_id[seq_len(nSnps)],
+    snp_id = alignedInstruments$snp_id,
+    effect_allele = alignedInstruments$effect_allele,
+    other_allele = alignedInstruments$other_allele,
+    eaf = alignedInstruments$eaf,
     beta_ZY = betaHats,
     se_ZY = seHats,
-    beta_ZX = instrumentTable$beta_ZX[seq_len(nSnps)],
-    se_ZX = instrumentTable$se_ZX[seq_len(nSnps)],
+    beta_ZX = alignedInstruments$beta_ZX,
+    se_ZX = alignedInstruments$se_ZX,
+    pval_ZX = if ("pval_ZX" %in% names(alignedInstruments)) {
+      alignedInstruments$pval_ZX
+    } else {
+      2 * stats::pnorm(-abs(alignedInstruments$beta_ZX / alignedInstruments$se_ZX))
+    },
+    pval_ZY = 2 * stats::pnorm(-abs(betaHats / seHats)),
     stringsAsFactors = FALSE
   )
 
@@ -358,7 +423,42 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
     seHat = alleleScoreFit$seHat,
     perSnpBetaHats = betaHats,
     perSnpSEHats = seHats,
-    perSnpEstimates = perSnpEstimates[stats::complete.cases(perSnpEstimates), , drop = FALSE]
+    perSnpEstimates = perSnpEstimates[stats::complete.cases(perSnpEstimates), , drop = FALSE],
+    alignedInstruments = alignedInstruments,
+    scoreDefinition = alleleScoreFit$scoreDefinition
+  )
+}
+
+
+#' @keywords internal
+alignInstrumentColumns <- function(cohortData, instrumentTable) {
+  validateInstrumentTable(instrumentTable)
+  expectedColumns <- makeSnpColumnName(instrumentTable$snp_id)
+  present <- expectedColumns %in% names(cohortData)
+
+  if (!any(present)) {
+    stop(
+      paste0(
+        "No cohortData SNP columns match the instrumentTable SNP IDs. Expected columns like ",
+        paste(utils::head(expectedColumns, 3), collapse = ", "),
+        ". Ensure the cohort was built with the same instrument table."
+      )
+    )
+  }
+
+  if (any(!present)) {
+    warning(
+      sprintf(
+        "Dropping %d instrument(s) missing from cohortData: %s",
+        sum(!present),
+        paste(instrumentTable$snp_id[!present], collapse = ", ")
+      )
+    )
+  }
+
+  list(
+    instrumentTable = instrumentTable[present, , drop = FALSE],
+    snpColumns = expectedColumns[present]
   )
 }
 
@@ -405,36 +505,118 @@ appendCovariatesToModelData <- function(modelData, cohortData, covariateData) {
 evaluateBinaryProfile <- function(modelData,
                                   exposureColumn,
                                   covariateColumns,
-                                  betaGrid) {
+                                  betaGrid,
+                                  modelBackend = "glm",
+                                  regularizationVariance = 0.1,
+                                  instrumentRegularization = FALSE) {
   checkmate::assertDataFrame(modelData, min.rows = 1)
   checkmate::assertString(exposureColumn)
   if (!is.character(covariateColumns)) {
     stop("covariateColumns must be a character vector.")
   }
 
+  modelBackend <- match.arg(modelBackend, c("glm", "cyclops"))
+  exposure <- modelData[[exposureColumn]]
+  logLikProfile <- vapply(betaGrid, function(betaFixed) {
+    evaluateBinaryProfilePoint(
+      modelData = modelData,
+      exposureColumn = exposureColumn,
+      covariateColumns = covariateColumns,
+      offsetVector = betaFixed * exposure,
+      modelBackend = modelBackend,
+      regularizationVariance = regularizationVariance,
+      instrumentRegularization = instrumentRegularization
+    )
+  }, numeric(1))
+
+  if (all(!is.finite(logLikProfile))) {
+    stop("Profile likelihood failed at all grid points.")
+  }
+
+  logLikProfile
+}
+
+
+#' @keywords internal
+fitBinaryOutcomeCoefficient <- function(modelData,
+                                        exposureColumn,
+                                        covariateColumns,
+                                        modelBackend,
+                                        regularizationVariance,
+                                        instrumentRegularization) {
+  formula <- as.formula(paste(
+    "outcome ~",
+    exposureColumn,
+    if (length(covariateColumns) > 0) {
+      paste("+", paste(covariateColumns, collapse = " + "))
+    } else {
+      ""
+    }
+  ))
+  modelBackend <- match.arg(modelBackend, c("glm", "cyclops"))
+
+  if (identical(modelBackend, "glm")) {
+    fit <- glm(formula, data = modelData, family = binomial())
+    betaHat <- coef(fit)[[exposureColumn]]
+    seHat <- summary(fit)$coefficients[exposureColumn, "Std. Error"]
+    return(list(betaHat = unname(betaHat), seHat = unname(seHat)))
+  }
+
+    fit <- fitCyclopsLogistic(
+      formula = formula,
+      data = modelData,
+      offsetVector = NULL,
+      regularizationVariance = regularizationVariance,
+      excludeIndices = if (isTRUE(instrumentRegularization)) {
+        1L
+    } else {
+      c(1L, 2L)
+    }
+  )
+  coefficients <- stats::coef(fit)
+  covariance <- stats::vcov(fit)
+  betaHat <- coefficients[[exposureColumn]]
+  seHat <- sqrt(diag(covariance))[[exposureColumn]]
+
+  list(betaHat = unname(betaHat), seHat = unname(seHat))
+}
+
+
+#' @keywords internal
+evaluateBinaryProfilePoint <- function(modelData,
+                                       exposureColumn,
+                                       covariateColumns,
+                                       offsetVector,
+                                       modelBackend,
+                                       regularizationVariance,
+                                       instrumentRegularization) {
+  response <- modelData$outcome
+  modelBackend <- match.arg(modelBackend, c("glm", "cyclops"))
+
   profileFormula <- if (length(covariateColumns) > 0) {
-    as.formula(paste("outcome ~", paste(covariateColumns, collapse = " + ")))
+    stats::as.formula(paste("outcome ~", paste(covariateColumns, collapse = " + ")))
   } else {
     stats::as.formula("outcome ~ 1")
   }
 
-  response <- modelData$outcome
-  designMatrix <- stats::model.matrix(profileFormula, data = modelData)
-  exposure <- modelData[[exposureColumn]]
-  logLikProfile <- vapply(betaGrid, function(betaFixed) {
+  if (identical(modelBackend, "glm")) {
+    designMatrix <- stats::model.matrix(profileFormula, data = modelData)
     fit <- tryCatch(
       suppressWarnings(
         stats::glm.fit(
           x = designMatrix,
           y = response,
           family = stats::binomial(),
-          offset = betaFixed * exposure
+          offset = offsetVector
         )
       ),
       error = function(e) NULL
     )
 
     if (is.null(fit)) {
+      return(-Inf)
+    }
+    if (!isTRUE(fit$converged) || isTRUE(fit$boundary)) {
       return(-Inf)
     }
 
@@ -444,14 +626,86 @@ evaluateBinaryProfile <- function(modelData,
       return(-Inf)
     }
 
-    fitLogLik
-  }, numeric(1))
-
-  if (all(!is.finite(logLikProfile))) {
-    stop("Profile likelihood failed at all grid points.")
+    return(fitLogLik)
   }
 
-  logLikProfile
+  fit <- tryCatch(
+    fitCyclopsLogistic(
+      formula = profileFormula,
+      data = modelData,
+      offsetVector = offsetVector,
+      regularizationVariance = regularizationVariance,
+      excludeIndices = 1L
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(fit)) {
+    return(-Inf)
+  }
+
+  fittedProb <- tryCatch(stats::predict(fit), error = function(e) NULL)
+  if (is.null(fittedProb)) {
+    return(-Inf)
+  }
+  fittedProb <- pmin(pmax(fittedProb, 1e-12), 1 - 1e-12)
+  fitLogLik <- sum(stats::dbinom(response, size = 1, prob = fittedProb, log = TRUE))
+  if (!is.finite(fitLogLik)) {
+    return(-Inf)
+  }
+
+  fitLogLik
+}
+
+
+#' @keywords internal
+fitCyclopsLogistic <- function(formula,
+                               data,
+                               offsetVector = NULL,
+                               regularizationVariance,
+                               excludeIndices = 1L) {
+  cyclopsFormula <- formula
+  cyclopsDataFrame <- data
+  if (!is.null(offsetVector)) {
+    cyclopsDataFrame$.__medusa_offset__ <- offsetVector
+    cyclopsFormula <- stats::update.formula(
+      formula,
+      . ~ . + offset(.__medusa_offset__)
+    )
+  }
+
+  cyclopsData <- Cyclops::createCyclopsData(
+    formula = cyclopsFormula,
+    modelType = "lr",
+    data = cyclopsDataFrame
+  )
+
+  prior <- createCyclopsPrior(
+    regularizationVariance = regularizationVariance,
+    excludeIndices = excludeIndices
+  )
+  control <- Cyclops::createControl(noiseLevel = "silent")
+
+  Cyclops::fitCyclopsModel(
+    cyclopsData = cyclopsData,
+    prior = prior,
+    control = control,
+    warnings = FALSE
+  )
+}
+
+
+#' @keywords internal
+createCyclopsPrior <- function(regularizationVariance,
+                               excludeIndices = 1L) {
+  if (!is.finite(regularizationVariance)) {
+    return(Cyclops::createPrior("none"))
+  }
+  checkmate::assertNumber(regularizationVariance, lower = 0)
+  Cyclops::createPrior(
+    priorType = "normal",
+    variance = regularizationVariance,
+    exclude = excludeIndices
+  )
 }
 
 

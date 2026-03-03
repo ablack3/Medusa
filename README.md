@@ -1,5 +1,9 @@
 # Medusa <img src="man/figures/logo.png" align="right" height="80" />
 
+<!-- badges: start -->
+  [![R-CMD-check](https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml)
+  <!-- badges: end -->
+  
 **Mendelian Estimation in Distributed Standardized Analytics**
 
 Federated two-sample Mendelian Randomization on the OMOP Common Data Model.

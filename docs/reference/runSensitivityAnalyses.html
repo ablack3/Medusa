@@ -61,7 +61,9 @@ Concordance across methods strengthens causal evidence.</p>
 <span>  <span class="va">perSnpEstimates</span>,</span>
 <span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"Steiger"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span>,</span>
 <span>  outcomeSampleSize <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  exposureSampleSize <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  exposureSampleSize <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  outcomeType <span class="op">=</span> <span class="st">"binary"</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"auto"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -71,7 +73,11 @@ Concordance across methods strengthens causal evidence.</p>
 
 <dl><dt id="arg-persnpestimates">perSnpEstimates<a class="anchor" aria-label="anchor" href="#arg-persnpestimates"></a></dt>
 <dd><p>Data frame with per-SNP summary statistics. Required
-columns: snp_id, beta_ZY, se_ZY, beta_ZX, se_ZX.</p></dd>
+columns: <code>snp_id</code>, <code>beta_ZY</code>, <code>se_ZY</code>, <code>beta_ZX</code>,
+<code>se_ZX</code>, <code>effect_allele</code>, <code>other_allele</code>, and <code>eaf</code>.
+These allele fields make the object harmonisation-ready for delegation to
+<span class="pkg">TwoSampleMR</span>. Optional columns <code>pval_ZX</code> and <code>pval_ZY</code> are
+used when present and otherwise derived from the reported estimates.</p></dd>
 
 
 <dt id="arg-methods">methods<a class="anchor" aria-label="anchor" href="#arg-methods"></a></dt>
@@ -87,6 +93,21 @@ GWAS/analysis. Needed for Steiger filtering.</p></dd>
 <dt id="arg-exposuresamplesize">exposureSampleSize<a class="anchor" aria-label="anchor" href="#arg-exposuresamplesize"></a></dt>
 <dd><p>Optional integer. Total sample size for exposure
 GWAS. Needed for Steiger filtering.</p></dd>
+
+
+<dt id="arg-outcometype">outcomeType<a class="anchor" aria-label="anchor" href="#arg-outcometype"></a></dt>
+<dd><p>Character. Type of outcome summary statistics represented
+in <code>perSnpEstimates</code>. Medusa's internal Steiger implementation is
+available only for <code>"continuous"</code> outcomes, while
+<code>engine = "TwoSampleMR"</code> delegates to <span class="pkg">TwoSampleMR</span>'s Steiger
+implementation on the harmonised data. Default is <code>"binary"</code>.</p></dd>
+
+
+<dt id="arg-engine">engine<a class="anchor" aria-label="anchor" href="#arg-engine"></a></dt>
+<dd><p>Character. <code>"auto"</code> prefers <span class="pkg">TwoSampleMR</span> when
+installed and otherwise falls back to Medusa's internal implementations.
+Use <code>"TwoSampleMR"</code> to require delegation, or <code>"internal"</code> to
+force Medusa's built-in implementations. Default is <code>"auto"</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -122,15 +143,20 @@ GWAS. Needed for Steiger filtering.</p></dd>
 with weights 1/se_ZY^2. This is the primary MR estimate assuming all
 instruments are valid.</p>
 <p><strong>MR-Egger</strong>: Weighted regression of beta_ZY on beta_ZX with an
-intercept. A non-zero intercept indicates directional pleiotropy. The slope
-is a consistent causal estimate even under directional pleiotropy, provided
-the InSIDE assumption holds.</p>
-<p><strong>Weighted Median</strong>: Bootstrap-based weighted median of per-SNP Wald
-ratio estimates. Produces a consistent estimate if fewer than 50<!-- % of the -->
-weight comes from invalid instruments.</p>
+intercept, after orienting all SNPs so that beta_ZX is positive. A non-zero
+intercept indicates directional pleiotropy. The slope is a consistent causal
+estimate even under directional pleiotropy, provided the InSIDE assumption
+holds.</p>
+<p><strong>Weighted Median</strong>: Weighted median of per-SNP Wald ratio estimates
+using first-order inverse-variance weights for the ratio estimates
+(\(w_j = \beta_{Xj}^2 / \mathrm{SE}(\beta_{Yj})^2\)). Produces a consistent
+estimate if fewer than 50<!-- % of the total weight comes from invalid instruments. --></p>
 <p><strong>Steiger</strong>: Tests whether each SNP explains more variance in the
-exposure than the outcome (the expected causal direction). SNPs failing
-this test are removed and IVW is re-run.</p>
+exposure than the outcome (the expected causal direction). With
+<code>engine = "internal"</code>, Medusa applies the continuous-trait
+correlation-based approximation described by Hemani et al. (2017). With
+<code>engine = "TwoSampleMR"</code>, Medusa delegates to
+<code><a href="https://mrcieu.github.io/TwoSampleMR/reference/steiger_filtering.html" class="external-link">TwoSampleMR::steiger_filtering()</a></code> on the harmonised summary data.</p>
 <p><strong>Leave-One-Out</strong>: Drops each SNP in turn and recomputes the IVW
 estimate. Identifies influential outlier instruments.</p>
     </div>
@@ -138,13 +164,20 @@ estimate. Identifies influential outlier instruments.</p>
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Bowden, J., Davey Smith, G., &amp; Burgess, S. (2015). Mendelian randomization
 with invalid instruments: effect estimation and bias detection through Egger
-regression. <em>International Journal of Epidemiology</em>, 44(2), 512-525.</p>
+regression. <em>International Journal of Epidemiology</em>, 44(2), 512-525.
+doi:10.1093/ije/dyv080.
+Abstract: https://pubmed.ncbi.nlm.nih.gov/26050253/
+Full text (if available to you): https://academic.oup.com/ije/article-pdf/44/2/512/18631079/dyv080.pdf</p>
 <p>Bowden, J., et al. (2016). Consistent estimation in Mendelian randomization
 with some invalid instruments using a weighted median estimator.
-<em>Genetic Epidemiology</em>, 40(4), 304-314.</p>
+<em>Genetic Epidemiology</em>, 40(4), 304-314.
+doi:10.1002/gepi.21965.
+Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC4849733/</p>
 <p>Hemani, G., Tilling, K., &amp; Davey Smith, G. (2017). Orienting the causal
 relationship between imprecisely measured traits using GWAS summary data.
-<em>PLoS Genetics</em>, 13(11), e1007081.</p>
+<em>PLoS Genetics</em>, 13(11), e1007081.
+doi:10.1371/journal.pgen.1007081.
+Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC5711033/</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -161,26 +194,41 @@ relationship between imprecisely measured traits using GWAS summary data.
 <span class="r-in"><span><span class="va">betaZY</span> <span class="op">&lt;-</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">betaZX</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nSnps</span>, <span class="fl">0</span>, <span class="fl">0.02</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">perSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  snp_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"rs"</span>, <span class="fl">1</span><span class="op">:</span><span class="va">nSnps</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  effect_allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  other_allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  eaf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.55</span>, length.out <span class="op">=</span> <span class="va">nSnps</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  beta_ZY <span class="op">=</span> <span class="va">betaZY</span>,</span></span>
 <span class="r-in"><span>  se_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.02</span>, <span class="va">nSnps</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  beta_ZX <span class="op">=</span> <span class="va">betaZX</span>,</span></span>
 <span class="r-in"><span>  se_ZX <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="va">nSnps</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">runSensitivityAnalyses</span><span class="op">(</span><span class="va">perSnp</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">runSensitivityAnalyses</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">perSnp</span>,</span></span>
+<span class="r-in"><span>  outcomeSampleSize <span class="op">=</span> <span class="fl">10000</span>,</span></span>
+<span class="r-in"><span>  exposureSampleSize <span class="op">=</span> <span class="fl">10000</span>,</span></span>
+<span class="r-in"><span>  outcomeType <span class="op">=</span> <span class="st">"continuous"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Running sensitivity analyses with 10 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   Engine: TwoSampleMR</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Harmonising exposure (medusa_exposure) and outcome (medusa_outcome)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Removing the following SNPs for being palindromic with intermediate allele frequencies:</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> rs10, rs8</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   IVW...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Analysing 'medusa_exposure' on 'medusa_outcome'</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   MR-Egger...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Analysing 'medusa_exposure' on 'medusa_outcome'</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   Weighted Median...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Analysing 'medusa_exposure' on 'medusa_outcome'</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   Steiger filtering...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>     Steiger filter removed 8 of 10 SNPs.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Analysing 'medusa_exposure' on 'medusa_outcome'</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   Leave-One-Out...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Sensitivity analyses complete.</span>
 <span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">summary</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                 method   beta_MR      se_MR   ci_lower  ci_upper          pval</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                  IVW 0.4859306 0.01917957  0.4483387 0.5235226 1.287302e-141</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2             MR-Egger 0.2072935 0.25588407 -0.2942393 0.7088263  4.413080e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3      Weighted Median 0.4848631 0.04409626  0.3984344 0.5712918  4.014147e-28</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 Steiger-filtered IVW 0.3577932 0.04016741  0.2790651 0.4365213  5.217304e-19</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                 method    beta_MR      se_MR   ci_lower  ci_upper         pval</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                  IVW 0.49183243 0.03090498  0.4312587 0.5524062 5.039535e-57</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2             MR-Egger 0.08879307 0.22182774 -0.3459893 0.5235754 7.028132e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3      Weighted Median 0.48415523 0.04343351  0.3990256 0.5692849 7.402441e-29</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 Steiger-filtered IVW 0.37825702 0.04988512  0.2804822 0.4760319 3.387952e-14</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

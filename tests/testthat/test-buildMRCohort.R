@@ -117,3 +117,168 @@ test_that("buildMRCohort validates inputs", {
     "connectionDetails"
   )
 })
+
+test_that("buildMRCohort executes the main extraction flow with stubbed database calls", {
+  skip_if_not_installed("mockery")
+
+  buildFn <- buildMRCohort
+  connectionDetails <- structure(list(dbms = "postgresql"), class = "connectionDetails")
+  fakeConnection <- structure(list(), class = "fakeConnection")
+  instrumentTable <- data.frame(
+    snp_id = c("rs1", "rs2"),
+    effect_allele = c("A", "G"),
+    other_allele = c("C", "T"),
+    beta_ZX = c(0.5, 0.3),
+    se_ZX = c(0.05, 0.08),
+    pval_ZX = c(1e-10, 1e-5),
+    eaf = c(0.3, 0.5),
+    stringsAsFactors = FALSE
+  )
+  cohortFrame <- data.frame(
+    personId = seq_len(100),
+    outcome = c(rep(1L, 60), rep(0L, 40)),
+    stringsAsFactors = FALSE
+  )
+  genotypeFrame <- rbind(
+    data.frame(
+      personId = seq_len(100),
+      snpId = "rs1",
+      genotype = rep(c(0L, 1L, 2L, 1L), length.out = 100),
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      personId = seq_len(80),
+      snpId = "rs2",
+      genotype = rep(c(0L, 2L), length.out = 80),
+      stringsAsFactors = FALSE
+    )
+  )
+  queryCount <- 0L
+
+  mockery::stub(buildFn, "DatabaseConnector::connect", function(...) fakeConnection)
+  mockery::stub(buildFn, "DatabaseConnector::disconnect", function(...) invisible(NULL))
+  mockery::stub(buildFn, "loadRenderTranslateSql", function(...) "SELECT 1")
+  mockery::stub(buildFn, "DatabaseConnector::executeSql", function(...) invisible(NULL))
+  mockery::stub(
+    buildFn,
+    "DatabaseConnector::querySql",
+    function(...) {
+      queryCount <<- queryCount + 1L
+      if (queryCount == 1L) {
+        return(cohortFrame)
+      }
+      genotypeFrame
+    }
+  )
+
+  expect_warning(
+    result <- suppressMessages(
+      buildFn(
+        connectionDetails = connectionDetails,
+        cdmDatabaseSchema = "cdm",
+        cohortDatabaseSchema = "results",
+        cohortTable = "cohort",
+        outcomeCohortId = 1L,
+        instrumentTable = instrumentTable,
+        genomicLinkageSchema = "genomics",
+        genomicLinkageTable = "genotype_data"
+      )
+    ),
+    "20.0% missing genotypes"
+  )
+
+  expect_equal(nrow(result), 100)
+  expect_true(all(c("snp_rs1", "snp_rs2") %in% names(result)))
+  expect_true(any(is.na(result$snp_rs2)))
+})
+
+test_that("buildMRCohort stops when the cohort query returns no persons", {
+  skip_if_not_installed("mockery")
+
+  buildFn <- buildMRCohort
+  connectionDetails <- structure(list(dbms = "postgresql"), class = "connectionDetails")
+  instrumentTable <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.05,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  mockery::stub(buildFn, "DatabaseConnector::connect", function(...) structure(list(), class = "fakeConnection"))
+  mockery::stub(buildFn, "DatabaseConnector::disconnect", function(...) invisible(NULL))
+  mockery::stub(buildFn, "loadRenderTranslateSql", function(...) "SELECT 1")
+  mockery::stub(buildFn, "DatabaseConnector::executeSql", function(...) invisible(NULL))
+  mockery::stub(buildFn, "DatabaseConnector::querySql", function(...) data.frame())
+
+  expect_error(
+    suppressMessages(
+      buildFn(
+        connectionDetails = connectionDetails,
+        cdmDatabaseSchema = "cdm",
+        cohortDatabaseSchema = "results",
+        cohortTable = "cohort",
+        outcomeCohortId = 1L,
+        instrumentTable = instrumentTable,
+        genomicLinkageSchema = "genomics",
+        genomicLinkageTable = "genotype_data"
+      )
+    ),
+    "No persons found"
+  )
+})
+
+test_that("buildMRCohort stops when genotype data are unavailable", {
+  skip_if_not_installed("mockery")
+
+  buildFn <- buildMRCohort
+  connectionDetails <- structure(list(dbms = "postgresql"), class = "connectionDetails")
+  instrumentTable <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.05,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+  queryCount <- 0L
+
+  mockery::stub(buildFn, "DatabaseConnector::connect", function(...) structure(list(), class = "fakeConnection"))
+  mockery::stub(buildFn, "DatabaseConnector::disconnect", function(...) invisible(NULL))
+  mockery::stub(buildFn, "loadRenderTranslateSql", function(...) "SELECT 1")
+  mockery::stub(buildFn, "DatabaseConnector::executeSql", function(...) invisible(NULL))
+  mockery::stub(
+    buildFn,
+    "DatabaseConnector::querySql",
+    function(...) {
+      queryCount <<- queryCount + 1L
+      if (queryCount == 1L) {
+        return(data.frame(personId = 1:5, outcome = c(1L, 1L, 1L, 0L, 0L)))
+      }
+      data.frame()
+    }
+  )
+
+  expect_error(
+    suppressMessages(
+      suppressWarnings(
+        buildFn(
+          connectionDetails = connectionDetails,
+          cdmDatabaseSchema = "cdm",
+          cohortDatabaseSchema = "results",
+          cohortTable = "cohort",
+          outcomeCohortId = 1L,
+          instrumentTable = instrumentTable,
+          genomicLinkageSchema = "genomics",
+          genomicLinkageTable = "genotype_data"
+        )
+      )
+    ),
+    "No persons in cohort have genotype data"
+  )
+})

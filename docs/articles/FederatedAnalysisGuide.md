@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Federated Analysis Guide for Network Coordinators
+
+<div class="section level2">
 
 ## Overview
 
@@ -7,30 +11,46 @@ running a federated Medusa analysis across multiple sites. The key
 principle: **only profile log-likelihood vectors leave each site** — no
 individual-level data is shared.
 
+</div>
+
+<div class="section level2">
+
 ## What Data Leaves Each Site
 
-| Shared with coordinator | NOT shared |
-|----|----|
-| Log-likelihood profile (numeric vector, ~600 numbers) | Individual genotypes |
-| Number of cases and controls | Person-level outcomes |
-| Diagnostic flags (logical values) | Covariate values |
-| Site identifier | Demographics |
+| Shared with coordinator                                | NOT shared            |
+|--------------------------------------------------------|-----------------------|
+| Log-likelihood profile (numeric vector, \~600 numbers) | Individual genotypes  |
+| Number of cases and controls                           | Person-level outcomes |
+| Diagnostic flags (logical values)                      | Covariate values      |
+| Site identifier                                        | Demographics          |
 
 The profile vector is a smooth curve that represents the aggregate
 statistical evidence at a site. It cannot be reverse-engineered to
 identify individuals.
 
+</div>
+
+<div class="section level2">
+
 ## Site Setup Requirements
+
+<div class="section level3">
 
 ### OMOP CDM Requirements
 
-- OMOP CDM version 5.3 or 5.4
-- Standard tables: PERSON, OBSERVATION_PERIOD, CONDITION_OCCURRENCE
-- A cohort table with the outcome cohort pre-defined (e.g., via ATLAS)
+-   OMOP CDM version 5.3 or 5.4
+-   Standard tables: PERSON, OBSERVATION\_PERIOD, CONDITION\_OCCURRENCE
+-   A cohort table with the outcome cohort pre-defined (e.g., via ATLAS)
+
+</div>
+
+<div class="section level3">
 
 ### Genomic Linkage Table
 
-Each site needs a table linking person_id to SNP genotypes:
+Each site needs a table linking person\_id to SNP genotypes:
+
+<div id="cb1" class="sourceCode">
 
 ``` sql
 CREATE TABLE genomics.genotype_data (
@@ -40,10 +60,18 @@ CREATE TABLE genomics.genotype_data (
 );
 ```
 
+</div>
+
 If the person identifier column has a different name (e.g.,
 `subject_id`), specify it via the `genomicPersonIdColumn` parameter.
 
+</div>
+
+<div class="section level3">
+
 ### R Package Dependencies
+
+<div id="cb2" class="sourceCode">
 
 ``` r
 # Required at each site
@@ -52,9 +80,17 @@ remotes::install_github("OHDSI/Medusa")
 # This installs: DatabaseConnector, SqlRender, Cyclops, FeatureExtraction
 ```
 
+</div>
+
+</div>
+
+<div class="section level3">
+
 ### Ancestry Principal Components (Optional but Recommended)
 
 A table with ancestry PCs controls for population stratification:
+
+<div id="cb3" class="sourceCode">
 
 ``` sql
 CREATE TABLE genomics.ancestry_pcs (
@@ -64,10 +100,20 @@ CREATE TABLE genomics.ancestry_pcs (
 );
 ```
 
+</div>
+
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Template Site Analysis Script
 
 Send this script to each participating site, customized with their local
 connection details:
+
+<div id="cb4" class="sourceCode">
 
 ``` r
 # ============================================================
@@ -158,9 +204,17 @@ exportSiteProfile(profile, outputDir = ".", prefix = "medusa")
 message("Analysis complete. Share the CSV files with the coordinator.")
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Coordinator Pooling Script
 
 After collecting profile CSV files from all sites:
+
+<div id="cb5" class="sourceCode">
 
 ``` r
 library(Medusa)
@@ -195,20 +249,30 @@ generateMRReport(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Secure File Transfer
 
 Profile CSV files should be transferred securely between sites and
 coordinator. Options include:
 
-- SFTP with encrypted credentials
-- Institutional secure file sharing (e.g., Box, SharePoint with
-  encryption)
-- OHDSI network file transfer protocols (if available)
+-   SFTP with encrypted credentials
+-   Institutional secure file sharing (e.g., Box, SharePoint with
+    encryption)
+-   OHDSI network file transfer protocols (if available)
 
-The CSV files are human-readable and typically very small (\< 100 KB) as
-they contain only numeric grid values and summary statistics. Using CSV
-ensures that every value leaving a site can be inspected and audited
+The CSV files are human-readable and typically very small (&lt; 100 KB)
+as they contain only numeric grid values and summary statistics. Using
+CSV ensures that every value leaving a site can be inspected and audited
 before transfer.
+
+</div>
+
+<div class="section level2">
 
 ## Handling Different OMOP Versions
 
@@ -217,28 +281,52 @@ templates in Medusa use only core CDM tables that are consistent across
 versions. If a site uses non-standard table names, these can be
 configured via function parameters.
 
+</div>
+
+<div class="section level2">
+
 ## Troubleshooting
+
+<div class="section level3">
 
 ### “No persons have genotype data”
 
-- Verify the genomic linkage table exists and has data
-- Check that `person_id` column names match (use `genomicPersonIdColumn`
-  parameter)
-- Ensure the cohort and genotype table share person_id values
+-   Verify the genomic linkage table exists and has data
+-   Check that `person_id` column names match (use
+    `genomicPersonIdColumn` parameter)
+-   Ensure the cohort and genotype table share person\_id values
+
+</div>
+
+<div class="section level3">
 
 ### “Profile likelihood is flat”
 
-- Instruments may be too weak at this site
-- Check F-statistics in diagnostics
-- Verify that genotype data is coded correctly (0/1/2)
+-   Instruments may be too weak at this site
+-   Check F-statistics in diagnostics
+-   Verify that genotype data is coded correctly (0/1/2)
+
+</div>
+
+<div class="section level3">
 
 ### “MLE is at grid boundary”
 
-- Expand the `betaGrid` range (e.g., `seq(-5, 5, by = 0.01)`)
-- Ensure the same `betaGrid` is used at all sites
+-   Expand the `betaGrid` range (e.g., `seq(-5, 5, by = 0.01)`)
+-   Ensure the same `betaGrid` is used at all sites
 
-### Weak instrument warning (F \< 10)
+</div>
 
-- The instrument explains very little outcome variance at this site
-- Consider excluding weak instruments or using more instruments
-- Results may be biased toward the null
+<div class="section level3">
+
+### Weak instrument warning (F &lt; 10)
+
+-   The instrument explains very little outcome variance at this site
+-   Consider excluding weak instruments or using more instruments
+-   Results may be biased toward the null
+
+</div>
+
+</div>
+
+</div>

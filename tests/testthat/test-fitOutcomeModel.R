@@ -89,6 +89,8 @@ test_that("alleleScore and perSNP modes both return valid profiles", {
   expect_true(is.finite(profilePS$betaHat))
   expect_true("perSnpEstimates" %in% names(profilePS))
   expect_true(nrow(profilePS$perSnpEstimates) > 0)
+  expect_true(all(c("effect_allele", "other_allele", "eaf") %in%
+                    names(profilePS$perSnpEstimates)))
 })
 
 test_that("warning issued when MLE is at grid boundary", {
@@ -114,4 +116,109 @@ test_that("fitOutcomeModel validates inputs", {
       betaGrid = seq(-1, 1, by = 0.1)
     )
   )
+})
+
+test_that("fitOutcomeModel aligns SNP columns by SNP ID instead of column order", {
+  simData <- simulateMRData(n = 1500, nSnps = 4, trueEffect = 0.25, seed = 444)
+  snpCols <- grep("^snp_", names(simData$data), value = TRUE)
+  reordered <- simData$data[, c(
+    setdiff(names(simData$data), snpCols),
+    rev(snpCols)
+  )]
+
+  profileOriginal <- fitOutcomeModel(
+    cohortData = simData$data,
+    covariateData = NULL,
+    instrumentTable = simData$instrumentTable,
+    betaGrid = seq(-2, 2, by = 0.05)
+  )
+
+  profileReordered <- fitOutcomeModel(
+    cohortData = reordered,
+    covariateData = NULL,
+    instrumentTable = simData$instrumentTable,
+    betaGrid = seq(-2, 2, by = 0.05)
+  )
+
+  expect_equal(profileOriginal$betaHat, profileReordered$betaHat, tolerance = 1e-10)
+  expect_equal(profileOriginal$logLikProfile, profileReordered$logLikProfile, tolerance = 1e-10)
+  expect_equal(profileOriginal$scoreDefinition$betaZX, profileReordered$scoreDefinition$betaZX, tolerance = 1e-10)
+})
+
+test_that("fitOutcomeModel supports the optional Cyclops backend", {
+  skip_if_not_installed("Cyclops")
+
+  simData <- simulateMRData(n = 1200, nSnps = 3, trueEffect = 0.2, seed = 555)
+  profile <- fitOutcomeModel(
+    cohortData = simData$data,
+    covariateData = NULL,
+    instrumentTable = simData$instrumentTable,
+    betaGrid = seq(-1, 1, by = 0.1),
+    modelBackend = "cyclops"
+  )
+
+  expect_s3_class(profile, "medusaSiteProfile")
+  expect_true(is.finite(profile$betaHat))
+  expect_true(all(is.finite(profile$logLikProfile)))
+})
+
+test_that("fitOutcomeModel helper utilities align instruments and evaluate finite likelihoods", {
+  simData <- Medusa::simulateMRData(n = 250, nSnps = 3, trueEffect = 0.2, seed = 556)
+  cohortData <- simData$data
+  cohortData$personId <- cohortData$person_id
+
+  extraInstrument <- simData$instrumentTable[1, , drop = FALSE]
+  extraInstrument$snp_id <- "rs_missing"
+  extraInstrument$effect_allele <- "A"
+  extraInstrument$other_allele <- "C"
+  extendedTable <- rbind(simData$instrumentTable, extraInstrument)
+
+  expect_warning(
+    alignment <- alignInstrumentColumns(cohortData, extendedTable),
+    "Dropping 1 instrument"
+  )
+  expect_equal(alignment$instrumentTable$snp_id, simData$instrumentTable$snp_id)
+
+  weights <- computeAlleleScoreWeights(alignment$instrumentTable)
+  snpMatrix <- as.matrix(cohortData[, alignment$snpColumns, drop = FALSE])
+  alleleScore <- as.numeric(snpMatrix %*% weights)
+  baseModel <- data.frame(
+    outcome = cohortData$outcome,
+    alleleScore = alleleScore,
+    stringsAsFactors = FALSE
+  )
+  covariateData <- data.frame(
+    personId = cohortData$personId,
+    covariate_1 = rep(c(0, 1), length.out = nrow(cohortData)),
+    stringsAsFactors = FALSE
+  )
+  modelParts <- appendCovariatesToModelData(baseModel, cohortData, covariateData)
+  completeModel <- modelParts$modelData[complete.cases(modelParts$modelData), , drop = FALSE]
+
+  coefficientFit <- fitBinaryOutcomeCoefficient(
+    modelData = completeModel,
+    exposureColumn = "alleleScore",
+    covariateColumns = modelParts$covariateColumns,
+    modelBackend = "glm",
+    regularizationVariance = 0.1,
+    instrumentRegularization = FALSE
+  )
+  pointLogLik <- evaluateBinaryProfilePoint(
+    modelData = completeModel,
+    exposureColumn = "alleleScore",
+    covariateColumns = modelParts$covariateColumns,
+    offsetVector = rep(0, nrow(completeModel)),
+    modelBackend = "glm",
+    regularizationVariance = 0.1,
+    instrumentRegularization = FALSE
+  )
+
+  expect_equal(sum(abs(weights)), 1, tolerance = 1e-10)
+  expect_true(is.finite(coefficientFit$betaHat))
+  expect_true(is.finite(coefficientFit$seHat))
+  expect_true(is.finite(pointLogLik))
+
+  zeroWeightTable <- alignment$instrumentTable
+  zeroWeightTable$beta_ZX <- 0
+  expect_error(computeAlleleScoreWeights(zeroWeightTable), "not finite")
 })

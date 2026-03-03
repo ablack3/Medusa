@@ -132,16 +132,23 @@ cat(sprintf("Odds ratio: %.3f\n", estimate$oddsRatio))
 # Create per-SNP estimates for sensitivity analyses
 set.seed(42)
 nSnps <- 10
-betaZX <- rnorm(nSnps, 0.3, 0.05)
+instrumentSummary <- simulateInstrumentTable(nSnps = nSnps, seed = 42)
 perSnp <- data.frame(
-  snp_id = paste0("rs", 1:nSnps),
-  beta_ZY = 0.5 * betaZX + rnorm(nSnps, 0, 0.02),
+  snp_id = instrumentSummary$snp_id,
+  beta_ZY = 0.5 * instrumentSummary$beta_ZX + rnorm(nSnps, 0, 0.02),
   se_ZY = rep(0.02, nSnps),
-  beta_ZX = betaZX,
-  se_ZX = rep(0.05, nSnps)
+  beta_ZX = instrumentSummary$beta_ZX,
+  se_ZX = instrumentSummary$se_ZX,
+  effect_allele = instrumentSummary$effect_allele,
+  other_allele = instrumentSummary$other_allele,
+  eaf = instrumentSummary$eaf
 )
 
-results <- runSensitivityAnalyses(perSnp)
+results <- runSensitivityAnalyses(
+  perSnp,
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+  engine = "internal"
+)
 print(results$summary)
 ```
 

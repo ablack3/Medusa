@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Self-contained HTML report for MR analysis
+
+<div class="ref-description section level2">
 
 Produces a self-contained HTML report (single file, no external
 dependencies) summarizing the entire MR analysis including instrument
@@ -6,7 +10,13 @@ summary, likelihood profile plots, main MR result, sensitivity analyses,
 PheWAS diagnostics, and site contributions. Suitable for sharing with
 non-technical stakeholders.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 generateMRReport(
@@ -22,64 +32,91 @@ generateMRReport(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- mrEstimate:
+-   mrEstimate:
 
-  Output of [`computeMREstimate`](computeMREstimate.md).
+    Output of `computeMREstimate`.
 
-- sensitivityResults:
+-   sensitivityResults:
 
-  Output of [`runSensitivityAnalyses`](runSensitivityAnalyses.md). Can
-  be NULL if no sensitivity analyses were run.
+    Output of `runSensitivityAnalyses`. Can be NULL if no sensitivity
+    analyses were run.
 
-- diagnosticResults:
+-   diagnosticResults:
 
-  Output of [`runInstrumentDiagnostics`](runInstrumentDiagnostics.md).
-  Can be NULL if no diagnostics were run.
+    Output of `runInstrumentDiagnostics`. Can be NULL if no diagnostics
+    were run.
 
-- combinedProfile:
+-   combinedProfile:
 
-  Output of [`poolLikelihoodProfiles`](poolLikelihoodProfiles.md).
+    Output of `poolLikelihoodProfiles`.
 
-- siteProfileList:
+-   siteProfileList:
 
-  Named list of site profile objects from
-  [`fitOutcomeModel`](fitOutcomeModel.md).
+    Named list of site profile objects from `fitOutcomeModel`.
 
-- instrumentTable:
+-   instrumentTable:
 
-  Output of [`getMRInstruments`](getMRInstruments.md).
+    Output of `getMRInstruments`.
 
-- exposureLabel:
+-   exposureLabel:
 
-  Character. Human-readable name for the exposure. Default is
-  "Exposure".
+    Character. Human-readable name for the exposure. Default is
+    "Exposure".
 
-- outcomeLabel:
+-   outcomeLabel:
 
-  Character. Human-readable name for the outcome. Default is "Outcome".
+    Character. Human-readable name for the outcome. Default is
+    "Outcome".
 
-- outputPath:
+-   outputPath:
 
-  Character. Path for the output HTML file. Default is
-  "./Medusa_report.html".
+    Character. Path for the output HTML file. Default is
+    "./Medusa\_report.html".
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 Character string with the path to the generated report (invisibly).
 
+</div>
+
+<div class="section level2">
+
 ## Details
 
 Generate Mendelian Randomization Analysis Report
 
+</div>
+
+<div class="section level2">
+
 ## See also
 
-[`computeMREstimate`](computeMREstimate.md),
-[`runSensitivityAnalyses`](runSensitivityAnalyses.md),
-[`runInstrumentDiagnostics`](runInstrumentDiagnostics.md)
+<div class="dont-index">
+
+`computeMREstimate`, `runSensitivityAnalyses`,
+`runInstrumentDiagnostics`
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 if (FALSE) { # \dontrun{
@@ -95,3 +132,9 @@ generateMRReport(
 )
 } # }
 ```
+
+</div>
+
+</div>
+
+</div>

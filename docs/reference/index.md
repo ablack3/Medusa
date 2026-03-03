@@ -1,54 +1,52 @@
+<div id="main" class="col-md-9" role="main">
+
 # Package index
+
+<div class="section level2">
 
 ## All functions
 
-- [`Medusa`](Medusa-package.md) [`Medusa-package`](Medusa-package.md) :
-  Medusa: Mendelian Estimation in Distributed Standardized Analytics
-- [`buildMRCohort()`](buildMRCohort.md) : Site-level cohort extraction
-  from OMOP CDM
-- [`buildMRCovariates()`](buildMRCovariates.md) : Covariate assembly
-  using FeatureExtraction
-- [`complementAllele()`](complementAllele.md) : Get Complement of a DNA
-  Allele
-- [`computeApproxFStatistic()`](computeApproxFStatistic.md) : Compute
-  Approximate F-statistic from GWAS Summary Statistics
-- [`computeMREstimate()`](computeMREstimate.md) : Wald ratio MR estimate
-  from pooled profile likelihood
-- [`createDefaultMRCovariateSettings()`](createDefaultMRCovariateSettings.md)
-  : Default FeatureExtraction settings for Medusa
-- [`createInstrumentTable()`](createInstrumentTable.md) : Build
-  instrument table from user-provided data
-- [`exportSiteProfile()`](exportSiteProfile.md) : Export a Site Profile
-  to CSV
-- [`fitOutcomeModel()`](fitOutcomeModel.md) : Regularized outcome model
-  with grid likelihood evaluation
-- [`generateMRReport()`](generateMRReport.md) : Self-contained HTML
-  report for MR analysis
-- [`getMRInstruments()`](getMRInstruments.md) : Instrument assembly from
-  OpenGWAS
-- [`harmonizeAlleles()`](harmonizeAlleles.md) : Allele harmonization for
-  Mendelian Randomization
-- [`importSiteProfile()`](importSiteProfile.md) : Import a Site Profile
-  from CSV
-- [`isStrandAmbiguous()`](isStrandAmbiguous.md) : Check for
-  Strand-Ambiguous SNPs
-- [`mrTheme()`](mrTheme.md) : Consistent plotting theme for Medusa
-  package
-- [`plotLikelihoodProfile()`](plotLikelihoodProfile.md) : Likelihood
-  profile visualization
-- [`plotSensitivityForest()`](plotSensitivityForest.md) : Forest plot
-  comparing MR methods
-- [`poolLikelihoodProfiles()`](poolLikelihoodProfiles.md) : Federated
-  one-shot likelihood pooling
-- [`runInstrumentDiagnostics()`](runInstrumentDiagnostics.md) :
-  Instrument diagnostics for MR analysis
-- [`runSensitivityAnalyses()`](runSensitivityAnalyses.md) : Standard
-  Mendelian Randomization sensitivity analyses
-- [`simulateCovariateData()`](simulateCovariateData.md) : Simulate
-  Covariate Data
-- [`simulateInstrumentTable()`](simulateInstrumentTable.md) : Simulate
-  an Instrument Table
-- [`simulateMRData()`](simulateMRData.md) : Simulate MR Data with Known
-  Causal Effect
-- [`simulateSiteProfiles()`](simulateSiteProfiles.md) : Simulate Site
-  Profile Likelihood Objects
+</div>
+
+<div class="section level2">
+
+-   `Medusa` `Medusa-package` : Medusa: Mendelian Estimation in
+    Distributed Standardized Analytics
+-   `buildMRCohort()` : Site-level cohort extraction from OMOP CDM
+-   `buildMRCovariates()` : Covariate assembly using FeatureExtraction
+-   `complementAllele()` : Get Complement of a DNA Allele
+-   `computeApproxFStatistic()` : Compute Approximate F-statistic from
+    GWAS Summary Statistics
+-   `computeMREstimate()` : Wald ratio MR estimate from pooled profile
+    likelihood
+-   `createDefaultMRCovariateSettings()` : Default FeatureExtraction
+    settings for Medusa
+-   `createInstrumentTable()` : Build instrument table from
+    user-provided data
+-   `exportSiteProfile()` : Export a Site Profile to CSV
+-   `fitOutcomeModel()` : Outcome model with exact grid likelihood
+    evaluation
+-   `generateMRReport()` : Self-contained HTML report for MR analysis
+-   `getMRInstruments()` : Instrument assembly from OpenGWAS
+-   `harmonizeAlleles()` : Allele harmonization for Mendelian
+    Randomization
+-   `importSiteProfile()` : Import a Site Profile from CSV
+-   `isStrandAmbiguous()` : Check for Strand-Ambiguous SNPs
+-   `mrTheme()` : Consistent plotting theme for Medusa package
+-   `plotLikelihoodProfile()` : Likelihood profile visualization
+-   `plotSensitivityForest()` : Forest plot comparing MR methods
+-   `poolLikelihoodProfiles()` : Federated one-shot likelihood pooling
+-   `runInstrumentDiagnostics()` : Instrument diagnostics for MR
+    analysis
+-   `runSensitivityAnalyses()` : Standard Mendelian Randomization
+    sensitivity analyses
+-   `simulateCovariateData()` : Simulate Covariate Data
+-   `simulateInstrumentTable()` : Simulate an Instrument Table
+-   `simulateMRData()` : Simulate MR Data with Known Causal Effect
+-   `simulateSiteProfiles()` : Simulate Site Profile Likelihood Objects
+-   `validateAgainstTwoSampleMR()` : Single-site cross-check against
+    standard summary-data MR
+
+</div>
+
+</div>

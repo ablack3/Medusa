@@ -1,30 +1,56 @@
+<div id="main" class="col-md-9" role="main">
+
 # Simulate an Instrument Table
 
+<div class="ref-description section level2">
+
 Creates a synthetic instrument table mimicking the output of
-[`getMRInstruments`](getMRInstruments.md).
+`getMRInstruments`.
+
+</div>
+
+<div class="section level2">
 
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 simulateInstrumentTable(nSnps = 10, seed = 42)
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- nSnps:
+-   nSnps:
 
-  Number of SNPs to simulate.
+    Number of SNPs to simulate.
 
-- seed:
+-   seed:
 
-  Random seed for reproducibility.
+    Random seed for reproducibility.
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
-Data frame with columns: snp_id, effect_allele, other_allele, beta_ZX,
-se_ZX, pval_ZX, eaf, gene_region.
+Data frame with columns: snp\_id, effect\_allele, other\_allele,
+beta\_ZX, se\_ZX, pval\_ZX, eaf, gene\_region.
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 instruments <- simulateInstrumentTable(nSnps = 5)
@@ -42,3 +68,9 @@ head(instruments)
 #> 4 0.6666528       GENE4
 #> 5 0.0535535       GENE5
 ```
+
+</div>
+
+</div>
+
+</div>

@@ -1,10 +1,20 @@
+<div id="main" class="col-md-9" role="main">
+
 # Build instrument table from user-provided data
+
+<div class="ref-description section level2">
 
 Creates a properly formatted instrument table from user-provided GWAS
 summary statistics, bypassing the OpenGWAS API. Useful when working
 offline or with custom GWAS results not available in OpenGWAS.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 createInstrumentTable(
@@ -19,54 +29,81 @@ createInstrumentTable(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- snpId:
+-   snpId:
 
-  Character vector of SNP rsIDs.
+    Character vector of SNP rsIDs.
 
-- effectAllele:
+-   effectAllele:
 
-  Character vector of effect alleles.
+    Character vector of effect alleles.
 
-- otherAllele:
+-   otherAllele:
 
-  Character vector of other alleles.
+    Character vector of other alleles.
 
-- betaZX:
+-   betaZX:
 
-  Numeric vector of SNP-exposure effect estimates.
+    Numeric vector of SNP-exposure effect estimates.
 
-- seZX:
+-   seZX:
 
-  Numeric vector of standard errors.
+    Numeric vector of standard errors.
 
-- pvalZX:
+-   pvalZX:
 
-  Numeric vector of p-values.
+    Numeric vector of p-values.
 
-- eaf:
+-   eaf:
 
-  Numeric vector of effect allele frequencies.
+    Numeric vector of effect allele frequencies.
 
-- geneRegion:
+-   geneRegion:
 
-  Optional character vector of gene/region annotations.
+    Optional character vector of gene/region annotations.
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
-A data frame with the same structure as
-[`getMRInstruments`](getMRInstruments.md) output.
+A data frame with the same structure as `getMRInstruments` output.
+
+</div>
+
+<div class="section level2">
 
 ## Details
 
 Create Instrument Table from Local Data
 
+</div>
+
+<div class="section level2">
+
 ## See also
 
-[`getMRInstruments`](getMRInstruments.md)
+<div class="dont-index">
+
+`getMRInstruments`
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 instruments <- createInstrumentTable(
@@ -79,3 +116,9 @@ instruments <- createInstrumentTable(
   eaf = c(0.3, 0.45)
 )
 ```
+
+</div>
+
+</div>
+
+</div>

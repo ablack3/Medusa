@@ -74,10 +74,7 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>This guide walks OHDSI network coordinators through setting up and
-running a federated Medusa analysis across multiple sites. The key
-principle: <strong>only profile log-likelihood vectors leave each
-site</strong> — no individual-level data is shared.</p>
+<p>This guide walks OHDSI network coordinators through setting up and running a federated Medusa analysis across multiple sites. The key principle: <strong>only profile log-likelihood vectors leave each site</strong> — no individual-level data is shared.</p>
 </div>
 <div class="section level2">
 <h2 id="what-data-leaves-each-site">What Data Leaves Each Site<a class="anchor" aria-label="anchor" href="#what-data-leaves-each-site"></a>
@@ -110,9 +107,7 @@ site</strong> — no individual-level data is shared.</p>
 </tr>
 </tbody>
 </table>
-<p>The profile vector is a smooth curve that represents the aggregate
-statistical evidence at a site. It cannot be reverse-engineered to
-identify individuals.</p>
+<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals.</p>
 </div>
 <div class="section level2">
 <h2 id="site-setup-requirements">Site Setup Requirements<a class="anchor" aria-label="anchor" href="#site-setup-requirements"></a>
@@ -122,24 +117,20 @@ identify individuals.</p>
 </h3>
 <ul>
 <li>OMOP CDM version 5.3 or 5.4</li>
-<li>Standard tables: PERSON, OBSERVATION_PERIOD,
-CONDITION_OCCURRENCE</li>
-<li>A cohort table with the outcome cohort pre-defined (e.g., via
-ATLAS)</li>
+<li>Standard tables: PERSON, OBSERVATION_PERIOD, CONDITION_OCCURRENCE</li>
+<li>A cohort table with the outcome cohort pre-defined (e.g., via ATLAS)</li>
 </ul>
 </div>
 <div class="section level3">
 <h3 id="genomic-linkage-table">Genomic Linkage Table<a class="anchor" aria-label="anchor" href="#genomic-linkage-table"></a>
 </h3>
 <p>Each site needs a table linking person_id to SNP genotypes:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.genotype_data (</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  snp_id <span class="dt">VARCHAR</span>(<span class="dv">50</span>) <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  genotype <span class="dt">INTEGER</span> <span class="kw">NOT</span> <span class="kw">NULL</span>  <span class="co">-- 0, 1, or 2 (count of effect alleles)</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>);</span></code></pre></div>
-<p>If the person identifier column has a different name (e.g.,
-<code>subject_id</code>), specify it via the
-<code>genomicPersonIdColumn</code> parameter.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.genotype_data (</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  snp_id <span class="dt">VARCHAR</span>(<span class="dv">50</span>) <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  genotype <span class="dt">INTEGER</span> <span class="kw">NOT</span> <span class="kw">NULL</span>  <span class="co">-- 0, 1, or 2 (count of effect alleles)</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
+<p>If the person identifier column has a different name (e.g., <code>subject_id</code>), specify it via the <code>genomicPersonIdColumn</code> parameter.</p>
 </div>
 <div class="section level3">
 <h3 id="r-package-dependencies">R Package Dependencies<a class="anchor" aria-label="anchor" href="#r-package-dependencies"></a>
@@ -154,18 +145,17 @@ ATLAS)</li>
 <h3 id="ancestry-principal-components-optional-but-recommended">Ancestry Principal Components (Optional but Recommended)<a class="anchor" aria-label="anchor" href="#ancestry-principal-components-optional-but-recommended"></a>
 </h3>
 <p>A table with ancestry PCs controls for population stratification:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.ancestry_pcs (</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  pc1 <span class="dt">FLOAT</span>, pc2 <span class="dt">FLOAT</span>, pc3 <span class="dt">FLOAT</span>, pc4 <span class="dt">FLOAT</span>, pc5 <span class="dt">FLOAT</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  pc6 <span class="dt">FLOAT</span>, pc7 <span class="dt">FLOAT</span>, pc8 <span class="dt">FLOAT</span>, pc9 <span class="dt">FLOAT</span>, pc10 <span class="dt">FLOAT</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>);</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.ancestry_pcs (</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  pc1 <span class="dt">FLOAT</span>, pc2 <span class="dt">FLOAT</span>, pc3 <span class="dt">FLOAT</span>, pc4 <span class="dt">FLOAT</span>, pc5 <span class="dt">FLOAT</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  pc6 <span class="dt">FLOAT</span>, pc7 <span class="dt">FLOAT</span>, pc8 <span class="dt">FLOAT</span>, pc9 <span class="dt">FLOAT</span>, pc10 <span class="dt">FLOAT</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
 <h2 id="template-site-analysis-script">Template Site Analysis Script<a class="anchor" aria-label="anchor" href="#template-site-analysis-script"></a>
 </h2>
-<p>Send this script to each participating site, customized with their
-local connection details:</p>
+<p>Send this script to each participating site, customized with their local connection details:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ============================================================</span></span>
 <span><span class="co"># Medusa Site Analysis Script</span></span>
@@ -293,26 +283,18 @@ local connection details:</p>
 <div class="section level2">
 <h2 id="secure-file-transfer">Secure File Transfer<a class="anchor" aria-label="anchor" href="#secure-file-transfer"></a>
 </h2>
-<p>Profile CSV files should be transferred securely between sites and
-coordinator. Options include:</p>
+<p>Profile CSV files should be transferred securely between sites and coordinator. Options include:</p>
 <ul>
 <li>SFTP with encrypted credentials</li>
-<li>Institutional secure file sharing (e.g., Box, SharePoint with
-encryption)</li>
+<li>Institutional secure file sharing (e.g., Box, SharePoint with encryption)</li>
 <li>OHDSI network file transfer protocols (if available)</li>
 </ul>
-<p>The CSV files are human-readable and typically very small (&lt; 100
-KB) as they contain only numeric grid values and summary statistics.
-Using CSV ensures that every value leaving a site can be inspected and
-audited before transfer.</p>
+<p>The CSV files are human-readable and typically very small (&lt; 100 KB) as they contain only numeric grid values and summary statistics. Using CSV ensures that every value leaving a site can be inspected and audited before transfer.</p>
 </div>
 <div class="section level2">
 <h2 id="handling-different-omop-versions">Handling Different OMOP Versions<a class="anchor" aria-label="anchor" href="#handling-different-omop-versions"></a>
 </h2>
-<p>Sites running OMOP CDM v5.3 vs v5.4 can participate together. The SQL
-templates in Medusa use only core CDM tables that are consistent across
-versions. If a site uses non-standard table names, these can be
-configured via function parameters.</p>
+<p>Sites running OMOP CDM v5.3 vs v5.4 can participate together. The SQL templates in Medusa use only core CDM tables that are consistent across versions. If a site uses non-standard table names, these can be configured via function parameters.</p>
 </div>
 <div class="section level2">
 <h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
@@ -322,8 +304,7 @@ configured via function parameters.</p>
 </h3>
 <ul>
 <li>Verify the genomic linkage table exists and has data</li>
-<li>Check that <code>person_id</code> column names match (use
-<code>genomicPersonIdColumn</code> parameter)</li>
+<li>Check that <code>person_id</code> column names match (use <code>genomicPersonIdColumn</code> parameter)</li>
 <li>Ensure the cohort and genotype table share person_id values</li>
 </ul>
 </div>
@@ -340,8 +321,7 @@ configured via function parameters.</p>
 <h3 id="mle-is-at-grid-boundary">“MLE is at grid boundary”<a class="anchor" aria-label="anchor" href="#mle-is-at-grid-boundary"></a>
 </h3>
 <ul>
-<li>Expand the <code>betaGrid</code> range (e.g.,
-<code>seq(-5, 5, by = 0.01)</code>)</li>
+<li>Expand the <code>betaGrid</code> range (e.g., <code>seq(-5, 5, by = 0.01)</code>)</li>
 <li>Ensure the same <code>betaGrid</code> is used at all sites</li>
 </ul>
 </div>
@@ -349,8 +329,7 @@ configured via function parameters.</p>
 <h3 id="weak-instrument-warning-f-10">Weak instrument warning (F &lt; 10)<a class="anchor" aria-label="anchor" href="#weak-instrument-warning-f-10"></a>
 </h3>
 <ul>
-<li>The instrument explains very little outcome variance at this
-site</li>
+<li>The instrument explains very little outcome variance at this site</li>
 <li>Consider excluding weak instruments or using more instruments</li>
 <li>Results may be biased toward the null</li>
 </ul>

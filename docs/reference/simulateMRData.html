@@ -93,8 +93,9 @@ on both exposure and outcome).</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list with elements:</p><dl><dt>data</dt>
-<dd><p>Data frame with person_id, outcome (0/1), snp_1..snp_K,
-      confounder_1, confounder_2, exposure.</p></dd>
+<dd><p>Data frame with person_id, outcome (0/1),
+      <code>snp_&lt;sanitized rsID&gt;</code> columns, confounder_1, confounder_2,
+      exposure.</p></dd>
 
     <dt>instrumentTable</dt>
 <dd><p>Data frame mimicking getMRInstruments() output.</p></dd>
@@ -109,20 +110,20 @@ on both exposure and outcome).</p></dd>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">simData</span> <span class="op">&lt;-</span> <span class="fu">simulateMRData</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1000</span>, nSnps <span class="op">=</span> <span class="fl">5</span>, trueEffect <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">simData</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   person_id outcome snp_1 snp_2 snp_3 snp_4 snp_5 confounder_1 confounder_2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1         1       1     1     1     0     0     1    1.3709584            1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2         2       0     1     0     1     0     0   -0.5646982            0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3         3       1     1     0     2     1     0    0.3631284            1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4         4       1     0     0     1     1     0    0.6328626            1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5         5       1     0     2     0     0     0    0.4042683            1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6         6       1     0     1     0     0     0   -0.1061245            1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     exposure</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  3.3068319</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 -0.4567887</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  1.8067824</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4  0.7664246</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  3.0807866</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 -0.1501653</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   person_id outcome snp_rs1 snp_rs2 snp_rs3 snp_rs4 snp_rs5 confounder_1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1         1       1       1       1       0       0       1    1.3709584</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2         2       0       1       0       1       0       0   -0.5646982</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3         3       1       1       0       2       1       0    0.3631284</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4         4       1       0       0       1       1       0    0.6328626</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5         5       1       0       2       0       0       0    0.4042683</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6         6       1       0       1       0       0       0   -0.1061245</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   confounder_2   exposure</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1            1  3.3068319</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2            0 -0.4567887</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3            1  1.8067824</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4            1  0.7664246</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5            1  3.0807866</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6            1 -0.1501653</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

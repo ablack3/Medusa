@@ -149,6 +149,20 @@ validateSiteProfile <- function(siteProfile) {
   if (length(siteProfile$betaGrid) != length(siteProfile$logLikProfile)) {
     stop("betaGrid and logLikProfile must have the same length.")
   }
+  if (!is.null(siteProfile$scoreDefinition)) {
+    checkmate::assertList(siteProfile$scoreDefinition,
+                          .var.name = "siteProfile$scoreDefinition")
+    checkmate::assertSubset(c("snpIds", "scoreWeights", "betaZX", "seZX"),
+                            names(siteProfile$scoreDefinition))
+    checkmate::assertCharacter(siteProfile$scoreDefinition$snpIds,
+                               any.missing = FALSE)
+    checkmate::assertNumeric(siteProfile$scoreDefinition$scoreWeights,
+                             any.missing = FALSE)
+    if (length(siteProfile$scoreDefinition$snpIds) !=
+        length(siteProfile$scoreDefinition$scoreWeights)) {
+      stop("scoreDefinition$snpIds and scoreDefinition$scoreWeights must have the same length.")
+    }
+  }
   invisible(TRUE)
 }
 
@@ -173,6 +187,19 @@ computeApproxFStatistic <- function(betaZX, seZX) {
   checkmate::assertNumeric(seZX, lower = 0, any.missing = FALSE,
                            len = length(betaZX))
   (betaZX / seZX)^2
+}
+
+
+#' Build the canonical cohort-data column name for an instrument SNP
+#'
+#' @param snpId Character vector of SNP identifiers.
+#'
+#' @return Character vector of column names in the form \code{snp_<sanitized_id>}.
+#'
+#' @keywords internal
+makeSnpColumnName <- function(snpId) {
+  checkmate::assertCharacter(snpId, any.missing = FALSE)
+  paste0("snp_", gsub("[^a-zA-Z0-9]", "_", snpId))
 }
 
 
@@ -219,11 +246,18 @@ loadRenderTranslateSql <- function(sqlFileName, dbms, ...) {
          "Install it with: remotes::install_github('ohdsi/SqlRender')",
          call. = FALSE)
   }
-  sql <- SqlRender::loadRenderTranslateSql(
-    sqlFilename = sqlFileName,
-    packageName = "Medusa",
-    dbms = dbms,
-    ...
-  )
-  return(sql)
+
+  sqlPath <- system.file("sql", "sql_server", sqlFileName, package = "Medusa")
+  if (identical(sqlPath, "")) {
+    sqlPath <- file.path("inst", "sql", "sql_server", sqlFileName)
+  }
+  if (!file.exists(sqlPath)) {
+    stop(sprintf("SQL file not found: %s", sqlFileName), call. = FALSE)
+  }
+
+  sqlTemplate <- paste(readLines(sqlPath, warn = FALSE), collapse = "\n")
+  renderedSql <- SqlRender::render(sqlTemplate, ...)
+  translatedSql <- SqlRender::translate(renderedSql, targetDialect = dbms)
+
+  translatedSql
 }

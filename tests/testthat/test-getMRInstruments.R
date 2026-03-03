@@ -226,3 +226,78 @@ test_that("instrument table carries metadata attributes", {
   expect_equal(attr(result, "exposureTraitId"), "ieu-a-1119")
   expect_equal(attr(result, "parameters")$pThreshold, 5e-8)
 })
+
+test_that("additionalSnps are appended when available from OpenGWAS", {
+  mainAssociations <- data.frame(
+    rsid = c("rs1", "rs2"),
+    ea = c("A", "G"),
+    nea = c("C", "T"),
+    beta = c(0.5, 0.3),
+    se = c(0.05, 0.08),
+    p = c(1e-20, 1e-10),
+    eaf = c(0.3, 0.5),
+    id = rep("trait1", 2),
+    stringsAsFactors = FALSE
+  )
+  additionalAssociations <- data.frame(
+    rsid = "rs_extra",
+    ea = "C",
+    nea = "A",
+    beta = 0.25,
+    se = 0.07,
+    p = 1e-6,
+    eaf = 0.4,
+    id = "trait1",
+    stringsAsFactors = FALSE
+  )
+
+  local_mocked_bindings(
+    associations = function(variants = NULL, ...) {
+      if (is.null(variants)) {
+        return(mainAssociations)
+      }
+      additionalAssociations
+    },
+    ld_clump = function(...) {
+      data.frame(
+        rsid = "rs1",
+        pval = 1e-20,
+        id = "trait1",
+        stringsAsFactors = FALSE
+      )
+    },
+    .package = "ieugwasr"
+  )
+
+  expect_warning(
+    result <- getMRInstruments("trait1", additionalSnps = "rs_extra"),
+    "Only 2 instruments available"
+  )
+
+  expect_true(all(c("rs1", "rs_extra") %in% result$snp_id))
+})
+
+test_that("LD clumping failures surface an informative error", {
+  mockAssociations <- data.frame(
+    rsid = c("rs1", "rs2"),
+    ea = c("A", "G"),
+    nea = c("C", "T"),
+    beta = c(0.5, 0.3),
+    se = c(0.05, 0.08),
+    p = c(1e-20, 1e-10),
+    eaf = c(0.3, 0.5),
+    id = rep("trait1", 2),
+    stringsAsFactors = FALSE
+  )
+
+  local_mocked_bindings(
+    associations = function(...) mockAssociations,
+    ld_clump = function(...) stop("reference panel unavailable"),
+    .package = "ieugwasr"
+  )
+
+  expect_error(
+    getMRInstruments("trait1"),
+    "LD clumping failed"
+  )
+})

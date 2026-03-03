@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Medusa: Mendelian Estimation in Distributed Standardized Analytics
+
+<div class="ref-description section level2">
 
 Medusa implements two-sample Mendelian Randomization (MR) within the
 OHDSI ecosystem using the OMOP Common Data Model as the data substrate.
@@ -11,42 +15,44 @@ profile across a grid of parameter values and shares only that vector of
 numbers. The coordinator sums profiles across sites to obtain a pooled
 estimate without any iterative communication protocol.
 
+</div>
+
+<div class="section level2">
+
 ## Details
 
 The analysis pipeline consists of eight modules:
 
-1.  **Instrument Assembly** ([`getMRInstruments`](getMRInstruments.md)):
-    Query OpenGWAS for GWAS summary statistics and apply LD clumping.
+1.  **Instrument Assembly** (`getMRInstruments`): Query OpenGWAS for
+    GWAS summary statistics and apply LD clumping.
 
-2.  **Cohort Extraction** ([`buildMRCohort`](buildMRCohort.md)): Extract
-    outcome cohorts and genotype data from OMOP CDM sites.
+2.  **Cohort Extraction** (`buildMRCohort`): Extract outcome cohorts and
+    genotype data from OMOP CDM sites.
 
-3.  **Covariate Assembly**
-    ([`buildMRCovariates`](buildMRCovariates.md)): Assemble covariates
+3.  **Covariate Assembly** (`buildMRCovariates`): Assemble covariates
     via FeatureExtraction for adjustment and diagnostics.
 
-4.  **Instrument Diagnostics**
-    ([`runInstrumentDiagnostics`](runInstrumentDiagnostics.md)):
-    Validate instruments via F-statistics, PheWAS, and negative
-    controls.
+4.  **Instrument Diagnostics** (`runInstrumentDiagnostics`): Validate
+    instruments via F-statistics, PheWAS, and negative controls.
 
-5.  **Outcome Model** ([`fitOutcomeModel`](fitOutcomeModel.md)): Fit
-    regularized outcome model and evaluate profile log-likelihood on a
-    grid.
+5.  **Outcome Model** (`fitOutcomeModel`): Fit regularized outcome model
+    and evaluate profile log-likelihood on a grid.
 
-6.  **Likelihood Pooling**
-    ([`poolLikelihoodProfiles`](poolLikelihoodProfiles.md)): Aggregate
+6.  **Likelihood Pooling** (`poolLikelihoodProfiles`): Aggregate
     site-level log-likelihood profiles via pointwise summation.
 
-7.  **MR Estimation** ([`computeMREstimate`](computeMREstimate.md)):
-    Compute Wald ratio estimate with delta method standard errors.
+7.  **MR Estimation** (`computeMREstimate`): Compute Wald ratio estimate
+    with delta method standard errors.
 
-8.  **Sensitivity Analyses**
-    ([`runSensitivityAnalyses`](runSensitivityAnalyses.md)): IVW,
-    MR-Egger, weighted median, Steiger filtering, leave-one-out.
+8.  **Sensitivity Analyses** (`runSensitivityAnalyses`): IVW, MR-Egger,
+    weighted median, Steiger filtering, leave-one-out.
 
-9.  **Reporting** ([`generateMRReport`](generateMRReport.md)): Generate
-    self-contained HTML report with all results and diagnostics.
+9.  **Reporting** (`generateMRReport`): Generate self-contained HTML
+    report with all results and diagnostics.
+
+</div>
+
+<div class="section level2">
 
 ## References
 
@@ -64,6 +70,14 @@ Consistent estimation in Mendelian randomization with some invalid
 instruments using a weighted median estimator. *Genetic Epidemiology*,
 40(4), 304-314.
 
+</div>
+
+<div class="section level2">
+
 ## Author
 
-**Maintainer**: First Last <author@institution.edu>
+**Maintainer**: Adam Black <black@ohdsi.org>
+
+</div>
+
+</div>

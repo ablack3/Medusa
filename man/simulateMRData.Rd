@@ -30,8 +30,9 @@ on both exposure and outcome).}
 \value{
 A list with elements:
   \describe{
-    \item{data}{Data frame with person_id, outcome (0/1), snp_1..snp_K,
-      confounder_1, confounder_2, exposure.}
+    \item{data}{Data frame with person_id, outcome (0/1),
+      \code{snp_<sanitized rsID>} columns, confounder_1, confounder_2,
+      exposure.}
     \item{instrumentTable}{Data frame mimicking getMRInstruments() output.}
     \item{trueEffect}{The true causal effect used in simulation.}
   }

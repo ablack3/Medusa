@@ -1,4 +1,8 @@
+<div id="main" class="col-md-9" role="main">
+
 # Instrument assembly from OpenGWAS
+
+<div class="ref-description section level2">
 
 Queries the IEU OpenGWAS database via the `ieugwasr` package to retrieve
 GWAS summary statistics for a specified exposure trait, applies LD
@@ -9,7 +13,13 @@ instrument table ready for distribution to federated analysis sites.
 This function runs at the coordinator node. The returned instrument
 table is serialized to disk and distributed to all sites unchanged.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 getMRInstruments(
@@ -22,96 +32,111 @@ getMRInstruments(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- exposureTraitId:
+-   exposureTraitId:
 
-  Character string. IEU OpenGWAS trait ID (e.g., "ieu-a-1119" for IL-6
-  receptor levels).
+    Character string. IEU OpenGWAS trait ID (e.g., "ieu-a-1119" for IL-6
+    receptor levels).
 
-- pThreshold:
+-   pThreshold:
 
-  Numeric. Genome-wide significance p-value threshold for selecting
-  SNPs. Default is 5e-8.
+    Numeric. Genome-wide significance p-value threshold for selecting
+    SNPs. Default is 5e-8.
 
-- r2Threshold:
+-   r2Threshold:
 
-  Numeric. LD clumping r-squared threshold. SNP pairs with r-squared
-  above this value will be pruned, keeping the more significant SNP.
-  Default is 0.001.
+    Numeric. LD clumping r-squared threshold. SNP pairs with r-squared
+    above this value will be pruned, keeping the more significant SNP.
+    Default is 0.001.
 
-- kb:
+-   kb:
 
-  Numeric. LD clumping window in kilobases. Default is 10000.
+    Numeric. LD clumping window in kilobases. Default is 10000.
 
-- ancestryPopulation:
+-   ancestryPopulation:
 
-  Character. Reference panel ancestry population for LD clumping. One of
-  "EUR", "EAS", "AFR", "SAS", "AMR". Default is "EUR".
+    Character. Reference panel ancestry population for LD clumping. One
+    of "EUR", "EAS", "AFR", "SAS", "AMR". Default is "EUR".
 
-- additionalSnps:
+-   additionalSnps:
 
-  Optional character vector of SNP rsIDs to force-include in the
-  instrument set (added after clumping, not subject to LD pruning).
-  Default is NULL.
+    Optional character vector of SNP rsIDs to force-include in the
+    instrument set (added after clumping, not subject to LD pruning).
+    Default is NULL.
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 A data frame with one row per independent instrument SNP and columns:
 
-- snp_id:
+-   snp\_id:
 
-  rsID of the SNP (e.g., "rs2228145").
+    rsID of the SNP (e.g., "rs2228145").
 
-- effect_allele:
+-   effect\_allele:
 
-  The allele associated with increased exposure level.
+    The allele associated with increased exposure level.
 
-- other_allele:
+-   other\_allele:
 
-  The non-effect allele.
+    The non-effect allele.
 
-- beta_ZX:
+-   beta\_ZX:
 
-  Effect size of the SNP on the exposure (log scale).
+    Effect size of the SNP on the exposure (log scale).
 
-- se_ZX:
+-   se\_ZX:
 
-  Standard error of beta_ZX.
+    Standard error of beta\_ZX.
 
-- pval_ZX:
+-   pval\_ZX:
 
-  P-value for the SNP-exposure association.
+    P-value for the SNP-exposure association.
 
-- eaf:
+-   eaf:
 
-  Effect allele frequency in the GWAS reference population.
+    Effect allele frequency in the GWAS reference population.
 
-- gene_region:
+-   gene\_region:
 
-  Nearest gene or genomic region annotation.
+    Nearest gene or genomic region annotation.
 
-- fStatistic:
+-   fStatistic:
 
-  Approximate F-statistic: (beta_ZX / se_ZX)^2.
+    Approximate F-statistic: (beta\_ZX / se\_ZX)^2.
 
-- strandAmbiguous:
+-   strandAmbiguous:
 
-  Logical. TRUE if the SNP is strand-ambiguous (A/T or G/C allele pair).
+    Logical. TRUE if the SNP is strand-ambiguous (A/T or G/C allele
+    pair).
 
 The data frame also carries the following attributes:
 
-- retrievalTimestamp:
+-   retrievalTimestamp:
 
-  POSIXct timestamp of when instruments were retrieved.
+    POSIXct timestamp of when instruments were retrieved.
 
-- exposureTraitId:
+-   exposureTraitId:
 
-  The trait ID used for retrieval.
+    The trait ID used for retrieval.
 
-- parameters:
+-   parameters:
 
-  List of all parameter values used.
+    List of all parameter values used.
+
+</div>
+
+<div class="section level2">
 
 ## Details
 
@@ -121,24 +146,40 @@ The function queries the IEU OpenGWAS API for all SNP associations with
 the specified trait below `pThreshold`, then applies LD clumping using
 the specified reference panel to retain only independent instruments.
 The approximate F-statistic is computed as (beta / SE)^2 for each SNP.
-SNPs with F \< 10 are flagged as potentially weak instruments via a
+SNPs with F &lt; 10 are flagged as potentially weak instruments via a
 warning message but are not removed automatically.
 
 If the OpenGWAS API is unavailable, the function throws an informative
 error suggesting the user provide a cached instrument table instead.
+
+</div>
+
+<div class="section level2">
 
 ## References
 
 Hemani, G., et al. (2018). The MR-Base platform supports systematic
 causal inference across the human phenome. *eLife*, 7, e34408.
 
+</div>
+
+<div class="section level2">
+
 ## See also
 
-[`harmonizeAlleles`](harmonizeAlleles.md),
-[`buildMRCohort`](buildMRCohort.md),
-[`computeApproxFStatistic`](computeApproxFStatistic.md)
+<div class="dont-index">
+
+`harmonizeAlleles`, `buildMRCohort`, `computeApproxFStatistic`
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 # Using simulated data (no API call)
@@ -170,3 +211,9 @@ instruments <- getMRInstruments(
 )
 } # }
 ```
+
+</div>
+
+</div>
+
+</div>

@@ -1,9 +1,15 @@
+<div id="main" class="col-md-9" role="main">
+
 # Medusa
+
+<div class="section level1">
 
 **Mendelian Estimation in Distributed Standardized Analytics**
 
 Federated two-sample Mendelian Randomization on the OMOP Common Data
 Model.
+
+<div class="section level2">
 
 ## Overview
 
@@ -17,6 +23,10 @@ likelihood aggregation: each site computes a log-likelihood profile and
 shares only that numeric vector. The coordinator sums profiles across
 sites to obtain a pooled estimate — no iterative communication protocol
 needed.
+
+</div>
+
+<div class="section level2">
 
 ## Architecture
 
@@ -53,7 +63,13 @@ needed.
         │           generateMRReport()                             │
         └──────────────────────────────────────────────────────────┘
 
+</div>
+
+<div class="section level2">
+
 ## Installation
+
+<div id="cb2" class="sourceCode">
 
 ``` r
 # Install from GitHub
@@ -63,7 +79,15 @@ remotes::install_github("OHDSI/Medusa")
 remotes::install_github("OHDSI/Medusa", dependencies = TRUE)
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Quick Start
+
+<div id="cb3" class="sourceCode">
 
 ``` r
 library(Medusa)
@@ -106,112 +130,150 @@ generateMRReport(
 )
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Main Functions
 
-| Function | Module | Description |
-|----|----|----|
-| [`getMRInstruments()`](reference/getMRInstruments.md) | Instrument Assembly | Query OpenGWAS for instruments, LD clump |
-| [`createInstrumentTable()`](reference/createInstrumentTable.md) | Instrument Assembly | Build instruments from local data |
-| [`buildMRCohort()`](reference/buildMRCohort.md) | Cohort Extraction | Extract cohort + genotypes from OMOP CDM |
-| [`buildMRCovariates()`](reference/buildMRCovariates.md) | Covariate Assembly | Assemble covariates via FeatureExtraction |
-| [`runInstrumentDiagnostics()`](reference/runInstrumentDiagnostics.md) | Diagnostics | F-stats, PheWAS, negative controls |
-| [`fitOutcomeModel()`](reference/fitOutcomeModel.md) | Outcome Model | Fit model, evaluate profile likelihood |
-| [`poolLikelihoodProfiles()`](reference/poolLikelihoodProfiles.md) | Pooling | Sum log-likelihood profiles across sites |
-| [`computeMREstimate()`](reference/computeMREstimate.md) | Estimation | Wald ratio with delta method SE |
-| [`runSensitivityAnalyses()`](reference/runSensitivityAnalyses.md) | Sensitivity | IVW, MR-Egger, weighted median, etc. |
-| [`generateMRReport()`](reference/generateMRReport.md) | Reporting | Self-contained HTML report |
+| Function                     | Module              | Description                               |
+|------------------------------|---------------------|-------------------------------------------|
+| `getMRInstruments()`         | Instrument Assembly | Query OpenGWAS for instruments, LD clump  |
+| `createInstrumentTable()`    | Instrument Assembly | Build instruments from local data         |
+| `buildMRCohort()`            | Cohort Extraction   | Extract cohort + genotypes from OMOP CDM  |
+| `buildMRCovariates()`        | Covariate Assembly  | Assemble covariates via FeatureExtraction |
+| `runInstrumentDiagnostics()` | Diagnostics         | F-stats, PheWAS, negative controls        |
+| `fitOutcomeModel()`          | Outcome Model       | Fit model, evaluate profile likelihood    |
+| `poolLikelihoodProfiles()`   | Pooling             | Sum log-likelihood profiles across sites  |
+| `computeMREstimate()`        | Estimation          | Wald ratio with delta method SE           |
+| `runSensitivityAnalyses()`   | Sensitivity         | IVW, MR-Egger, weighted median, etc.      |
+| `generateMRReport()`         | Reporting           | Self-contained HTML report                |
+
+</div>
+
+<div class="section level2">
 
 ## Vignettes
 
-- **Getting Started** — Installation, concepts, quick example with
-  simulated data
-- **IL-6 and Colorectal Cancer** — Complete scientific walkthrough
-- **Federated Analysis Guide** — Network coordinator instructions
+-   **Getting Started** — Installation, concepts, quick example with
+    simulated data
+-   **IL-6 and Colorectal Cancer** — Complete scientific walkthrough
+-   **Federated Analysis Guide** — Network coordinator instructions
+
+</div>
+
+<div class="section level2">
 
 ## Requirements
 
-- R \>= 4.1.0
-- OHDSI packages: DatabaseConnector, SqlRender, Cyclops,
-  FeatureExtraction
-- OMOP CDM database with genomic linkage table
-- For instrument retrieval: internet access to OpenGWAS API
+-   R &gt;= 4.1.0
+-   OHDSI packages: DatabaseConnector, SqlRender, Cyclops,
+    FeatureExtraction
+-   OMOP CDM database with genomic linkage table
+-   For instrument retrieval: internet access to OpenGWAS API
+
+</div>
+
+<div class="section level2">
 
 ## License
 
 Apache License 2.0
 
+</div>
+
+<div class="section level2">
+
 ## References
 
-- Davey Smith & Hemani (2014). Mendelian randomization: genetic anchors
-  for causal inference. *Human Molecular Genetics*.
-- Bowden et al. (2015). Mendelian randomization with invalid
-  instruments: MR-Egger. *IJE*.
-- Bowden et al. (2016). Weighted median estimator. *Genetic
-  Epidemiology*.
-- Suchard et al. (2013). Cyclops: massive parallelization of serial
-  inference. *ACM TOMACS*.
+-   Davey Smith & Hemani (2014). Mendelian randomization: genetic
+    anchors for causal inference. *Human Molecular Genetics*.
+-   Bowden et al. (2015). Mendelian randomization with invalid
+    instruments: MR-Egger. *IJE*.
+-   Bowden et al. (2016). Weighted median estimator. *Genetic
+    Epidemiology*.
+-   Suchard et al. (2013). Cyclops: massive parallelization of serial
+    inference. *ACM TOMACS*.
+
+</div>
+
+</div>
+
+</div>
+
+<div id="main" class="col-md-9" role="main">
 
 # Package index
 
+<div class="section level2">
+
 ## All functions
 
-- [`Medusa`](Medusa-package.md) [`Medusa-package`](Medusa-package.md) :
-  Medusa: Mendelian Estimation in Distributed Standardized Analytics
-- [`buildMRCohort()`](buildMRCohort.md) : Site-level cohort extraction
-  from OMOP CDM
-- [`buildMRCovariates()`](buildMRCovariates.md) : Covariate assembly
-  using FeatureExtraction
-- [`complementAllele()`](complementAllele.md) : Get Complement of a DNA
-  Allele
-- [`computeApproxFStatistic()`](computeApproxFStatistic.md) : Compute
-  Approximate F-statistic from GWAS Summary Statistics
-- [`computeMREstimate()`](computeMREstimate.md) : Wald ratio MR estimate
-  from pooled profile likelihood
-- [`createDefaultMRCovariateSettings()`](createDefaultMRCovariateSettings.md)
-  : Default FeatureExtraction settings for Medusa
-- [`createInstrumentTable()`](createInstrumentTable.md) : Build
-  instrument table from user-provided data
-- [`exportSiteProfile()`](exportSiteProfile.md) : Export a Site Profile
-  to CSV
-- [`fitOutcomeModel()`](fitOutcomeModel.md) : Regularized outcome model
-  with grid likelihood evaluation
-- [`generateMRReport()`](generateMRReport.md) : Self-contained HTML
-  report for MR analysis
-- [`getMRInstruments()`](getMRInstruments.md) : Instrument assembly from
-  OpenGWAS
-- [`harmonizeAlleles()`](harmonizeAlleles.md) : Allele harmonization for
-  Mendelian Randomization
-- [`importSiteProfile()`](importSiteProfile.md) : Import a Site Profile
-  from CSV
-- [`isStrandAmbiguous()`](isStrandAmbiguous.md) : Check for
-  Strand-Ambiguous SNPs
-- [`mrTheme()`](mrTheme.md) : Consistent plotting theme for Medusa
-  package
-- [`plotLikelihoodProfile()`](plotLikelihoodProfile.md) : Likelihood
-  profile visualization
-- [`plotSensitivityForest()`](plotSensitivityForest.md) : Forest plot
-  comparing MR methods
-- [`poolLikelihoodProfiles()`](poolLikelihoodProfiles.md) : Federated
-  one-shot likelihood pooling
-- [`runInstrumentDiagnostics()`](runInstrumentDiagnostics.md) :
-  Instrument diagnostics for MR analysis
-- [`runSensitivityAnalyses()`](runSensitivityAnalyses.md) : Standard
-  Mendelian Randomization sensitivity analyses
-- [`simulateCovariateData()`](simulateCovariateData.md) : Simulate
-  Covariate Data
-- [`simulateInstrumentTable()`](simulateInstrumentTable.md) : Simulate
-  an Instrument Table
-- [`simulateMRData()`](simulateMRData.md) : Simulate MR Data with Known
-  Causal Effect
-- [`simulateSiteProfiles()`](simulateSiteProfiles.md) : Simulate Site
-  Profile Likelihood Objects
+</div>
+
+<div class="section level2">
+
+-   `Medusa` `Medusa-package` : Medusa: Mendelian Estimation in
+    Distributed Standardized Analytics
+-   `buildMRCohort()` : Site-level cohort extraction from OMOP CDM
+-   `buildMRCovariates()` : Covariate assembly using FeatureExtraction
+-   `complementAllele()` : Get Complement of a DNA Allele
+-   `computeApproxFStatistic()` : Compute Approximate F-statistic from
+    GWAS Summary Statistics
+-   `computeMREstimate()` : Wald ratio MR estimate from pooled profile
+    likelihood
+-   `createDefaultMRCovariateSettings()` : Default FeatureExtraction
+    settings for Medusa
+-   `createInstrumentTable()` : Build instrument table from
+    user-provided data
+-   `exportSiteProfile()` : Export a Site Profile to CSV
+-   `fitOutcomeModel()` : Outcome model with exact grid likelihood
+    evaluation
+-   `generateMRReport()` : Self-contained HTML report for MR analysis
+-   `getMRInstruments()` : Instrument assembly from OpenGWAS
+-   `harmonizeAlleles()` : Allele harmonization for Mendelian
+    Randomization
+-   `importSiteProfile()` : Import a Site Profile from CSV
+-   `isStrandAmbiguous()` : Check for Strand-Ambiguous SNPs
+-   `mrTheme()` : Consistent plotting theme for Medusa package
+-   `plotLikelihoodProfile()` : Likelihood profile visualization
+-   `plotSensitivityForest()` : Forest plot comparing MR methods
+-   `poolLikelihoodProfiles()` : Federated one-shot likelihood pooling
+-   `runInstrumentDiagnostics()` : Instrument diagnostics for MR
+    analysis
+-   `runSensitivityAnalyses()` : Standard Mendelian Randomization
+    sensitivity analyses
+-   `simulateCovariateData()` : Simulate Covariate Data
+-   `simulateInstrumentTable()` : Simulate an Instrument Table
+-   `simulateMRData()` : Simulate MR Data with Known Causal Effect
+-   `simulateSiteProfiles()` : Simulate Site Profile Likelihood Objects
+-   `validateAgainstTwoSampleMR()` : Single-site cross-check against
+    standard summary-data MR
+
+</div>
+
+</div>
+
+<div id="main" class="col-md-9" role="main">
 
 # Articles
 
+<div class="section">
+
 ### All vignettes
 
-- [IL-6 Signaling and Colorectal Cancer: A Complete MR
-  Walkthrough](ColorectalCancerIL6Example.md):
-- [Federated Analysis Guide for Network
-  Coordinators](FederatedAnalysisGuide.md):
-- [Getting Started with Medusa](GettingStarted.md):
+<div class="section-desc">
+
+</div>
+
+-   [IL-6 Signaling and Colorectal Cancer: A Complete MR
+    Walkthrough](ColorectalCancerIL6Example.md):
+-   [Federated Analysis Guide for Network
+    Coordinators](FederatedAnalysisGuide.md):
+-   [Getting Started with Medusa](GettingStarted.md):
+
+</div>
+
+</div>

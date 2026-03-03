@@ -1,29 +1,59 @@
+<div id="main" class="col-md-9" role="main">
+
 # Forest plot comparing MR methods
+
+<div class="ref-description section level2">
 
 Creates a horizontal forest plot showing estimates from all sensitivity
 analysis methods side by side with confidence intervals.
 
+</div>
+
+<div class="section level2">
+
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 plotSensitivityForest(sensitivityResults)
 ```
 
+</div>
+
+</div>
+
+<div class="section level2">
+
 ## Arguments
 
-- sensitivityResults:
+-   sensitivityResults:
 
-  Output of [`runSensitivityAnalyses`](runSensitivityAnalyses.md).
+    Output of `runSensitivityAnalyses`.
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
 A ggplot2 object.
 
+</div>
+
+<div class="section level2">
+
 ## Details
 
 Plot Sensitivity Analysis Forest Plot
 
+</div>
+
+<div class="section level2">
+
 ## Examples
+
+<div class="sourceCode">
 
 ``` r
 set.seed(42)
@@ -36,15 +66,13 @@ perSnp <- data.frame(
   se_ZX = rep(0.05, nSnps)
 )
 results <- runSensitivityAnalyses(perSnp)
-#> Running sensitivity analyses with 10 SNPs...
-#>   IVW...
-#>   MR-Egger...
-#>   Weighted Median...
-#>   Steiger filtering...
-#>     Steiger filter removed 9 of 10 SNPs.
-#>   Leave-One-Out...
-#> Sensitivity analyses complete.
+#> Error in validatePerSnpSummaryData(perSnpEstimates): Assertion on 'requiredCols' failed: Must be a subset of {'snp_id','beta_ZY','se_ZY','beta_ZX','se_ZX'}, but has additional elements {'effect_allele','other_allele','eaf'}.
 plotSensitivityForest(results)
-#> `height` was translated to `width`.
-
+#> Error: object 'results' not found
 ```
+
+</div>
+
+</div>
+
+</div>

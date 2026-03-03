@@ -18,8 +18,9 @@
 #'
 #' @return A list with elements:
 #'   \describe{
-#'     \item{data}{Data frame with person_id, outcome (0/1), snp_1..snp_K,
-#'       confounder_1, confounder_2, exposure.}
+#'     \item{data}{Data frame with person_id, outcome (0/1),
+#'       \code{snp_<sanitized rsID>} columns, confounder_1, confounder_2,
+#'       exposure.}
 #'     \item{instrumentTable}{Data frame mimicking getMRInstruments() output.}
 #'     \item{trueEffect}{The true causal effect used in simulation.}
 #'   }
@@ -35,13 +36,15 @@ simulateMRData <- function(n = 5000,
   confounder1 <- rnorm(n)
   confounder2 <- rbinom(n, 1, 0.5)
 
+  snpIds <- paste0("rs", seq_len(nSnps))
+
   # Generate SNP genotypes (0, 1, 2) with random MAFs
   mafs <- runif(nSnps, 0.1, 0.4)
   snpMatrix <- matrix(NA_integer_, nrow = n, ncol = nSnps)
   for (j in seq_len(nSnps)) {
     snpMatrix[, j] <- rbinom(n, 2, mafs[j])
   }
-  colnames(snpMatrix) <- paste0("snp_", seq_len(nSnps))
+  colnames(snpMatrix) <- makeSnpColumnName(snpIds)
 
   # True SNP-exposure effects
   betaZX <- runif(nSnps, snpEffectRange[1], snpEffectRange[2])
@@ -75,7 +78,7 @@ simulateMRData <- function(n = 5000,
   # Build instrument table
   alleles <- c("A", "C", "G", "T")
   instrumentTable <- data.frame(
-    snp_id = paste0("rs", seq_len(nSnps)),
+    snp_id = snpIds,
     effect_allele = sample(alleles, nSnps, replace = TRUE),
     other_allele = sample(alleles, nSnps, replace = TRUE),
     beta_ZX = betaZX,

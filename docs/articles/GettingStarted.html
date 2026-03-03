@@ -74,28 +74,16 @@
 <div class="section level2">
 <h2 id="what-is-medusa">What is Medusa?<a class="anchor" aria-label="anchor" href="#what-is-medusa"></a>
 </h2>
-<p>Medusa (<strong>M</strong>endelian <strong>E</strong>stimation in
-<strong>D</strong>istributed <strong>S</strong>tandardized
-<strong>A</strong>nalytics) is an R package that implements two-sample
-Mendelian Randomization (MR) within the OHDSI ecosystem using the OMOP
-Common Data Model.</p>
-<p><strong>Mendelian Randomization</strong> uses genetic variants as
-instrumental variables to estimate causal effects of exposures on
-outcomes. Because genetic variants are randomly allocated at conception
-(like a natural randomized trial), MR can provide evidence for causality
-from observational data.</p>
-<p><strong>Two-sample MR</strong> separates the analysis into two
-parts:</p>
+<p>Medusa (<strong>M</strong>endelian <strong>E</strong>stimation in <strong>D</strong>istributed <strong>S</strong>tandardized <strong>A</strong>nalytics) is an R package that implements two-sample Mendelian Randomization (MR) within the OHDSI ecosystem using the OMOP Common Data Model.</p>
+<p><strong>Mendelian Randomization</strong> uses genetic variants as instrumental variables to estimate causal effects of exposures on outcomes. Because genetic variants are randomly allocated at conception (like a natural randomized trial), MR can provide evidence for causality from observational data.</p>
+<p><strong>Two-sample MR</strong> separates the analysis into two parts:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>SNP-exposure associations</strong> (beta_ZX): Obtained from
-published GWAS (typically from large biobank studies)</li>
+<strong>SNP-exposure associations</strong> (beta_ZX): Obtained from published GWAS (typically from large biobank studies)</li>
 <li>
-<strong>SNP-outcome associations</strong> (beta_ZY): Estimated from
-your own cohort data</li>
+<strong>SNP-outcome associations</strong> (beta_ZY): Estimated from your own cohort data</li>
 </ol>
-<p>The causal estimate is the <strong>Wald ratio</strong>: beta_MR =
-beta_ZY / beta_ZX.</p>
+<p>The causal estimate is the <strong>Wald ratio</strong>: beta_MR = beta_ZY / beta_ZX.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -110,29 +98,21 @@ beta_ZY / beta_ZX.</p>
 <div class="section level2">
 <h2 id="the-federated-approach">The Federated Approach<a class="anchor" aria-label="anchor" href="#the-federated-approach"></a>
 </h2>
-<p>Medusa’s key innovation is <strong>one-shot federated
-pooling</strong>. Here’s how it works:</p>
+<p>Medusa’s key innovation is <strong>one-shot federated pooling</strong>. Here’s how it works:</p>
 <ol style="list-style-type: decimal">
-<li>The <strong>coordinator</strong> assembles genetic instruments from
-public GWAS data</li>
-<li>Each <strong>site</strong> (hospital/biobank with OMOP CDM + genomic
-data):
+<li>The <strong>coordinator</strong> assembles genetic instruments from public GWAS data</li>
+<li>Each <strong>site</strong> (hospital/biobank with OMOP CDM + genomic data):
 <ul>
 <li>Extracts the outcome cohort and genotype data locally</li>
 <li>Fits a regression model locally</li>
-<li>Computes a <strong>profile log-likelihood curve</strong> (a vector
-of numbers)</li>
-<li>Shares ONLY this vector — no individual-level data leaves the
-site</li>
+<li>Computes a <strong>profile log-likelihood curve</strong> (a vector of numbers)</li>
+<li>Shares ONLY this vector — no individual-level data leaves the site</li>
 </ul>
 </li>
-<li>The <strong>coordinator</strong> sums the log-likelihood vectors
-across sites</li>
+<li>The <strong>coordinator</strong> sums the log-likelihood vectors across sites</li>
 <li>The causal estimate is extracted from the combined curve</li>
 </ol>
-<p>This is privacy-preserving by design: the shared data is a smooth
-numeric vector that cannot be reverse-engineered to identify individual
-patients.</p>
+<p>This is privacy-preserving by design: the shared data is a smooth numeric vector that cannot be reverse-engineered to identify individual patients.</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start-with-simulated-data">Quick Start with Simulated Data<a class="anchor" aria-label="anchor" href="#quick-start-with-simulated-data"></a>
@@ -175,9 +155,9 @@ patients.</p>
 <span></span>
 <span><span class="co"># The profile contains no individual-level data</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "siteId"          "betaGrid"        "logLikProfile"   "nCases"         </span></span>
-<span><span class="co">#&gt; [5] "nControls"       "snpIds"          "diagnosticFlags" "betaHat"        </span></span>
-<span><span class="co">#&gt; [9] "seHat"</span></span>
+<span><span class="co">#&gt;  [1] "siteId"          "betaGrid"        "logLikProfile"   "nCases"         </span></span>
+<span><span class="co">#&gt;  [5] "nControls"       "snpIds"          "diagnosticFlags" "betaHat"        </span></span>
+<span><span class="co">#&gt;  [9] "seHat"           "scoreDefinition"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"beta_ZY estimate: %.3f (SE: %.3f)\n"</span>, <span class="va">profile</span><span class="op">$</span><span class="va">betaHat</span>, <span class="va">profile</span><span class="op">$</span><span class="va">seHat</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; beta_ZY estimate: 0.614 (SE: 0.141)</span></span></code></pre></div>
 </div>
@@ -208,17 +188,17 @@ patients.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">instruments</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulateInstrumentTable.html">simulateInstrumentTable</a></span><span class="op">(</span>nSnps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/computeMREstimate.html">computeMREstimate</a></span><span class="op">(</span><span class="va">combined</span>, <span class="va">instruments</span><span class="op">)</span></span>
-<span><span class="co">#&gt; MR estimate: beta = 3.1823 (95% CI: 2.3144, 4.3395), p = 1.33e-05</span></span>
-<span><span class="co">#&gt; Odds ratio: 24.102 (95% CI: 10.119, 76.667)</span></span>
+<span><span class="co">#&gt; MR estimate: beta = 2.0646 (95% CI: 1.5015, 2.8154), p = 2.55e-06</span></span>
+<span><span class="co">#&gt; Odds ratio: 7.882 (95% CI: 4.489, 16.699)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Causal estimate (beta_MR): %.3f\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">betaMR</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Causal estimate (beta_MR): 3.182</span></span>
+<span><span class="co">#&gt; Causal estimate (beta_MR): 2.065</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"95%% CI: [%.3f, %.3f]\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">ciLower</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">ciUpper</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 95% CI: [2.314, 4.339]</span></span>
+<span><span class="co">#&gt; 95% CI: [1.502, 2.815]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"P-value: %.2e\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">pValue</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; P-value: 1.33e-05</span></span>
+<span><span class="co">#&gt; P-value: 2.55e-06</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Odds ratio: %.3f\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">oddsRatio</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Odds ratio: 24.102</span></span></code></pre></div>
+<span><span class="co">#&gt; Odds ratio: 7.882</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-sensitivity-analyses">Run Sensitivity Analyses<a class="anchor" aria-label="anchor" href="#run-sensitivity-analyses"></a>
@@ -227,77 +207,65 @@ patients.</p>
 <code class="sourceCode R"><span><span class="co"># Create per-SNP estimates for sensitivity analyses</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="va">nSnps</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
-<span><span class="va">betaZX</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nSnps</span>, <span class="fl">0.3</span>, <span class="fl">0.05</span><span class="op">)</span></span>
+<span><span class="va">instrumentSummary</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulateInstrumentTable.html">simulateInstrumentTable</a></span><span class="op">(</span>nSnps <span class="op">=</span> <span class="va">nSnps</span>, seed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span></span>
 <span><span class="va">perSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  snp_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"rs"</span>, <span class="fl">1</span><span class="op">:</span><span class="va">nSnps</span><span class="op">)</span>,</span>
-<span>  beta_ZY <span class="op">=</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">betaZX</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nSnps</span>, <span class="fl">0</span>, <span class="fl">0.02</span><span class="op">)</span>,</span>
+<span>  snp_id <span class="op">=</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">snp_id</span>,</span>
+<span>  beta_ZY <span class="op">=</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">beta_ZX</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nSnps</span>, <span class="fl">0</span>, <span class="fl">0.02</span><span class="op">)</span>,</span>
 <span>  se_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.02</span>, <span class="va">nSnps</span><span class="op">)</span>,</span>
-<span>  beta_ZX <span class="op">=</span> <span class="va">betaZX</span>,</span>
-<span>  se_ZX <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="va">nSnps</span><span class="op">)</span></span>
+<span>  beta_ZX <span class="op">=</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">beta_ZX</span>,</span>
+<span>  se_ZX <span class="op">=</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">se_ZX</span>,</span>
+<span>  effect_allele <span class="op">=</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">effect_allele</span>,</span>
+<span>  other_allele <span class="op">=</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">other_allele</span>,</span>
+<span>  eaf <span class="op">=</span> <span class="va">instrumentSummary</span><span class="op">$</span><span class="va">eaf</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses</a></span><span class="op">(</span><span class="va">perSnp</span><span class="op">)</span></span>
+<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses</a></span><span class="op">(</span></span>
+<span>  <span class="va">perSnp</span>,</span>
+<span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"internal"</span></span>
+<span><span class="op">)</span></span>
 <span><span class="co">#&gt; Running sensitivity analyses with 10 SNPs...</span></span>
+<span><span class="co">#&gt;   Engine: internal</span></span>
 <span><span class="co">#&gt;   IVW...</span></span>
 <span><span class="co">#&gt;   MR-Egger...</span></span>
 <span><span class="co">#&gt;   Weighted Median...</span></span>
-<span><span class="co">#&gt;   Steiger filtering...</span></span>
-<span><span class="co">#&gt;     Steiger filter removed 8 of 10 SNPs.</span></span>
 <span><span class="co">#&gt;   Leave-One-Out...</span></span>
 <span><span class="co">#&gt; Sensitivity analyses complete.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">results</span><span class="op">$</span><span class="va">summary</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                 method   beta_MR      se_MR   ci_lower  ci_upper          pval</span></span>
-<span><span class="co">#&gt; 1                  IVW 0.4859306 0.01917957  0.4483387 0.5235226 1.287302e-141</span></span>
-<span><span class="co">#&gt; 2             MR-Egger 0.2072935 0.25588407 -0.2942393 0.7088263  4.413080e-01</span></span>
-<span><span class="co">#&gt; 3      Weighted Median 0.4848631 0.04409626  0.3984344 0.5712918  4.014147e-28</span></span>
-<span><span class="co">#&gt; 4 Steiger-filtered IVW 0.3577932 0.04016741  0.2790651 0.4365213  5.217304e-19</span></span></code></pre></div>
+<span><span class="co">#&gt;            method   beta_MR      se_MR  ci_lower  ci_upper         pval</span></span>
+<span><span class="co">#&gt; 1             IVW 0.4586540 0.02188781 0.4157539 0.5015541 1.697680e-97</span></span>
+<span><span class="co">#&gt; 2        MR-Egger 0.4634544 0.03576486 0.3933553 0.5335535 1.191296e-06</span></span>
+<span><span class="co">#&gt; 3 Weighted Median 0.4764280 0.02650498 0.4244783 0.5283778 3.056401e-72</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
 <h2 id="understanding-the-report">Understanding the Report<a class="anchor" aria-label="anchor" href="#understanding-the-report"></a>
 </h2>
-<p>The <code><a href="../reference/generateMRReport.html">generateMRReport()</a></code> function creates a self-contained
-HTML report with:</p>
+<p>The <code><a href="../reference/generateMRReport.html">generateMRReport()</a></code> function creates a self-contained HTML report with:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Executive Summary</strong> — Plain-language interpretation
-with strength rating</li>
+<strong>Executive Summary</strong> — Plain-language interpretation with strength rating</li>
 <li>
-<strong>Instrument Summary</strong> — Table of all SNPs with
-F-statistics</li>
+<strong>Instrument Summary</strong> — Table of all SNPs with F-statistics</li>
 <li>
-<strong>Likelihood Profile</strong> — Visual of site and combined
-likelihood curves</li>
+<strong>Likelihood Profile</strong> — Visual of site and combined likelihood curves</li>
 <li>
-<strong>Main Result</strong> — Odds ratio with confidence
-interval</li>
+<strong>Main Result</strong> — Odds ratio with confidence interval</li>
 <li>
-<strong>Sensitivity Analyses</strong> — Forest plot comparing
-methods</li>
+<strong>Sensitivity Analyses</strong> — Forest plot comparing methods</li>
 <li>
-<strong>Diagnostics</strong> — PheWAS plot, negative controls,
-missingness</li>
+<strong>Diagnostics</strong> — PheWAS plot, negative controls, missingness</li>
 <li>
-<strong>Methods Section</strong> — Auto-generated text for
-manuscripts</li>
+<strong>Methods Section</strong> — Auto-generated text for manuscripts</li>
 </ol>
 </div>
 <div class="section level2">
 <h2 id="faq">FAQ<a class="anchor" aria-label="anchor" href="#faq"></a>
 </h2>
-<p><strong>What genomic data linkage is required?</strong> Your OMOP CDM
-site needs a genomic linkage table mapping person_id to SNP genotypes
-(coded as 0/1/2 for allele count). This is increasingly common in
-biobank-linked health systems.</p>
-<p><strong>What if my site has no genomic data?</strong> Medusa requires
-at least one site with genomic data linked to OMOP CDM. Sites without
-genomic data cannot participate in the federated analysis.</p>
-<p><strong>How many sites are needed?</strong> A single site is
-sufficient. More sites increase statistical power and allow for
-cross-site validation. The federated approach adds value with 2+
-sites.</p>
-<p><strong>What OMOP CDM version is required?</strong> Medusa supports
-OMOP CDM v5.3 and v5.4.</p>
+<p><strong>What genomic data linkage is required?</strong> Your OMOP CDM site needs a genomic linkage table mapping person_id to SNP genotypes (coded as 0/1/2 for allele count). This is increasingly common in biobank-linked health systems.</p>
+<p><strong>What if my site has no genomic data?</strong> Medusa requires at least one site with genomic data linked to OMOP CDM. Sites without genomic data cannot participate in the federated analysis.</p>
+<p><strong>How many sites are needed?</strong> A single site is sufficient. More sites increase statistical power and allow for cross-site validation. The federated approach adds value with 2+ sites.</p>
+<p><strong>What OMOP CDM version is required?</strong> Medusa supports OMOP CDM v5.3 and v5.4.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

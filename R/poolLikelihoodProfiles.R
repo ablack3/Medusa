@@ -85,20 +85,32 @@ poolLikelihoodProfiles <- function(siteProfileList,
 
   # Get reference grid from first site
   referenceGrid <- siteProfileList[[1]]$betaGrid
+  referenceScoreDefinition <- siteProfileList[[1]]$scoreDefinition
 
   # Validate grid alignment
   needsInterpolation <- FALSE
-  if (validateGridAlignment && nSites > 1) {
+  if (nSites > 1) {
     for (i in 2:nSites) {
       siteGrid <- siteProfileList[[i]]$betaGrid
-      if (length(siteGrid) != length(referenceGrid) ||
-          !all(abs(siteGrid - referenceGrid) < 1e-10)) {
+      if (validateGridAlignment &&
+          (length(siteGrid) != length(referenceGrid) ||
+           !all(abs(siteGrid - referenceGrid) < 1e-10))) {
         needsInterpolation <- TRUE
         warning(sprintf(
           paste0("Site '%s' used different betaGrid. Interpolating to common grid. ",
                  "Consider specifying identical betaGrid at all sites."),
           siteProfileList[[i]]$siteId
         ))
+      }
+
+      if (!identicalScoreDefinition(siteProfileList[[i]]$scoreDefinition,
+                                    referenceScoreDefinition)) {
+        stop(
+          sprintf(
+            "Site '%s' used a different allele-score definition. All pooled sites must use the same SNP set and score weights.",
+            siteProfileList[[i]]$siteId
+          )
+        )
       }
     }
   }
@@ -165,9 +177,23 @@ poolLikelihoodProfiles <- function(siteProfileList,
     siteContributions = siteContributions,
     nSites = nSites,
     totalCases = totalCases,
-    totalControls = totalControls
+    totalControls = totalControls,
+    scoreDefinition = referenceScoreDefinition
   )
   class(result) <- "medusaCombinedProfile"
 
   result
+}
+
+
+#' @keywords internal
+identicalScoreDefinition <- function(lhs, rhs) {
+  if (is.null(lhs) || is.null(rhs)) {
+    return(is.null(lhs) && is.null(rhs))
+  }
+
+  identical(lhs$snpIds, rhs$snpIds) &&
+    isTRUE(all.equal(lhs$scoreWeights, rhs$scoreWeights, tolerance = 1e-10)) &&
+    isTRUE(all.equal(lhs$betaZX, rhs$betaZX, tolerance = 1e-10)) &&
+    isTRUE(all.equal(lhs$seZX, rhs$seZX, tolerance = 1e-10))
 }
