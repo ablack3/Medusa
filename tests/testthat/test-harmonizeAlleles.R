@@ -257,6 +257,39 @@ test_that("complement allele swap flips effect direction and eaf", {
   expect_equal(nrow(result$removedSnps), 0)
 })
 
+test_that("harmonizeAlleles is idempotent after SNPs are aligned to genotype coding", {
+  instruments <- data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    effect_allele = c("A", "G", "A"),
+    other_allele = c("C", "T", "G"),
+    beta_ZX = c(0.5, -0.3, 0.2),
+    se_ZX = c(0.05, 0.08, 0.06),
+    pval_ZX = c(1e-10, 1e-5, 1e-8),
+    eaf = c(0.3, 0.45, 0.6),
+    stringsAsFactors = FALSE
+  )
+  genoAlleles <- data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    allele_coded = c("C", "G", "A"),
+    allele_noncoded = c("A", "T", "G"),
+    stringsAsFactors = FALSE
+  )
+
+  firstPass <- suppressMessages(harmonizeAlleles(instruments, genoAlleles))
+  secondPass <- suppressMessages(harmonizeAlleles(firstPass$instrumentTable, genoAlleles))
+
+  stableCols <- c(
+    "snp_id", "effect_allele", "other_allele",
+    "beta_ZX", "se_ZX", "pval_ZX", "eaf"
+  )
+  expect_equal(
+    secondPass$instrumentTable[, stableCols, drop = FALSE],
+    firstPass$instrumentTable[, stableCols, drop = FALSE]
+  )
+  expect_true(all(!secondPass$instrumentTable$flipped))
+  expect_equal(nrow(secondPass$removedSnps), 0)
+})
+
 test_that("complementAllele returns correct complements", {
   expect_equal(complementAllele("A"), "T")
   expect_equal(complementAllele("T"), "A")

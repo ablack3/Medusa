@@ -365,3 +365,100 @@ test_that("computeMREstimate reorders confidence limits when the score denominat
 test_that("findProfileInterval returns NULL when the peak is outside the CI mask", {
   expect_null(findProfileInterval(c(FALSE, TRUE, TRUE), peakIdx = 1))
 })
+
+test_that("computeMREstimate is equivariant to rescaling the outcome profile", {
+  baseGrid <- seq(-2, 2, by = 0.01)
+  baseBetaZY <- 0.4
+  baseSeZY <- 0.1
+  scaledGrid <- seq(-4, 4, by = 0.02)
+  scaleFactor <- 2
+
+  baseProfile <- -0.5 * ((baseGrid - baseBetaZY) / baseSeZY)^2
+  baseProfile <- baseProfile - max(baseProfile)
+  scaledProfile <- -0.5 * ((scaledGrid - scaleFactor * baseBetaZY) /
+                             (scaleFactor * baseSeZY))^2
+  scaledProfile <- scaledProfile - max(scaledProfile)
+
+  combinedBase <- list(
+    betaGrid = baseGrid,
+    logLikProfile = baseProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+  combinedScaled <- list(
+    betaGrid = scaledGrid,
+    logLikProfile = scaledProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.02,
+    pval_ZX = 1e-20,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  baseResult <- suppressMessages(computeMREstimate(combinedBase, instruments))
+  scaledResult <- suppressMessages(computeMREstimate(combinedScaled, instruments))
+
+  expect_equal(scaledResult$betaMR, scaleFactor * baseResult$betaMR, tolerance = 0.05)
+  expect_equal(scaledResult$seMR, scaleFactor * baseResult$seMR, tolerance = 0.05)
+  expect_equal(
+    scaledResult$ciUpper - scaledResult$ciLower,
+    scaleFactor * (baseResult$ciUpper - baseResult$ciLower),
+    tolerance = 0.1
+  )
+})
+
+test_that("computeMREstimate returns tighter intervals for sharper profiles", {
+  betaGrid <- seq(-2, 2, by = 0.01)
+  betaZY <- 0.3
+  broadProfile <- -0.5 * ((betaGrid - betaZY) / 0.2)^2
+  broadProfile <- broadProfile - max(broadProfile)
+  sharpProfile <- -0.5 * ((betaGrid - betaZY) / 0.08)^2
+  sharpProfile <- sharpProfile - max(sharpProfile)
+
+  combinedBroad <- list(
+    betaGrid = betaGrid,
+    logLikProfile = broadProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+  combinedSharp <- list(
+    betaGrid = betaGrid,
+    logLikProfile = sharpProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.02,
+    pval_ZX = 1e-20,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+
+  broadResult <- suppressMessages(computeMREstimate(combinedBroad, instruments))
+  sharpResult <- suppressMessages(computeMREstimate(combinedSharp, instruments))
+
+  expect_lt(sharpResult$ciUpper - sharpResult$ciLower,
+            broadResult$ciUpper - broadResult$ciLower)
+  expect_lt(sharpResult$seMR, broadResult$seMR)
+})

@@ -574,3 +574,100 @@ test_that("runSensitivityAnalyses helper branches cover fallback and error paths
     "Cannot compute ratio estimates"
   )
 })
+
+test_that("internal sensitivity estimators are invariant to SNP row order", {
+  set.seed(901)
+  nSnps <- 8
+  perSnp <- with_harmonisation_columns(data.frame(
+    snp_id = paste0("rs", seq_len(nSnps)),
+    beta_ZY = rnorm(nSnps, 0.12, 0.015),
+    se_ZY = rep(0.02, nSnps),
+    beta_ZX = rnorm(nSnps, 0.3, 0.04),
+    se_ZX = rep(0.03, nSnps),
+    stringsAsFactors = FALSE
+  ))
+  permuted <- perSnp[sample.int(nSnps), , drop = FALSE]
+
+  baseResults <- suppressMessages(
+    runSensitivityAnalyses(
+      perSnp,
+      methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+      engine = "internal"
+    )
+  )
+  permutedResults <- suppressMessages(
+    runSensitivityAnalyses(
+      permuted,
+      methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+      engine = "internal"
+    )
+  )
+
+  expect_equal(baseResults$ivw$beta_MR, permutedResults$ivw$beta_MR, tolerance = 1e-12)
+  expect_equal(baseResults$ivw$se_MR, permutedResults$ivw$se_MR, tolerance = 1e-12)
+  expect_equal(baseResults$mrEgger$beta_MR, permutedResults$mrEgger$beta_MR, tolerance = 1e-12)
+  expect_equal(baseResults$mrEgger$intercept, permutedResults$mrEgger$intercept, tolerance = 1e-12)
+  expect_equal(baseResults$weightedMedian$beta_MR, permutedResults$weightedMedian$beta_MR, tolerance = 1e-12)
+
+  baseLoo <- baseResults$leaveOneOut[order(baseResults$leaveOneOut$snp_removed), , drop = FALSE]
+  permutedLoo <- permutedResults$leaveOneOut[order(permutedResults$leaveOneOut$snp_removed), , drop = FALSE]
+  rownames(baseLoo) <- NULL
+  rownames(permutedLoo) <- NULL
+  expect_equal(baseLoo, permutedLoo, tolerance = 1e-12)
+})
+
+test_that("IVW and weighted median remain close to the true effect in repeated low-noise simulations", {
+  trueEffect <- 0.4
+  seeds <- 1:20
+
+  ivwErrors <- vapply(seeds, function(seed) {
+    set.seed(seed)
+    nSnps <- 15
+    betaZX <- runif(nSnps, min = 0.1, max = 0.5)
+    perSnp <- with_harmonisation_columns(data.frame(
+      snp_id = paste0("rs", seq_len(nSnps)),
+      beta_ZY = trueEffect * betaZX + rnorm(nSnps, sd = 0.005),
+      se_ZY = rep(0.01, nSnps),
+      beta_ZX = betaZX,
+      se_ZX = rep(0.02, nSnps),
+      stringsAsFactors = FALSE
+    ))
+
+    results <- suppressMessages(
+      runSensitivityAnalyses(
+        perSnp,
+        methods = c("IVW", "WeightedMedian"),
+        engine = "internal"
+      )
+    )
+
+    abs(results$ivw$beta_MR - trueEffect)
+  }, numeric(1))
+
+  wmErrors <- vapply(seeds, function(seed) {
+    set.seed(seed)
+    nSnps <- 15
+    betaZX <- runif(nSnps, min = 0.1, max = 0.5)
+    perSnp <- with_harmonisation_columns(data.frame(
+      snp_id = paste0("rs", seq_len(nSnps)),
+      beta_ZY = trueEffect * betaZX + rnorm(nSnps, sd = 0.005),
+      se_ZY = rep(0.01, nSnps),
+      beta_ZX = betaZX,
+      se_ZX = rep(0.02, nSnps),
+      stringsAsFactors = FALSE
+    ))
+
+    results <- suppressMessages(
+      runSensitivityAnalyses(
+        perSnp,
+        methods = c("IVW", "WeightedMedian"),
+        engine = "internal"
+      )
+    )
+
+    abs(results$weightedMedian$beta_MR - trueEffect)
+  }, numeric(1))
+
+  expect_lt(mean(ivwErrors), 0.03)
+  expect_lt(mean(wmErrors), 0.04)
+})

@@ -167,3 +167,22 @@ test_that("poolLikelihoodProfiles adopts a finer grid from a later site when nee
   expect_equal(length(combined$betaGrid), length(fineGrid))
   expect_equal(combined$betaGrid, fineGrid)
 })
+
+test_that("poolLikelihoodProfiles is invariant to site order", {
+  profiles <- simulateSiteProfiles(nSites = 4, trueBeta = 0.35, seed = 1201)
+  reversedProfiles <- rev(profiles)
+
+  combinedForward <- poolLikelihoodProfiles(profiles)
+  combinedReversed <- poolLikelihoodProfiles(reversedProfiles)
+
+  expect_equal(combinedForward$betaGrid, combinedReversed$betaGrid)
+  expect_equal(combinedForward$logLikProfile, combinedReversed$logLikProfile, tolerance = 1e-12)
+  expect_equal(combinedForward$totalCases, combinedReversed$totalCases)
+  expect_equal(combinedForward$totalControls, combinedReversed$totalControls)
+
+  forwardContrib <- combinedForward$siteContributions[order(combinedForward$siteContributions$siteId), , drop = FALSE]
+  reversedContrib <- combinedReversed$siteContributions[order(combinedReversed$siteContributions$siteId), , drop = FALSE]
+  rownames(forwardContrib) <- NULL
+  rownames(reversedContrib) <- NULL
+  expect_equal(forwardContrib, reversedContrib)
+})
