@@ -70,6 +70,9 @@ test_that("delta method standard error formula", {
 })
 
 test_that("95% CI from likelihood profile contains true parameter in simulation", {
+  # Repeated coverage simulation is intended for explicit pre-release validation only.
+  skip_if_not_full_validation()
+
   set.seed(42)
   nReps <- 50
   trueEffect <- 0.5

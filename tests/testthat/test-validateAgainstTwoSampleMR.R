@@ -1,4 +1,6 @@
 test_that("validateAgainstTwoSampleMR returns a comparison table", {
+  # Single-site cross-package validation is useful before release, but not needed by default.
+  skip_if_not_full_validation()
   skip_if_not_installed("TwoSampleMR")
 
   simData <- simulateMRData(n = 2500, nSnps = 4, trueEffect = 0.25, seed = 777)

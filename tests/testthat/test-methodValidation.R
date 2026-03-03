@@ -126,6 +126,8 @@ makeQuadraticSiteProfiles <- function(siteBetas,
 
 
 test_that("internal summary-data estimators agree with TwoSampleMR on clean harmonised data", {
+  # Cross-package agreement checks are useful before release, but are too costly by default.
+  skip_if_not_full_validation()
   skip_if_not_installed("TwoSampleMR")
 
   perSnp <- buildCleanPerSnpSummary()
@@ -162,6 +164,9 @@ test_that("internal summary-data estimators agree with TwoSampleMR on clean harm
 })
 
 test_that("fitOutcomeModel matches a brute-force constrained glm profile on a fixed dataset", {
+  # Brute-force profile validation is an explicit pre-release calibration check.
+  skip_if_not_full_validation()
+
   simData <- simulateMRData(n = 600, nSnps = 4, trueEffect = 0.2, seed = 9100)
   covariateData <- simData$data[, c("person_id", "confounder_1", "confounder_2"), drop = FALSE]
   betaGrid <- seq(-1.2, 1.2, by = 0.1)
@@ -200,6 +205,8 @@ test_that("fitOutcomeModel matches a brute-force constrained glm profile on a fi
 })
 
 test_that("glm and unpenalized Cyclops backends agree on low-dimensional fits", {
+  # Backend equivalence checks are useful before release, but are too costly by default.
+  skip_if_not_full_validation()
   skip_if_not_installed("Cyclops")
 
   simData <- simulateMRData(n = 800, nSnps = 4, trueEffect = 0.2, seed = 9200)
@@ -250,6 +257,9 @@ test_that("glm and unpenalized Cyclops backends agree on low-dimensional fits", 
 })
 
 test_that("federated pooling recovers truth more closely with more sites and reduces uncertainty", {
+  # This is a slower end-to-end recovery check intended for explicit validation only.
+  skip_if_not_full_validation()
+
   betaGrid <- seq(-2, 2, by = 0.01)
   instrumentTable <- data.frame(
     snp_id = "rs1",
@@ -300,6 +310,9 @@ test_that("federated pooling recovers truth more closely with more sites and red
 })
 
 test_that("federated pooling is invariant to equivalent site partitioning", {
+  # This is a slower end-to-end recovery check intended for explicit validation only.
+  skip_if_not_full_validation()
+
   betaGrid <- seq(-2, 2, by = 0.02)
   instrumentTable <- data.frame(
     snp_id = "rs1",

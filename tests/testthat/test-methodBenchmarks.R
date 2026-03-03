@@ -1,4 +1,7 @@
 test_that("Monte Carlo MR benchmark returns calibration summaries", {
+  # This benchmark is intended for explicit pre-release validation only.
+  skip_if_not_full_validation()
+
   benchmark <- runMonteCarloMRBenchmark(
     nRep = 4,
     n = 700,
@@ -21,6 +24,9 @@ test_that("Monte Carlo MR benchmark returns calibration summaries", {
 })
 
 test_that("Monte Carlo benchmark shows lower RMSE at larger sample sizes", {
+  # This benchmark is intended for explicit pre-release validation only.
+  skip_if_not_full_validation()
+
   smallBenchmark <- runMonteCarloMRBenchmark(
     nRep = 8,
     n = 400,
@@ -49,6 +55,9 @@ test_that("Monte Carlo benchmark shows lower RMSE at larger sample sizes", {
 })
 
 test_that("Monte Carlo benchmark gives broadly acceptable coverage and null calibration", {
+  # This benchmark is intended for explicit pre-release validation only.
+  skip_if_not_full_validation()
+
   signalBenchmark <- runMonteCarloMRBenchmark(
     nRep = 8,
     n = 900,
