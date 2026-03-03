@@ -131,7 +131,7 @@ generateMRReport(
 
 - R >= 4.1.0
 - OHDSI packages: DatabaseConnector, SqlRender, Cyclops, FeatureExtraction
-- OMOP CDM database with OMOP Genomic Extension (VARIANT_OCCURRENCE table)
+- OMOP CDM database with [OMOP Genomic CDM](https://github.com/OHDSI/Genomic-CDM) (VARIANT_OCCURRENCE table)
 - For instrument retrieval: internet access to OpenGWAS API
 
 ## License

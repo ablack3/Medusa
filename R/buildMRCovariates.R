@@ -90,6 +90,10 @@ buildMRCovariates <- function(connectionDetails,
   checkmate::assertCount(outcomeCohortId, positive = TRUE)
   checkmate::assertCount(numAncestryPCs, positive = TRUE)
 
+  if (xor(is.null(ancestryPCsTable), is.null(ancestryPCsSchema))) {
+    stop("Both 'ancestryPCsTable' and 'ancestryPCsSchema' must be provided together, or both must be NULL.")
+  }
+
   if (!requireNamespace("DatabaseConnector", quietly = TRUE)) {
     stop("Package 'DatabaseConnector' is required for buildMRCovariates(). ",
          "Install it with: remotes::install_github('ohdsi/DatabaseConnector')",

@@ -112,6 +112,8 @@ cohort <- buildMRCohort(
 
 }
 \references{
+OHDSI Genomic CDM: \url{https://github.com/OHDSI/Genomic-CDM}
+
 Hripcsak, G., et al. (2015). Observational Health Data Sciences and Informatics
 (OHDSI): Opportunities for Observational Researchers. \emph{Studies in Health
 Technology and Informatics}, 216, 574-578.

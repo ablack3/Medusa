@@ -178,3 +178,36 @@ test_that("importSiteProfile errors when the profile CSV is malformed", {
     "Profile CSV is missing required columns"
   )
 })
+
+test_that("export/import round-trip works when scoreDefinition is NULL", {
+  profile <- list(
+    siteId = "no_score_site",
+    betaGrid = seq(-1, 1, by = 0.5),
+    logLikProfile = c(-2, -0.5, 0, -0.5, -2),
+    nCases = 100L,
+    nControls = 900L,
+    snpIds = c("rs1", "rs2"),
+    diagnosticFlags = list(
+      weakInstruments = FALSE,
+      lowCaseCount = FALSE,
+      gridBoundaryMLE = FALSE
+    ),
+    betaHat = 0,
+    seHat = 0.5,
+    scoreDefinition = NULL
+  )
+  class(profile) <- "medusaSiteProfile"
+
+  tmpDir <- tempfile("medusa_export_")
+  dir.create(tmpDir)
+  on.exit(unlink(tmpDir, recursive = TRUE))
+
+  paths <- exportSiteProfile(profile, outputDir = tmpDir)
+  expect_false("score" %in% names(paths))
+
+  imported <- importSiteProfile(paths[["profile"]])
+  expect_equal(imported$siteId, "no_score_site")
+  expect_equal(imported$betaGrid, profile$betaGrid)
+  expect_equal(imported$logLikProfile, profile$logLikProfile)
+  expect_null(imported$scoreDefinition)
+})

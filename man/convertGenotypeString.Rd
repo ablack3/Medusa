@@ -24,3 +24,6 @@ Converts genotype strings from the OMOP Genomic Extension's
 convertGenotypeString(c("0/0", "0/1", "1/1", "0|1", "2"))
 
 }
+\references{
+OHDSI Genomic CDM: \url{https://github.com/OHDSI/Genomic-CDM}
+}

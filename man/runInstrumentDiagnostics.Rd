@@ -38,7 +38,9 @@ A named list with class "medusaDiagnostics" containing:
     \item{phewasResults}{Data frame with snp_id, covariate_id, covariate_name,
       beta, se, pval, domain_id, significant.}
     \item{negativeControlResults}{Data frame with snp_id, outcome_id, beta,
-      se, pval, or NULL if no negative controls provided.}
+      se, pval, or NULL if no negative controls provided. Note: negative
+      control testing is not yet implemented; this slot currently returns
+      an empty data frame when negative control IDs are supplied.}
     \item{afComparison}{Data frame with snp_id, eaf_gwas, eaf_cohort,
       eaf_diff, discrepancyFlag.}
     \item{missingnessReport}{Data frame with snp_id, n_total, n_missing,

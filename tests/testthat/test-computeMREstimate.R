@@ -213,7 +213,7 @@ test_that("warning issued for profile with multiple local maxima", {
 
   expect_warning(
     computeMREstimate(combined, instruments),
-    "multiple local maxima"
+    "local maxima"
   )
 })
 

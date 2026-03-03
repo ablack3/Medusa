@@ -375,6 +375,13 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
     modelData <- modelData[completeIdx, , drop = FALSE]
 
     if (nrow(modelData) < 20 || length(unique(modelData$outcome)) < 2) {
+      reason <- if (nrow(modelData) < 20) {
+        sprintf("too few complete observations (%d < 20)", nrow(modelData))
+      } else {
+        "outcome has no variation (all cases or all controls)"
+      }
+      message(sprintf("  Skipping SNP %s: %s.",
+                      alignedInstruments$snp_id[j], reason))
       profileMatrix[, j] <- rep(-Inf, length(betaGrid))
       betaHats[j] <- NA_real_
       seHats[j] <- NA_real_

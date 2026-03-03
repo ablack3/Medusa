@@ -48,6 +48,9 @@
 #'   installed and otherwise falls back to Medusa's internal implementations.
 #'   Use \code{"TwoSampleMR"} to require delegation, or \code{"internal"} to
 #'   force Medusa's built-in implementations. Default is \code{"auto"}.
+#' @param bootstrapSeed Integer or NULL. Seed for the parametric bootstrap used
+#'   by the internal Weighted Median SE estimator. Default is 42, which gives
+#'   reproducible results. Set to NULL to use the ambient RNG state.
 #'
 #' @return A named list with class "medusaSensitivity" containing:
 #'   \describe{
@@ -143,7 +146,8 @@ runSensitivityAnalyses <- function(perSnpEstimates,
                                    outcomeSampleSize = NULL,
                                    exposureSampleSize = NULL,
                                    outcomeType = "binary",
-                                   engine = "auto") {
+                                   engine = "auto",
+                                   bootstrapSeed = 42) {
   # Input validation
   validatePerSnpSummaryData(perSnpEstimates)
   checkmate::assertSubset(methods,
@@ -180,8 +184,8 @@ runSensitivityAnalyses <- function(perSnpEstimates,
 
   # --- MR-Egger ---
   if ("MREgger" %in% methods) {
-    if (nSnps < 3) {
-      message("  MR-Egger: skipped (requires >= 3 SNPs).")
+    if (nSnps < 4) {
+      message("  MR-Egger: skipped (requires >= 4 SNPs for intercept + slope estimation).")
       results$mrEgger <- NULL
     } else {
       message("  MR-Egger...")
@@ -203,7 +207,7 @@ runSensitivityAnalyses <- function(perSnpEstimates,
       results$weightedMedian <- if (identical(engine, "TwoSampleMR")) {
         computeWeightedMedianTwoSampleMR(harmonisedData)
       } else {
-        computeWeightedMedian(perSnpEstimates)
+        computeWeightedMedian(perSnpEstimates, seed = bootstrapSeed)
       }
     }
   }
@@ -630,9 +634,24 @@ computeLeaveOneOutTwoSampleMR <- function(harmonisedData) {
 #' @keywords internal
 computeIVW <- function(perSnpEstimates) {
   weights <- 1 / (perSnpEstimates$se_ZY^2)
+  denominator <- sum(weights * perSnpEstimates$beta_ZX^2)
+  if (!is.finite(denominator) || denominator <= 0) {
+    warning("IVW denominator (sum of weighted beta_ZX^2) is zero or non-finite. Returning NA result.")
+    return(data.frame(
+      method = "IVW",
+      beta_MR = NA_real_,
+      se_MR = NA_real_,
+      ci_lower = NA_real_,
+      ci_upper = NA_real_,
+      pval = NA_real_,
+      cochran_Q = NA_real_,
+      cochran_Q_pval = NA_real_,
+      stringsAsFactors = FALSE
+    ))
+  }
   betaMR <- sum(weights * perSnpEstimates$beta_ZY * perSnpEstimates$beta_ZX) /
-    sum(weights * perSnpEstimates$beta_ZX^2)
-  seMR <- sqrt(1 / sum(weights * perSnpEstimates$beta_ZX^2))
+    denominator
+  seMR <- sqrt(1 / denominator)
   zStat <- betaMR / seMR
   pval <- 2 * pnorm(-abs(zStat))
 
@@ -699,7 +718,7 @@ computeMREgger <- function(perSnpEstimates) {
 
 
 #' @keywords internal
-computeWeightedMedian <- function(perSnpEstimates, nBoot = 1000) {
+computeWeightedMedian <- function(perSnpEstimates, nBoot = 1000, seed = 42) {
   ratioSummary <- computeRatioSummary(perSnpEstimates)
   ratioEstimates <- ratioSummary$ratioEstimate
   ratioSE <- ratioSummary$ratioSe
@@ -723,7 +742,7 @@ computeWeightedMedian <- function(perSnpEstimates, nBoot = 1000) {
     }
   }, add = TRUE)
 
-  set.seed(42)
+  if (!is.null(seed)) set.seed(seed)
   bootEstimates <- numeric(nBoot)
   for (b in seq_len(nBoot)) {
     bootRatio <- stats::rnorm(

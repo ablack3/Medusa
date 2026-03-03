@@ -110,8 +110,10 @@ simulateMRData <- function(n = 5000,
   )
   # Ensure effect and other alleles differ
   for (i in seq_len(nSnps)) {
-    while (instrumentTable$effect_allele[i] == instrumentTable$other_allele[i]) {
-      instrumentTable$other_allele[i] <- sample(alleles, 1)
+    if (instrumentTable$effect_allele[i] == instrumentTable$other_allele[i]) {
+      instrumentTable$other_allele[i] <- sample(
+        setdiff(alleles, instrumentTable$effect_allele[i]), 1
+      )
     }
   }
 

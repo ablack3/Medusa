@@ -391,3 +391,41 @@ test_that("buildMRCohort stops when genotype data are unavailable", {
     "No persons in cohort have genotype data"
   )
 })
+
+test_that("reshapeGenotypes works after harmonization removes some SNPs", {
+  instruments <- data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    effect_allele = c("A", "G", "T"),
+    other_allele = c("C", "T", "A"),
+    beta_ZX = c(0.5, 0.3, 0.2),
+    se_ZX = c(0.05, 0.08, 0.06),
+    pval_ZX = c(1e-10, 1e-5, 1e-3),
+    eaf = c(0.3, 0.5, 0.4),
+    stringsAsFactors = FALSE
+  )
+
+  # Only rs1 and rs3 have genotype allele info; rs2 is "missing"
+  genoAlleles <- data.frame(
+    snp_id = c("rs1", "rs3"),
+    allele_coded = c("A", "T"),
+    allele_noncoded = c("C", "A"),
+    stringsAsFactors = FALSE
+  )
+  harmonized <- harmonizeAlleles(instruments, genoAlleles)
+  # rs2 should be dropped
+  expect_equal(nrow(harmonized$instrumentTable), 2)
+  expect_true(all(c("rs1", "rs3") %in% harmonized$instrumentTable$snp_id))
+
+  # Build genotype data with only the surviving SNPs
+  genotypeData <- data.frame(
+    personId = c(1, 1, 2, 2),
+    snpId = c("rs1", "rs3", "rs1", "rs3"),
+    genotype = c(0L, 2L, 1L, 1L),
+    stringsAsFactors = FALSE
+  )
+  result <- reshapeGenotypes(genotypeData, harmonized$instrumentTable)
+  expect_equal(nrow(result), 2)
+  expect_true("snp_rs1" %in% names(result))
+  expect_true("snp_rs3" %in% names(result))
+  expect_false("snp_rs2" %in% names(result))
+})

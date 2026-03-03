@@ -55,9 +55,9 @@ pooled likelihood workflow.
 
 ### OMOP Genomic Extension (VARIANT_OCCURRENCE)
 
-Each site needs the **VARIANT_OCCURRENCE** table from the OMOP CDM Genomic
-Extension. This table stores per-person variant calls. The minimal required
-columns are:
+Each site needs the **VARIANT_OCCURRENCE** table from the
+[OMOP Genomic CDM](https://github.com/OHDSI/Genomic-CDM).
+This table stores per-person variant calls. The minimal required columns are:
 
 | Column | Type | Description |
 |--------|------|-------------|

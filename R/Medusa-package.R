@@ -29,7 +29,7 @@
 #' communication protocol.
 #'
 #' @details
-#' The analysis pipeline consists of eight modules:
+#' The analysis pipeline consists of nine modules:
 #'
 #' \enumerate{
 #'   \item \strong{Instrument Assembly} (\code{\link{getMRInstruments}}):

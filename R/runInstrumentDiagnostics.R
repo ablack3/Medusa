@@ -46,7 +46,9 @@
 #'     \item{phewasResults}{Data frame with snp_id, covariate_id, covariate_name,
 #'       beta, se, pval, domain_id, significant.}
 #'     \item{negativeControlResults}{Data frame with snp_id, outcome_id, beta,
-#'       se, pval, or NULL if no negative controls provided.}
+#'       se, pval, or NULL if no negative controls provided. Note: negative
+#'       control testing is not yet implemented; this slot currently returns
+#'       an empty data frame when negative control IDs are supplied.}
 #'     \item{afComparison}{Data frame with snp_id, eaf_gwas, eaf_cohort,
 #'       eaf_diff, discrepancyFlag.}
 #'     \item{missingnessReport}{Data frame with snp_id, n_total, n_missing,
@@ -131,7 +133,7 @@ runInstrumentDiagnostics <- function(cohortData,
 
   # --- Assemble diagnostic flags ---
   diagnosticFlags <- c(
-    weakInstruments = any(fStatistics$fStatistic < 10),
+    weakInstruments = any(fStatistics$fStatistic < 10, na.rm = TRUE),
     phewasSignificant = any(phewasResults$significant, na.rm = TRUE),
     negativeControlFailure = !is.null(negativeControlResults) &&
       any(negativeControlResults$pval < 0.05, na.rm = TRUE),
@@ -301,6 +303,11 @@ runInstrumentPheWAS <- function(cohortData, covariateData, instrumentTable,
     }
   }
 
+  nTested <- nrow(results)
+  nSkipped <- nTests - nTested
+  message(sprintf("  PheWAS: tested %d of %d SNP-covariate pairs (%d skipped due to low N or no variation).",
+                  nTested, nTests, nSkipped))
+
   results
 }
 
@@ -308,10 +315,8 @@ runInstrumentPheWAS <- function(cohortData, covariateData, instrumentTable,
 #' @keywords internal
 testNegativeControls <- function(cohortData, instrumentTable,
                                   negativeControlOutcomeIds) {
-  # TODO: Implement negative control outcome testing. This requires outcome
-  # columns for each negative control in cohortData, which are not yet
-  # extracted by buildMRCohort. Until implemented, the negativeControlFailure
-  # diagnostic flag will always be FALSE.
+  message("  Negative control outcome testing is not yet implemented. ",
+          "The negativeControlFailure diagnostic flag will be FALSE.")
   data.frame(
     snp_id = character(0),
     outcome_id = integer(0),

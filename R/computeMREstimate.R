@@ -106,7 +106,10 @@ computeMREstimate <- function(combinedProfile,
   diffs <- diff(logLikProfile)
   signChanges <- sum(diffs[-length(diffs)] > 0 & diffs[-1] < 0)
   if (signChanges > 1) {
-    warning("Profile log-likelihood has multiple local maxima. Results may be unreliable.")
+    warning(sprintf(
+      "Profile log-likelihood has %d local maxima. The global maximum was used for the point estimate; inspect the profile plot for multimodality.",
+      signChanges
+    ))
   }
 
   # Step 1: Find MLE of beta_ZY

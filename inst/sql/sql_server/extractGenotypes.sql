@@ -1,4 +1,5 @@
 -- Extract genotypes for MR instrument SNPs from OMOP Genomic Extension
+-- OMOP Genomic CDM: https://github.com/OHDSI/Genomic-CDM
 --
 -- Uses the VARIANT_OCCURRENCE table from the OMOP CDM Genomic Extension.
 -- Minimal required columns from VARIANT_OCCURRENCE: person_id, rs_id, genotype.

@@ -697,3 +697,39 @@ test_that("computeWeightedMedian preserves the caller RNG state", {
   expect_equal(stateAfter, stateBefore)
   expect_equal(nextDraw, expectedNext)
 })
+
+test_that("IVW returns NA row when beta_ZX values are near zero", {
+  perSnp <- with_harmonisation_columns(data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    beta_ZY = c(0.1, 0.2, 0.15),
+    se_ZY = c(0.02, 0.02, 0.02),
+    beta_ZX = c(0, 0, 0),
+    se_ZX = c(0.05, 0.05, 0.05),
+    stringsAsFactors = FALSE
+  ))
+
+  expect_warning(
+    results <- suppressMessages(
+      runSensitivityAnalyses(perSnp, methods = "IVW", engine = "internal")
+    ),
+    "IVW denominator"
+  )
+  expect_true(is.na(results$ivw$beta_MR))
+  expect_true(is.na(results$ivw$se_MR))
+})
+
+test_that("MR-Egger requires at least 4 SNPs", {
+  perSnp <- with_harmonisation_columns(data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    beta_ZY = c(0.1, 0.2, 0.15),
+    se_ZY = c(0.02, 0.02, 0.02),
+    beta_ZX = c(0.3, 0.4, 0.35),
+    se_ZX = c(0.05, 0.05, 0.05),
+    stringsAsFactors = FALSE
+  ))
+
+  results <- suppressMessages(
+    runSensitivityAnalyses(perSnp, methods = "MREgger", engine = "internal")
+  )
+  expect_null(results$mrEgger)
+})

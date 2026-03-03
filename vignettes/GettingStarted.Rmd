@@ -189,8 +189,9 @@ The `generateMRReport()` function creates a self-contained HTML report with:
 ## FAQ
 
 **What genomic data is required?**
-Your OMOP CDM site needs the **VARIANT_OCCURRENCE** table from the OMOP CDM
-Genomic Extension. The minimal required columns are `person_id`, `rs_id`, and
+Your OMOP CDM site needs the **VARIANT_OCCURRENCE** table from the
+[OMOP Genomic CDM](https://github.com/OHDSI/Genomic-CDM).
+The minimal required columns are `person_id`, `rs_id`, and
 `genotype`. Genotypes can be stored as VCF-style strings ("0/0", "0/1", "1/1")
 or plain integers ("0", "1", "2"). The `reference_allele` and `alternate_allele`
 columns are also used for allele harmonization when available.

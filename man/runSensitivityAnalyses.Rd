@@ -10,7 +10,8 @@ runSensitivityAnalyses(
   outcomeSampleSize = NULL,
   exposureSampleSize = NULL,
   outcomeType = "binary",
-  engine = "auto"
+  engine = "auto",
+  bootstrapSeed = 42
 )
 }
 \arguments{
@@ -40,6 +41,10 @@ implementation on the harmonised data. Default is \code{"binary"}.}
 installed and otherwise falls back to Medusa's internal implementations.
 Use \code{"TwoSampleMR"} to require delegation, or \code{"internal"} to
 force Medusa's built-in implementations. Default is \code{"auto"}.}
+
+\item{bootstrapSeed}{Integer or NULL. Seed for the parametric bootstrap used
+by the internal Weighted Median SE estimator. Default is 42, which gives
+reproducible results. Set to NULL to use the ambient RNG state.}
 }
 \value{
 A named list with class "medusaSensitivity" containing:

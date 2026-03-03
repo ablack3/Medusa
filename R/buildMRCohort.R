@@ -78,6 +78,8 @@
 #' genotypes are flipped (2 - genotype) and instrument beta_ZX is negated.
 #'
 #' @references
+#' OHDSI Genomic CDM: \url{https://github.com/OHDSI/Genomic-CDM}
+#'
 #' Hripcsak, G., et al. (2015). Observational Health Data Sciences and Informatics
 #' (OHDSI): Opportunities for Observational Researchers. \emph{Studies in Health
 #' Technology and Informatics}, 216, 574-578.
@@ -180,6 +182,13 @@ buildMRCohort <- function(connectionDetails,
 
   # Step 2: Extract genotypes from VARIANT_OCCURRENCE (OMOP Genomic Extension)
   message("Extracting genotype data from VARIANT_OCCURRENCE...")
+  invalidSnpIds <- instrumentTable$snp_id[!grepl("^rs[0-9]+$", instrumentTable$snp_id)]
+  if (length(invalidSnpIds) > 0) {
+    stop(sprintf(
+      "Invalid SNP IDs detected (expected rs<number> format): %s",
+      paste(utils::head(invalidSnpIds, 5), collapse = ", ")
+    ))
+  }
   snpIdList <- paste(paste0("'", instrumentTable$snp_id, "'"), collapse = ", ")
   sql <- loadRenderTranslateSql(
     sqlFileName = "extractGenotypes.sql",

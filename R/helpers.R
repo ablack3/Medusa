@@ -235,6 +235,9 @@ isStrandAmbiguous <- function(effectAllele, otherAllele) {
 #'   "0|0", "0|1", "1|1") as well as plain integer strings ("0", "1", "2").
 #'   Unrecognized values are converted to NA with a warning.
 #'
+#' @references
+#' OHDSI Genomic CDM: \url{https://github.com/OHDSI/Genomic-CDM}
+#'
 #' @param genotypeRaw Character vector of raw genotype strings.
 #'
 #' @return Integer vector of allele dosage values (0, 1, or 2). Unrecognized
