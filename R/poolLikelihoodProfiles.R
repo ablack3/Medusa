@@ -135,7 +135,7 @@ poolLikelihoodProfiles <- function(siteProfileList,
       stats::median(diff(profile$betaGrid))
     }, numeric(1)))
     commonGrid <- seq(from = gridLower, to = gridUpper, by = gridStep)
-    if (tail(commonGrid, 1) < gridUpper - (gridStep / 1000)) {
+    if (utils::tail(commonGrid, 1) < gridUpper - (gridStep / 1000)) {
       commonGrid <- c(commonGrid, gridUpper)
     }
   } else {

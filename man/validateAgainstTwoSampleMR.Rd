@@ -48,21 +48,24 @@ Runs Medusa's single-site profile-likelihood estimate and compares it with
 \pkg{TwoSampleMR} estimates computed from the same site's per-SNP summary
 statistics. This is a calibration check: agreement is expected when the
 profile is close to quadratic and the allele-score approximation aligns with
-standard summarized-data MR assumptions.
+standard summarized-data MR assumptions. This helper requires the optional
+\pkg{TwoSampleMR} package.
 }
 \details{
 Validate a Single-Site Medusa Estimate Against TwoSampleMR
 }
 \examples{
-simData <- simulateMRData(n = 3000, nSnps = 5, trueEffect = 0.3)
-siteProfile <- fitOutcomeModel(
-  cohortData = simData$data,
-  instrumentTable = simData$instrumentTable,
-  analysisType = "perSNP",
-  betaGrid = seq(-2, 2, by = 0.05)
-)
-comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
-comparison
+if (requireNamespace("TwoSampleMR", quietly = TRUE)) {
+  simData <- simulateMRData(n = 3000, nSnps = 5, trueEffect = 0.3)
+  siteProfile <- fitOutcomeModel(
+    cohortData = simData$data,
+    instrumentTable = simData$instrumentTable,
+    analysisType = "perSNP",
+    betaGrid = seq(-2, 2, by = 0.05)
+  )
+  comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
+  comparison
+}
 
 }
 \seealso{

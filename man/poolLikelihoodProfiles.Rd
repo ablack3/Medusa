@@ -32,8 +32,9 @@ summing log-likelihoods is equivalent to multiplying likelihoods, yielding
 the joint likelihood under independence across sites.
 
 Before summing, the function validates that all sites used identical beta
-grid vectors. If grids differ, linear interpolation to a common grid is
-applied with a warning.
+grid vectors. If grids differ, linear interpolation to a common grid over
+the overlapping beta range is applied with a warning. Pooling never
+extrapolates beyond a site's evaluated range.
 }
 \details{
 Pool Profile Log-Likelihoods Across Sites
@@ -46,9 +47,10 @@ where \eqn{\ell_s} is the profile log-likelihood from site \eqn{s}.
 
 This pooling is exact under the assumption that observations are independent
 across sites and every site uses the same beta grid. If interpolation is
-needed, pooling remains a close numerical approximation on the common grid.
-No iterative communication protocol is needed: each site computes its
-profile once and shares only the numeric vector.
+needed, pooling remains a close numerical approximation on the common grid,
+but only over the beta range evaluated by every site. No iterative
+communication protocol is needed: each site computes its profile once and
+shares only the numeric vector.
 }
 \examples{
 profiles <- simulateSiteProfiles(nSites = 3, trueBeta = 0.5)

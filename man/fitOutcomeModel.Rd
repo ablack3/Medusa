@@ -109,6 +109,11 @@ When using the allele score, weights are
 \eqn{w_j = \gamma_j / \mathrm{SE}(\gamma_j)^2}, normalized by
 \eqn{\sum_j |w_j|}. The same weights are reused downstream so that the
 MR denominator matches the exact score fitted at each site.
+
+Missing SNP dosages in the allele-score model are imputed to the expected
+dosage \eqn{2 \times \mathrm{EAF}_j} from the instrument table, rather than
+being treated as homozygous reference. This avoids a systematic downward
+bias in the score when genotype missingness is present.
 }
 \examples{
 simData <- simulateMRData(n = 2000, nSnps = 5, trueEffect = 0.3)
