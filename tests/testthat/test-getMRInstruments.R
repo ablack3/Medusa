@@ -248,6 +248,7 @@ test_that("additionalSnps are appended when available from OpenGWAS", {
     p = 1e-6,
     eaf = 0.4,
     id = "trait1",
+    gene = "GENE_EXTRA",
     stringsAsFactors = FALSE
   )
 
@@ -275,6 +276,7 @@ test_that("additionalSnps are appended when available from OpenGWAS", {
   )
 
   expect_true(all(c("rs1", "rs_extra") %in% result$snp_id))
+  expect_equal(result$gene_region[result$snp_id == "rs_extra"], "GENE_EXTRA")
 })
 
 test_that("LD clumping failures surface an informative error", {

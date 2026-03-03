@@ -412,6 +412,32 @@ test_that("fitOutcomeModel covers warning and internal fallback branches", {
   )
   expect_true("pval_ZX" %in% names(perSnpNoP$perSnpEstimates))
 
+  perSnpErrorFn <- fitPerSNPModels
+  mockery::stub(
+    perSnpErrorFn,
+    "fitAlleleScoreModel",
+    function(...) {
+      list(
+        logLikProfile = rep(0, 21),
+        betaHat = 0,
+        seHat = 1,
+        scoreDefinition = list(snpIds = c("rs1", "rs2"), scoreWeights = c(0.5, 0.5), betaZX = 0.2, seZX = 0.05)
+      )
+    }
+  )
+  mockery::stub(perSnpErrorFn, "fitBinaryOutcomeCoefficient", function(...) stop("per-SNP fit failed"))
+  perSnpError <- perSnpErrorFn(
+    cohortData = simData$data,
+    covariateData = NULL,
+    instrumentTable = simData$instrumentTable,
+    betaGrid = seq(-1, 1, by = 0.1),
+    regularizationVariance = 0.1,
+    instrumentRegularization = FALSE,
+    modelBackend = "glm"
+  )
+  expect_equal(nrow(perSnpError$perSnpEstimates), 0)
+  expect_true(all(is.infinite(perSnpError$perSnpProfiles)))
+
   appendResult <- appendCovariatesToModelData(
     modelData = data.frame(outcome = simData$data$outcome, alleleScore = 0),
     cohortData = simData$data,
@@ -423,6 +449,10 @@ test_that("fitOutcomeModel covers warning and internal fallback branches", {
   convexGrid <- seq(-1, 1, by = 0.1)
   convexProfile <- convexGrid^2
   expect_true(is.infinite(estimateSEFromProfile(convexGrid, convexProfile)))
+
+  flatTopFn <- estimateSEFromProfile
+  mockery::stub(flatTopFn, "which.max", function(...) 3L)
+  expect_true(is.infinite(flatTopFn(seq(-1, 1, by = 0.5), rep(0, 5))))
 })
 
 test_that("fitOutcomeModel helper branches cover Cyclops and profile-point fallbacks", {
@@ -485,6 +515,26 @@ test_that("fitOutcomeModel helper branches cover Cyclops and profile-point fallb
     -Inf
   )
 
+  glmNonFiniteFn <- evaluateBinaryProfilePoint
+  mockery::stub(
+    glmNonFiniteFn,
+    "stats::glm.fit",
+    function(...) list(converged = TRUE, boundary = FALSE, fitted.values = rep(0.5, nrow(modelData)))
+  )
+  mockery::stub(glmNonFiniteFn, "stats::dbinom", function(...) rep(NaN, nrow(modelData)))
+  expect_equal(
+    glmNonFiniteFn(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "glm",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    ),
+    -Inf
+  )
+
   pointFn <- evaluateBinaryProfilePoint
   mockery::stub(pointFn, "fitCyclopsLogistic", function(...) NULL)
   expect_equal(
@@ -505,6 +555,27 @@ test_that("fitOutcomeModel helper branches cover Cyclops and profile-point fallb
   mockery::stub(predictNullFn, "stats::predict", function(...) NULL)
   expect_equal(
     predictNullFn(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "cyclops",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    ),
+    -Inf
+  )
+
+  cyclopsNonFiniteFn <- evaluateBinaryProfilePoint
+  mockery::stub(
+    cyclopsNonFiniteFn,
+    "fitCyclopsLogistic",
+    function(...) structure(list(), class = "cyclopsFit")
+  )
+  mockery::stub(cyclopsNonFiniteFn, "stats::predict", function(...) rep(0.5, nrow(modelData)))
+  mockery::stub(cyclopsNonFiniteFn, "stats::dbinom", function(...) rep(NaN, nrow(modelData)))
+  expect_equal(
+    cyclopsNonFiniteFn(
       modelData = modelData,
       exposureColumn = "alleleScore",
       covariateColumns = character(0),

@@ -14,7 +14,8 @@ test_that("runInstrumentDiagnostics returns diagnostic components for a clean co
       cohortData = cohortData,
       covariateData = covariateData,
       instrumentTable = simData$instrumentTable,
-      exposureProxyConceptIds = 1L
+      exposureProxyConceptIds = 1L,
+      negativeControlOutcomeIds = c(10L, 11L)
     )
   )
 
@@ -26,6 +27,20 @@ test_that("runInstrumentDiagnostics returns diagnostic components for a clean co
   expect_equal(nrow(diagnostics$fStatistics), 3)
   expect_equal(nrow(diagnostics$afComparison), 3)
   expect_equal(nrow(diagnostics$missingnessReport), 3)
+})
+
+test_that("runInstrumentDiagnostics errors when cohortData has no SNP columns", {
+  simData <- simulateMRData(n = 50, nSnps = 1, seed = 509)
+  cohortData <- simData$data[, c("person_id", "outcome"), drop = FALSE]
+
+  expect_error(
+    runInstrumentDiagnostics(
+      cohortData = cohortData,
+      covariateData = NULL,
+      instrumentTable = simData$instrumentTable
+    ),
+    "No SNP columns"
+  )
 })
 
 test_that("computeFStatistics falls back to GWAS approximations when cohort fits are unavailable", {
@@ -109,6 +124,34 @@ test_that("runInstrumentPheWAS supports medusaCovariateData inputs and empty cas
   expect_s3_class(phewas, "data.frame")
   expect_true(all(c("snp_id", "covariate_name", "pval") %in% names(phewas)))
   expect_equal(nrow(emptyPhewas), 0)
+})
+
+test_that("runInstrumentPheWAS covers personId joins, no-join fallback, and skipped regressions", {
+  simData <- simulateMRData(n = 60, nSnps = 1, seed = 709)
+  cohortData <- simData$data
+  cohortData$personId <- cohortData$person_id
+
+  joinedPhewas <- runInstrumentPheWAS(
+    cohortData = cohortData,
+    covariateData = data.frame(
+      personId = cohortData$personId,
+      constant_binary = 1L,
+      stringsAsFactors = FALSE
+    ),
+    instrumentTable = simData$instrumentTable
+  )
+  skippedPhewas <- runInstrumentPheWAS(
+    cohortData = cohortData,
+    covariateData = data.frame(
+      no_join_key = seq_len(nrow(cohortData)),
+      sparse_covariate = c(rep(NA_real_, nrow(cohortData) - 5L), rep(1, 5L)),
+      stringsAsFactors = FALSE
+    ),
+    instrumentTable = simData$instrumentTable
+  )
+
+  expect_equal(nrow(joinedPhewas), 0)
+  expect_equal(nrow(skippedPhewas), 0)
 })
 
 test_that("negative controls, allele frequencies, and missingness helpers return expected frames", {
