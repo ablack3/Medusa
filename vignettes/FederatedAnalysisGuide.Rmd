@@ -32,12 +32,14 @@ connection details, cohort IDs, file paths, and governance controls.
 |-------------------------|------------|
 | Log-likelihood profile (numeric vector, ~600 numbers) | Individual genotypes |
 | Number of cases and controls | Person-level outcomes |
-| Diagnostic flags (logical values) | Covariate values |
+| Optional diagnostic flag summary (logical values) | Covariate values |
 | Optional per-SNP summary estimates for sensitivity analyses | Raw SNP-by-person data |
 | Site identifier | Demographics |
 
 The profile vector is a smooth curve that represents the aggregate statistical
 evidence at a site. It cannot be reverse-engineered to identify individuals.
+The required export already includes model-level flags such as low case count or
+an MLE at the grid boundary.
 If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each
 site can also share one row per SNP containing `beta_ZY` and `se_ZY`. Those are
 still aggregate summaries, but they are optional and separate from the main
@@ -168,6 +170,17 @@ profile <- fitOutcomeModel(
 # Required for the primary federated MR estimate:
 exportSiteProfile(profile, outputDir = ".", prefix = "medusa")
 
+# Optional: share a one-line-per-check summary of the richer diagnostics object.
+utils::write.csv(
+  data.frame(
+    check = names(diagnostics$diagnosticFlags),
+    flag = unname(diagnostics$diagnosticFlags),
+    stringsAsFactors = FALSE
+  ),
+  sprintf("medusa_diagnostic_flags_%s.csv", siteId),
+  row.names = FALSE
+)
+
 # Optional: only run this block if the coordinator requested per-SNP summaries
 # for IVW / MR-Egger / weighted-median sensitivity analyses.
 profilePerSnp <- fitOutcomeModel(
@@ -210,44 +223,57 @@ combined <- poolLikelihoodProfiles(siteProfiles)
 # Estimate
 estimate <- computeMREstimate(combined, instrumentTable)
 
+# Optional: collect simple diagnostic flag summaries if sites shared them.
+diagnosticFlagPaths <- c(
+  "medusa_diagnostic_flags_site_A.csv",
+  "medusa_diagnostic_flags_site_B.csv",
+  "medusa_diagnostic_flags_site_C.csv"
+)
+if (all(file.exists(diagnosticFlagPaths))) {
+  siteDiagnosticFlags <- lapply(diagnosticFlagPaths, read.csv, stringsAsFactors = FALSE)
+}
+
 # Optional: set this to NULL unless per-SNP CSVs were collected.
 sensitivity <- NULL
 
 # Optional: fixed-effect pool the per-SNP summaries before sensitivity analyses.
 # Each site's per-SNP CSV should contain one row per SNP with beta_ZY and se_ZY.
-perSnpBySite <- list(
-  site_A = read.csv("medusa_per_snp_site_A.csv", stringsAsFactors = FALSE),
-  site_B = read.csv("medusa_per_snp_site_B.csv", stringsAsFactors = FALSE),
-  site_C = read.csv("medusa_per_snp_site_C.csv", stringsAsFactors = FALSE)
+perSnpPaths <- c(
+  site_A = "medusa_per_snp_site_A.csv",
+  site_B = "medusa_per_snp_site_B.csv",
+  site_C = "medusa_per_snp_site_C.csv"
 )
+if (all(file.exists(perSnpPaths))) {
+  perSnpBySite <- lapply(perSnpPaths, read.csv, stringsAsFactors = FALSE)
 
-stackedPerSnp <- do.call(rbind, perSnpBySite)
-splitPerSnp <- split(stackedPerSnp, stackedPerSnp$snp_id)
+  stackedPerSnp <- do.call(rbind, perSnpBySite)
+  splitPerSnp <- split(stackedPerSnp, stackedPerSnp$snp_id)
 
-perSnpPooled <- do.call(
-  rbind,
-  lapply(splitPerSnp, function(df) {
-    weights <- 1 / (df$se_ZY^2)
-    data.frame(
-      snp_id = df$snp_id[1],
-      effect_allele = df$effect_allele[1],
-      other_allele = df$other_allele[1],
-      eaf = df$eaf[1],
-      beta_ZY = sum(weights * df$beta_ZY) / sum(weights),
-      se_ZY = sqrt(1 / sum(weights)),
-      beta_ZX = df$beta_ZX[1],
-      se_ZX = df$se_ZX[1],
-      pval_ZX = df$pval_ZX[1],
-      stringsAsFactors = FALSE
-    )
-  })
-)
+  perSnpPooled <- do.call(
+    rbind,
+    lapply(splitPerSnp, function(df) {
+      weights <- 1 / (df$se_ZY^2)
+      data.frame(
+        snp_id = df$snp_id[1],
+        effect_allele = df$effect_allele[1],
+        other_allele = df$other_allele[1],
+        eaf = df$eaf[1],
+        beta_ZY = sum(weights * df$beta_ZY) / sum(weights),
+        se_ZY = sqrt(1 / sum(weights)),
+        beta_ZX = df$beta_ZX[1],
+        se_ZX = df$se_ZX[1],
+        pval_ZX = df$pval_ZX[1],
+        stringsAsFactors = FALSE
+      )
+    })
+  )
 
-sensitivity <- runSensitivityAnalyses(
-  perSnpPooled,
-  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
-  engine = "internal"
-)
+  sensitivity <- runSensitivityAnalyses(
+    perSnpPooled,
+    methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+    engine = "internal"
+  )
+}
 
 # Report
 generateMRReport(

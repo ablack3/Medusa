@@ -223,23 +223,21 @@ the fitted score rather than with an unrelated simulated instrument set.
 <div id="cb6" class="sourceCode">
 
 ``` r
-# Create per-SNP estimates for sensitivity analyses
-set.seed(42)
-nSnps <- 10
-instrumentSummary <- simulateInstrumentTable(nSnps = nSnps, seed = 42)
-perSnp <- data.frame(
-  snp_id = instrumentSummary$snp_id,
-  beta_ZY = 0.5 * instrumentSummary$beta_ZX + rnorm(nSnps, 0, 0.02),
-  se_ZY = rep(0.02, nSnps),
-  beta_ZX = instrumentSummary$beta_ZX,
-  se_ZX = instrumentSummary$se_ZX,
-  effect_allele = instrumentSummary$effect_allele,
-  other_allele = instrumentSummary$other_allele,
-  eaf = instrumentSummary$eaf
+# Refit the SAME synthetic cohort in per-SNP mode so the sensitivity analyses
+# use summaries that are aligned with the example above.
+profilePerSnp <- fitOutcomeModel(
+  cohortData = simData$data,
+  covariateData = NULL,
+  instrumentTable = simData$instrumentTable,
+  betaGrid = betaGrid,
+  siteId = "site_A",
+  analysisType = "perSNP"
 )
+#> Fitting outcome model at site 'site_A' (3452 cases, 1548 controls)...
+#> Site 'site_A': beta_ZY_hat = 0.6137 (SE = 0.1410).
 
 results <- runSensitivityAnalyses(
-  perSnp,
+  profilePerSnp$perSnpEstimates,
   methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
   engine = "internal"
 )
@@ -252,9 +250,9 @@ results <- runSensitivityAnalyses(
 #> Sensitivity analyses complete.
 print(results$summary)
 #>            method   beta_MR      se_MR  ci_lower  ci_upper         pval
-#> 1             IVW 0.4586540 0.02188781 0.4157539 0.5015541 1.697680e-97
-#> 2        MR-Egger 0.4634544 0.03576486 0.3933553 0.5335535 1.191296e-06
-#> 3 Weighted Median 0.4764280 0.02650498 0.4244783 0.5283778 3.056401e-72
+#> 1             IVW 0.4766943 0.05242835 0.3739347 0.5794538 9.696701e-20
+#> 2        MR-Egger 0.6596779 0.11148672 0.4411639 0.8781918 3.548477e-04
+#> 3 Weighted Median 0.5123123 0.06656621 0.3818425 0.6427821 1.400833e-14
 ```
 
 </div>

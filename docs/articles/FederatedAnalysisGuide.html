@@ -99,7 +99,7 @@
 <td>Person-level outcomes</td>
 </tr>
 <tr class="odd">
-<td>Diagnostic flags (logical values)</td>
+<td>Optional diagnostic flag summary (logical values)</td>
 <td>Covariate values</td>
 </tr>
 <tr class="even">
@@ -112,7 +112,7 @@
 </tr>
 </tbody>
 </table>
-<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals. If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each site can also share one row per SNP containing <code>beta_ZY</code> and <code>se_ZY</code>. Those are still aggregate summaries, but they are optional and separate from the main pooled likelihood workflow.</p>
+<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals. The required export already includes model-level flags such as low case count or an MLE at the grid boundary. If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each site can also share one row per SNP containing <code>beta_ZY</code> and <code>se_ZY</code>. Those are still aggregate summaries, but they are optional and separate from the main pooled likelihood workflow.</p>
 </div>
 <div class="section level2">
 <h2 id="site-setup-requirements">Site Setup Requirements<a class="anchor" aria-label="anchor" href="#site-setup-requirements"></a>
@@ -237,6 +237,17 @@
 <span><span class="co"># Required for the primary federated MR estimate:</span></span>
 <span><span class="fu"><a href="../reference/exportSiteProfile.html">exportSiteProfile</a></span><span class="op">(</span><span class="va">profile</span>, outputDir <span class="op">=</span> <span class="st">"."</span>, prefix <span class="op">=</span> <span class="st">"medusa"</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Optional: share a one-line-per-check summary of the richer diagnostics object.</span></span>
+<span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    check <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">diagnosticFlags</span><span class="op">)</span>,</span>
+<span>    flag <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">diagnosticFlags</span><span class="op">)</span>,</span>
+<span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"medusa_diagnostic_flags_%s.csv"</span>, <span class="va">siteId</span><span class="op">)</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
 <span><span class="co"># Optional: only run this block if the coordinator requested per-SNP summaries</span></span>
 <span><span class="co"># for IVW / MR-Egger / weighted-median sensitivity analyses.</span></span>
 <span><span class="va">profilePerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>
@@ -278,44 +289,57 @@
 <span><span class="co"># Estimate</span></span>
 <span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/computeMREstimate.html">computeMREstimate</a></span><span class="op">(</span><span class="va">combined</span>, <span class="va">instrumentTable</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Optional: collect simple diagnostic flag summaries if sites shared them.</span></span>
+<span><span class="va">diagnosticFlagPaths</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"medusa_diagnostic_flags_site_A.csv"</span>,</span>
+<span>  <span class="st">"medusa_diagnostic_flags_site_B.csv"</span>,</span>
+<span>  <span class="st">"medusa_diagnostic_flags_site_C.csv"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">diagnosticFlagPaths</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">siteDiagnosticFlags</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">diagnosticFlagPaths</span>, <span class="va">read.csv</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
 <span><span class="co"># Optional: set this to NULL unless per-SNP CSVs were collected.</span></span>
 <span><span class="va">sensitivity</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
 <span></span>
 <span><span class="co"># Optional: fixed-effect pool the per-SNP summaries before sensitivity analyses.</span></span>
 <span><span class="co"># Each site's per-SNP CSV should contain one row per SNP with beta_ZY and se_ZY.</span></span>
-<span><span class="va">perSnpBySite</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  site_A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"medusa_per_snp_site_A.csv"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>  site_B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"medusa_per_snp_site_B.csv"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>  site_C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"medusa_per_snp_site_C.csv"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">perSnpPaths</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  site_A <span class="op">=</span> <span class="st">"medusa_per_snp_site_A.csv"</span>,</span>
+<span>  site_B <span class="op">=</span> <span class="st">"medusa_per_snp_site_B.csv"</span>,</span>
+<span>  site_C <span class="op">=</span> <span class="st">"medusa_per_snp_site_C.csv"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">perSnpPaths</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">perSnpBySite</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">perSnpPaths</span>, <span class="va">read.csv</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">stackedPerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">perSnpBySite</span><span class="op">)</span></span>
-<span><span class="va">splitPerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/split.html" class="external-link">split</a></span><span class="op">(</span><span class="va">stackedPerSnp</span>, <span class="va">stackedPerSnp</span><span class="op">$</span><span class="va">snp_id</span><span class="op">)</span></span>
+<span>  <span class="va">stackedPerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">perSnpBySite</span><span class="op">)</span></span>
+<span>  <span class="va">splitPerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/split.html" class="external-link">split</a></span><span class="op">(</span><span class="va">stackedPerSnp</span>, <span class="va">stackedPerSnp</span><span class="op">$</span><span class="va">snp_id</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">perSnpPooled</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
-<span>  <span class="va">rbind</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">splitPerSnp</span>, <span class="kw">function</span><span class="op">(</span><span class="va">df</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">weights</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">se_ZY</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>      snp_id <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">snp_id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      effect_allele <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">effect_allele</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      other_allele <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">other_allele</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      eaf <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">eaf</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      beta_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span> <span class="op">*</span> <span class="va">df</span><span class="op">$</span><span class="va">beta_ZY</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span>,</span>
-<span>      se_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>      beta_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">beta_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      se_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">se_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      pval_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">pval_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>      stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span>  <span class="va">perSnpPooled</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>    <span class="va">rbind</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">splitPerSnp</span>, <span class="kw">function</span><span class="op">(</span><span class="va">df</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">weights</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">se_ZY</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>        snp_id <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">snp_id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        effect_allele <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">effect_allele</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        other_allele <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">other_allele</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        eaf <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">eaf</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        beta_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span> <span class="op">*</span> <span class="va">df</span><span class="op">$</span><span class="va">beta_ZY</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span>,</span>
+<span>        se_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        beta_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">beta_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        se_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">se_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        pval_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">pval_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>        stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="va">sensitivity</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses</a></span><span class="op">(</span></span>
-<span>  <span class="va">perSnpPooled</span>,</span>
-<span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span>,</span>
-<span>  engine <span class="op">=</span> <span class="st">"internal"</span></span>
-<span><span class="op">)</span></span>
+<span>  <span class="va">sensitivity</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses</a></span><span class="op">(</span></span>
+<span>    <span class="va">perSnpPooled</span>,</span>
+<span>    methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span>,</span>
+<span>    engine <span class="op">=</span> <span class="st">"internal"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Report</span></span>
 <span><span class="fu"><a href="../reference/generateMRReport.html">generateMRReport</a></span><span class="op">(</span></span>

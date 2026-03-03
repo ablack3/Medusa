@@ -155,23 +155,19 @@ score rather than with an unrelated simulated instrument set.
 ### Run Sensitivity Analyses
 
 ```{r sensitivity}
-# Create per-SNP estimates for sensitivity analyses
-set.seed(42)
-nSnps <- 10
-instrumentSummary <- simulateInstrumentTable(nSnps = nSnps, seed = 42)
-perSnp <- data.frame(
-  snp_id = instrumentSummary$snp_id,
-  beta_ZY = 0.5 * instrumentSummary$beta_ZX + rnorm(nSnps, 0, 0.02),
-  se_ZY = rep(0.02, nSnps),
-  beta_ZX = instrumentSummary$beta_ZX,
-  se_ZX = instrumentSummary$se_ZX,
-  effect_allele = instrumentSummary$effect_allele,
-  other_allele = instrumentSummary$other_allele,
-  eaf = instrumentSummary$eaf
+# Refit the SAME synthetic cohort in per-SNP mode so the sensitivity analyses
+# use summaries that are aligned with the example above.
+profilePerSnp <- fitOutcomeModel(
+  cohortData = simData$data,
+  covariateData = NULL,
+  instrumentTable = simData$instrumentTable,
+  betaGrid = betaGrid,
+  siteId = "site_A",
+  analysisType = "perSNP"
 )
 
 results <- runSensitivityAnalyses(
-  perSnp,
+  profilePerSnp$perSnpEstimates,
   methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
   engine = "internal"
 )
