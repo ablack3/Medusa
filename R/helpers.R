@@ -227,6 +227,46 @@ isStrandAmbiguous <- function(effectAllele, otherAllele) {
 }
 
 
+#' Convert VCF-Style Genotype Strings to Integer Allele Dosage
+#'
+#' @description Converts genotype strings from the OMOP Genomic Extension's
+#'   VARIANT_OCCURRENCE table to integer allele dosage values (0, 1, 2).
+#'   Handles VCF-style genotypes ("0/0", "0/1", "1/1", and phased equivalents
+#'   "0|0", "0|1", "1|1") as well as plain integer strings ("0", "1", "2").
+#'   Unrecognized values are converted to NA with a warning.
+#'
+#' @param genotypeRaw Character vector of raw genotype strings.
+#'
+#' @return Integer vector of allele dosage values (0, 1, or 2). Unrecognized
+#'   values are set to NA.
+#'
+#' @examples
+#' convertGenotypeString(c("0/0", "0/1", "1/1", "0|1", "2"))
+#'
+#' @export
+convertGenotypeString <- function(genotypeRaw) {
+  checkmate::assertCharacter(genotypeRaw)
+  result <- rep(NA_integer_, length(genotypeRaw))
+  result[genotypeRaw %in% c("0/0", "0|0")] <- 0L
+  result[genotypeRaw %in% c("0/1", "1/0", "0|1", "1|0")] <- 1L
+  result[genotypeRaw %in% c("1/1", "1|1")] <- 2L
+  result[genotypeRaw == "0"] <- 0L
+  result[genotypeRaw == "1"] <- 1L
+  result[genotypeRaw == "2"] <- 2L
+
+  nUnrecognized <- sum(is.na(result) & !is.na(genotypeRaw))
+  if (nUnrecognized > 0) {
+    badValues <- unique(genotypeRaw[is.na(result) & !is.na(genotypeRaw)])
+    warning(sprintf(
+      "Found %d unrecognized genotype values (e.g., %s). Setting to NA.",
+      nUnrecognized,
+      paste(utils::head(badValues, 3), collapse = ", ")
+    ))
+  }
+  result
+}
+
+
 #' Load and Render SQL from Package
 #'
 #' @description Convenience wrapper around SqlRender functions that loads SQL

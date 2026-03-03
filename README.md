@@ -84,8 +84,7 @@ cohort <- buildMRCohort(
   cohortTable = "cohort",
   outcomeCohortId = 1234,
   instrumentTable = instruments,
-  genomicLinkageSchema = "genomics",
-  genomicLinkageTable = "genotype_data"
+  genomicDatabaseSchema = "genomics"  # Schema with VARIANT_OCCURRENCE
 )
 
 profile <- fitOutcomeModel(
@@ -132,7 +131,7 @@ generateMRReport(
 
 - R >= 4.1.0
 - OHDSI packages: DatabaseConnector, SqlRender, Cyclops, FeatureExtraction
-- OMOP CDM database with genomic linkage table
+- OMOP CDM database with OMOP Genomic Extension (VARIANT_OCCURRENCE table)
 - For instrument retrieval: internet access to OpenGWAS API
 
 ## License

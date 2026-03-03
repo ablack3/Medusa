@@ -53,20 +53,28 @@ pooled likelihood workflow.
 - Standard tables: PERSON, OBSERVATION_PERIOD, CONDITION_OCCURRENCE
 - A cohort table with the outcome cohort pre-defined (e.g., via ATLAS)
 
-### Genomic Linkage Table
+### OMOP Genomic Extension (VARIANT_OCCURRENCE)
 
-Each site needs a table linking person_id to SNP genotypes:
+Each site needs the **VARIANT_OCCURRENCE** table from the OMOP CDM Genomic
+Extension. This table stores per-person variant calls. The minimal required
+columns are:
 
-```sql
-CREATE TABLE genomics.genotype_data (
-  person_id BIGINT NOT NULL,
-  snp_id VARCHAR(50) NOT NULL,
-  genotype INTEGER NOT NULL  -- 0, 1, or 2 (count of effect alleles)
-);
-```
+| Column | Type | Description |
+|--------|------|-------------|
+| `person_id` | BIGINT | Links to the PERSON table |
+| `rs_id` | VARCHAR(50) | dbSNP rs identifier (e.g., "rs2228145") |
+| `genotype` | VARCHAR(50) | Genotype call: VCF-style ("0/0", "0/1", "1/1") or integer ("0", "1", "2") |
 
-If the person identifier column has a different name (e.g., `subject_id`),
-specify it via the `genomicPersonIdColumn` parameter.
+Additional columns used when available:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `reference_allele` | VARCHAR(255) | Reference allele (used for allele harmonization) |
+| `alternate_allele` | VARCHAR(255) | Alternate allele (used for allele harmonization) |
+
+If the genomic extension tables are in a different schema from the main CDM,
+specify it via the `genomicDatabaseSchema` parameter (defaults to
+`cdmDatabaseSchema`).
 
 ### R Package Dependencies
 
@@ -116,8 +124,7 @@ cdmDatabaseSchema <- "cdm"           # Change to your CDM schema
 cohortDatabaseSchema <- "results"     # Change to your results schema
 cohortTable <- "cohort"               # Change if different
 outcomeCohortId <- 1234               # Provided by coordinator
-genomicLinkageSchema <- "genomics"    # Change to your genomics schema
-genomicLinkageTable <- "genotype_data"
+genomicDatabaseSchema <- "genomics"   # Schema with VARIANT_OCCURRENCE (default: cdmDatabaseSchema)
 siteId <- "site_A"                    # Unique identifier for this site
 
 # ----- Load instrument table (provided by coordinator) -----
@@ -131,8 +138,7 @@ cohortData <- buildMRCohort(
   cohortTable = cohortTable,
   outcomeCohortId = outcomeCohortId,
   instrumentTable = instrumentTable,
-  genomicLinkageSchema = genomicLinkageSchema,
-  genomicLinkageTable = genomicLinkageTable,
+  genomicDatabaseSchema = genomicDatabaseSchema,
   washoutPeriod = 365,
   excludePriorOutcome = TRUE
 )
@@ -320,9 +326,9 @@ uses non-standard table names, these can be configured via function parameters.
 
 ### "No persons have genotype data"
 
-- Verify the genomic linkage table exists and has data
-- Check that `person_id` column names match (use `genomicPersonIdColumn` parameter)
-- Ensure the cohort and genotype table share person_id values
+- Verify the VARIANT_OCCURRENCE table exists and has data in the specified schema
+- Check that `person_id` values in VARIANT_OCCURRENCE overlap with the cohort
+- Ensure `rs_id` values match the instrument table's `snp_id` values
 
 ### "Profile likelihood is flat"
 

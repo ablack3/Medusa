@@ -135,8 +135,7 @@ cohort <- buildMRCohort(
   cohortTable = "cohort",
   outcomeCohortId = 1234,  # Your colorectal cancer cohort ID
   instrumentTable = instruments,
-  genomicLinkageSchema = "genomics",
-  genomicLinkageTable = "genotype_data",
+  genomicDatabaseSchema = "genomics",  # Schema with VARIANT_OCCURRENCE
   washoutPeriod = 365,
   excludePriorOutcome = TRUE
 )

@@ -1,5 +1,5 @@
 test_that("allele harmonization flips genotypes when alleles are swapped", {
-  # Test that when effect allele doesn't match, genotypes get flipped (2 - genotype)
+  # Test that when effect allele doesn't match, genotypes get flipped
   instruments <- data.frame(
     snp_id = "rs1",
     effect_allele = "A",
@@ -102,6 +102,48 @@ test_that("reshapeGenotypes produces correct wide format", {
   expect_equal(result$snp_rs2, c(1L, 0L, 2L))
 })
 
+test_that("convertGenotypeString handles VCF-style genotypes", {
+  expect_equal(
+    convertGenotypeString(c("0/0", "0/1", "1/1", "0|0", "0|1", "1|1")),
+    c(0L, 1L, 2L, 0L, 1L, 2L)
+  )
+  expect_equal(
+    convertGenotypeString(c("1/0", "1|0")),
+    c(1L, 1L)
+  )
+})
+
+test_that("convertGenotypeString handles plain integer strings", {
+  expect_equal(
+    convertGenotypeString(c("0", "1", "2")),
+    c(0L, 1L, 2L)
+  )
+})
+
+test_that("convertGenotypeString warns on unrecognized values", {
+  expect_warning(
+    result <- convertGenotypeString(c("0/0", "unknown", "1/1")),
+    "unrecognized genotype values"
+  )
+  expect_equal(result, c(0L, NA_integer_, 2L))
+})
+
+test_that("convertGenotypeString handles NA values", {
+  result <- convertGenotypeString(c("0/1", NA_character_, "1/1"))
+  expect_equal(result, c(1L, NA_integer_, 2L))
+})
+
+test_that("computeCohortAlleleFrequencies computes correct frequencies", {
+  genotypeData <- data.frame(
+    snpId = c("rs1", "rs1", "rs1", "rs1", "rs2", "rs2"),
+    genotype = c(0L, 1L, 2L, 1L, 0L, 2L),
+    stringsAsFactors = FALSE
+  )
+  freqs <- computeCohortAlleleFrequencies(genotypeData)
+  expect_equal(freqs[["rs1"]], mean(c(0, 1, 2, 1)) / 2)
+  expect_equal(freqs[["rs2"]], mean(c(0, 2)) / 2)
+})
+
 test_that("buildMRCohort validates inputs", {
   expect_error(
     buildMRCohort(
@@ -111,8 +153,7 @@ test_that("buildMRCohort validates inputs", {
       cohortTable = "cohort",
       outcomeCohortId = 1,
       instrumentTable = data.frame(),
-      genomicLinkageSchema = "genomics",
-      genomicLinkageTable = "genotype"
+      genomicDatabaseSchema = "genomics"
     ),
     "connectionDetails"
   )
@@ -147,8 +188,7 @@ test_that("buildMRCohort fails cleanly when required dependencies are missing", 
         eaf = 0.3,
         stringsAsFactors = FALSE
       ),
-      genomicLinkageSchema = "genomics",
-      genomicLinkageTable = "genotype_data"
+      genomicDatabaseSchema = "genomics"
     ),
     "Package 'DatabaseConnector' is required"
   )
@@ -179,8 +219,7 @@ test_that("buildMRCohort fails cleanly when required dependencies are missing", 
         eaf = 0.3,
         stringsAsFactors = FALSE
       ),
-      genomicLinkageSchema = "genomics",
-      genomicLinkageTable = "genotype_data"
+      genomicDatabaseSchema = "genomics"
     ),
     "Package 'SqlRender' is required"
   )
@@ -207,17 +246,22 @@ test_that("buildMRCohort executes the main extraction flow with stubbed database
     outcome = c(rep(1L, 60), rep(0L, 40)),
     stringsAsFactors = FALSE
   )
+  # VARIANT_OCCURRENCE-style genotype data with allele info
   genotypeFrame <- rbind(
     data.frame(
       personId = seq_len(100),
       snpId = "rs1",
-      genotype = rep(c(0L, 1L, 2L, 1L), length.out = 100),
+      genotypeRaw = rep(c("0/0", "0/1", "1/1", "0/1"), length.out = 100),
+      referenceAllele = "C",
+      alternateAllele = "A",
       stringsAsFactors = FALSE
     ),
     data.frame(
       personId = seq_len(80),
       snpId = "rs2",
-      genotype = rep(c(0L, 2L), length.out = 80),
+      genotypeRaw = rep(c("0/0", "1/1"), length.out = 80),
+      referenceAllele = "T",
+      alternateAllele = "G",
       stringsAsFactors = FALSE
     )
   )
@@ -248,8 +292,7 @@ test_that("buildMRCohort executes the main extraction flow with stubbed database
         cohortTable = "cohort",
         outcomeCohortId = 1L,
         instrumentTable = instrumentTable,
-        genomicLinkageSchema = "genomics",
-        genomicLinkageTable = "genotype_data"
+        genomicDatabaseSchema = "genomics"
       )
     ),
     "20.0% missing genotypes"
@@ -291,8 +334,7 @@ test_that("buildMRCohort stops when the cohort query returns no persons", {
         cohortTable = "cohort",
         outcomeCohortId = 1L,
         instrumentTable = instrumentTable,
-        genomicLinkageSchema = "genomics",
-        genomicLinkageTable = "genotype_data"
+        genomicDatabaseSchema = "genomics"
       )
     ),
     "No persons found"
@@ -342,8 +384,7 @@ test_that("buildMRCohort stops when genotype data are unavailable", {
           cohortTable = "cohort",
           outcomeCohortId = 1L,
           instrumentTable = instrumentTable,
-          genomicLinkageSchema = "genomics",
-          genomicLinkageTable = "genotype_data"
+          genomicDatabaseSchema = "genomics"
         )
       )
     ),

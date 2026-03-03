@@ -24,9 +24,21 @@
 #' genotype coding matches the instrument table, and returns a local R data frame
 #' suitable for downstream analysis. The returned data never leaves the site.
 #'
-#' The function queries: PERSON (age, sex), CONDITION_OCCURRENCE (outcome),
-#' OBSERVATION_PERIOD (eligibility), and the genomic linkage table (genotypes).
-#' All SQL is rendered and translated via SqlRender for cross-dialect compatibility.
+#' Genotype data is extracted from the \strong{VARIANT_OCCURRENCE} table defined
+#' by the OMOP CDM Genomic Extension. The minimal required columns from that
+#' table are:
+#' \itemize{
+#'   \item \code{person_id} — links variants to persons
+#'   \item \code{rs_id} — dbSNP rs identifier for the variant
+#'   \item \code{genotype} — genotype call (VCF-style "0/0", "0/1", "1/1" or
+#'     plain integer "0", "1", "2")
+#' }
+#' Additionally, \code{reference_allele} and \code{alternate_allele} are used
+#' for allele harmonization when available.
+#'
+#' The function also queries: PERSON (age, sex), CONDITION_OCCURRENCE (outcome),
+#' and OBSERVATION_PERIOD (eligibility). All SQL is rendered and translated via
+#' SqlRender for cross-dialect compatibility.
 #'
 #' @param connectionDetails A \code{DatabaseConnector::connectionDetails} object
 #'   specifying the database connection.
@@ -37,19 +49,14 @@
 #'   (e.g., incident colorectal cancer).
 #' @param instrumentTable Data frame. Output of \code{\link{getMRInstruments}} or
 #'   \code{\link{createInstrumentTable}} containing the instrument SNPs.
-#' @param genomicLinkageSchema Character. Schema containing the genomic linkage table.
-#' @param genomicLinkageTable Character. Name of the table linking person_id to
-#'   SNP genotypes. Must contain columns for person identifier, snp_id, and
-#'   genotype (coded as 0/1/2 count of effect alleles).
+#' @param genomicDatabaseSchema Character. Schema containing the VARIANT_OCCURRENCE
+#'   table from the OMOP Genomic Extension. Defaults to \code{cdmDatabaseSchema}.
 #' @param indexDateOffset Integer. Days offset from cohort start date for
 #'   defining the index date. Default is 0.
 #' @param washoutPeriod Integer. Minimum days of prior observation required
 #'   before index date. Default is 365.
 #' @param excludePriorOutcome Logical. If TRUE, persons with the outcome before
 #'   their index date are excluded. Default is TRUE.
-#' @param genomicPersonIdColumn Character. Name of the person identifier column
-#'   in the genomic linkage table if it differs from "person_id". Default is
-#'   "person_id".
 #'
 #' @return A data frame with one row per person and columns:
 #'   \describe{
@@ -67,7 +74,8 @@
 #' Genotype coding: genotypes are coded as 0, 1, 2 representing the count of
 #' effect alleles. The function performs allele harmonization by comparing the
 #' effect allele in the instrument table to the allele coding in the genotype
-#' data. If alleles are swapped, genotypes are flipped (2 - genotype).
+#' data (alternate allele from VARIANT_OCCURRENCE). If alleles are swapped,
+#' genotypes are flipped (2 - genotype) and instrument beta_ZX is negated.
 #'
 #' @references
 #' Hripcsak, G., et al. (2015). Observational Health Data Sciences and Informatics
@@ -90,8 +98,7 @@
 #'   cohortTable = "cohort",
 #'   outcomeCohortId = 1234,
 #'   instrumentTable = instruments,
-#'   genomicLinkageSchema = "genomics",
-#'   genomicLinkageTable = "genotype_data"
+#'   genomicDatabaseSchema = "genomics"
 #' )
 #' }
 #'
@@ -105,12 +112,10 @@ buildMRCohort <- function(connectionDetails,
                           cohortTable,
                           outcomeCohortId,
                           instrumentTable,
-                          genomicLinkageSchema,
-                          genomicLinkageTable,
+                          genomicDatabaseSchema = cdmDatabaseSchema,
                           indexDateOffset = 0,
                           washoutPeriod = 365,
-                          excludePriorOutcome = TRUE,
-                          genomicPersonIdColumn = "person_id") {
+                          excludePriorOutcome = TRUE) {
   # Input validation
   checkmate::assertClass(connectionDetails, "connectionDetails")
   checkmate::assertString(cdmDatabaseSchema)
@@ -118,12 +123,10 @@ buildMRCohort <- function(connectionDetails,
   checkmate::assertString(cohortTable)
   checkmate::assertCount(outcomeCohortId, positive = TRUE)
   validateInstrumentTable(instrumentTable)
-  checkmate::assertString(genomicLinkageSchema)
-  checkmate::assertString(genomicLinkageTable)
+  checkmate::assertString(genomicDatabaseSchema)
   checkmate::assertInt(indexDateOffset)
   checkmate::assertCount(washoutPeriod)
   checkmate::assertLogical(excludePriorOutcome, len = 1)
-  checkmate::assertString(genomicPersonIdColumn)
 
   if (!requireNamespace("DatabaseConnector", quietly = TRUE)) {
     stop("Package 'DatabaseConnector' is required for buildMRCohort(). ",
@@ -175,15 +178,13 @@ buildMRCohort <- function(connectionDetails,
     ))
   }
 
-  # Step 2: Extract genotypes
-  message("Extracting genotype data...")
+  # Step 2: Extract genotypes from VARIANT_OCCURRENCE (OMOP Genomic Extension)
+  message("Extracting genotype data from VARIANT_OCCURRENCE...")
   snpIdList <- paste(paste0("'", instrumentTable$snp_id, "'"), collapse = ", ")
   sql <- loadRenderTranslateSql(
     sqlFileName = "extractGenotypes.sql",
     dbms = connectionDetails$dbms,
-    genomic_linkage_schema = genomicLinkageSchema,
-    genomic_linkage_table = genomicLinkageTable,
-    genomic_person_id_column = genomicPersonIdColumn,
+    genomic_schema = genomicDatabaseSchema,
     cohort_database_schema = cohortDatabaseSchema,
     cohort_table = cohortTable,
     outcome_cohort_id = outcomeCohortId,
@@ -196,9 +197,10 @@ buildMRCohort <- function(connectionDetails,
 
   if (nrow(genotypeData) == 0) {
     stop(sprintf(
-      paste0("No persons in cohort have genotype data in %s.%s. ",
-             "Verify genomic linkage table schema and person_id join."),
-      genomicLinkageSchema, genomicLinkageTable
+      paste0("No persons in cohort have genotype data in %s.VARIANT_OCCURRENCE. ",
+             "Verify the OMOP Genomic Extension tables exist and contain data ",
+             "for the requested rs IDs."),
+      genomicDatabaseSchema
     ))
   }
 
@@ -209,11 +211,40 @@ buildMRCohort <- function(connectionDetails,
     progressBar = FALSE, reportOverallTime = FALSE
   )
 
-  # Step 3: Reshape genotypes to wide format and merge
+  # Step 3: Convert genotype strings to integer dosage
+  message("Converting genotype values...")
+  genotypeData$genotype <- convertGenotypeString(genotypeData$genotypeRaw)
+
+  # Step 4: Build allele table from genotype data for harmonization
+  alleleInfo <- unique(genotypeData[, c("snpId", "referenceAllele", "alternateAllele")])
+  # In VARIANT_OCCURRENCE, genotype counts the alternate allele
+  genotypeAlleles <- data.frame(
+    snp_id = alleleInfo$snpId,
+    allele_coded = alleleInfo$alternateAllele,
+    allele_noncoded = alleleInfo$referenceAllele,
+    stringsAsFactors = FALSE
+  )
+
+  # Step 5: Harmonize alleles
+  message("Harmonizing alleles...")
+  cohortAlleleFreqs <- computeCohortAlleleFrequencies(genotypeData)
+  harmonized <- harmonizeAlleles(
+    instrumentTable,
+    genotypeAlleles,
+    cohortAlleleFrequencies = cohortAlleleFreqs
+  )
+  instrumentTable <- harmonized$instrumentTable
+
+  if (nrow(instrumentTable) == 0) {
+    stop("No instruments remain after allele harmonization. ",
+         "Check that VARIANT_OCCURRENCE alleles match the instrument table.")
+  }
+
+  # Step 6: Reshape genotypes to wide format and merge
   message("Reshaping genotype data...")
   genotypeWide <- reshapeGenotypes(genotypeData, instrumentTable)
 
-  # Step 4: Merge cohort with genotypes
+  # Step 7: Merge cohort with genotypes
   result <- dplyr::left_join(
     cohortData,
     genotypeWide,
@@ -238,9 +269,33 @@ buildMRCohort <- function(connectionDetails,
 }
 
 
+#' Compute Cohort Allele Frequencies from Genotype Data
+#'
+#' @description Computes the coded (alternate) allele frequency for each SNP
+#'   from the extracted genotype data. Used for palindromic SNP resolution
+#'   during allele harmonization.
+#'
+#' @param genotypeData Data frame with columns snpId and genotype (integer).
+#'
+#' @return Named numeric vector of allele frequencies, keyed by SNP ID.
+#'
+#' @keywords internal
+computeCohortAlleleFrequencies <- function(genotypeData) {
+  snpIds <- unique(genotypeData$snpId)
+  freqs <- vapply(snpIds, function(snp) {
+    geno <- genotypeData$genotype[genotypeData$snpId == snp]
+    validGeno <- geno[!is.na(geno)]
+    if (length(validGeno) == 0) return(NA_real_)
+    mean(validGeno) / 2
+  }, numeric(1))
+  names(freqs) <- snpIds
+  freqs
+}
+
+
 #' Reshape Long-Format Genotype Data to Wide Format
 #'
-#' @description Converts genotype data from long format (person_id, snp_id,
+#' @description Converts genotype data from long format (personId, snpId,
 #'   genotype) to wide format with one column per SNP. Missing genotypes
 #'   are coded as NA.
 #'
