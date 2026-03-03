@@ -79,7 +79,12 @@ test_that("Steiger filtering removes SNPs with wrong variance direction", {
   )
 
   results <- suppressMessages(
-    runSensitivityAnalyses(perSnp, methods = "Steiger")
+    runSensitivityAnalyses(
+      perSnp,
+      methods = "Steiger",
+      outcomeSampleSize = 10000,
+      exposureSampleSize = 10000
+    )
   )
 
   # SNPs where r2_outcome > r2_exposure should be removed
@@ -98,11 +103,16 @@ test_that("all methods handle single-SNP case gracefully", {
   )
 
   results <- suppressMessages(
-    runSensitivityAnalyses(perSnp)
+    runSensitivityAnalyses(
+      perSnp,
+      outcomeSampleSize = 5000,
+      exposureSampleSize = 5000
+    )
   )
 
   # IVW should work with single SNP
   expect_true(is.finite(results$ivw$beta_MR))
+  expect_true(is.finite(results$steiger$beta_MR) || is.na(results$steiger$beta_MR))
   # MR-Egger and Weighted Median need >= 3 SNPs
   expect_null(results$mrEgger)
   expect_null(results$weightedMedian)
@@ -121,7 +131,13 @@ test_that("summary table contains all computed methods", {
     stringsAsFactors = FALSE
   )
 
-  results <- suppressMessages(runSensitivityAnalyses(perSnp))
+  results <- suppressMessages(
+    runSensitivityAnalyses(
+      perSnp,
+      outcomeSampleSize = 10000,
+      exposureSampleSize = 10000
+    )
+  )
 
   expect_true("summary" %in% names(results))
   expect_true("IVW" %in% results$summary$method)
@@ -158,9 +174,53 @@ test_that("all SNPs failing Steiger produces warning", {
 
   expect_warning(
     results <- suppressMessages(
-      runSensitivityAnalyses(perSnp, methods = "Steiger")
+      runSensitivityAnalyses(
+        perSnp,
+        methods = "Steiger",
+        outcomeSampleSize = 10000,
+        exposureSampleSize = 10000
+      )
     ),
     "All SNPs failed Steiger filter"
   )
+  expect_true(is.na(results$steiger$beta_MR))
+})
+
+test_that("MR-Egger is invariant to SNP sign coding after orientation", {
+  perSnp <- data.frame(
+    snp_id = c("rs1", "rs2", "rs3", "rs4"),
+    beta_ZY = c(0.14, 0.16, 0.18, 0.20),
+    se_ZY = rep(0.02, 4),
+    beta_ZX = c(0.28, 0.32, 0.36, 0.40),
+    se_ZX = rep(0.03, 4),
+    stringsAsFactors = FALSE
+  )
+
+  flipped <- perSnp
+  flipped$beta_ZX[c(2, 4)] <- -flipped$beta_ZX[c(2, 4)]
+  flipped$beta_ZY[c(2, 4)] <- -flipped$beta_ZY[c(2, 4)]
+
+  baseResult <- suppressMessages(runSensitivityAnalyses(perSnp, methods = "MREgger"))
+  flippedResult <- suppressMessages(runSensitivityAnalyses(flipped, methods = "MREgger"))
+
+  expect_equal(baseResult$mrEgger$beta_MR, flippedResult$mrEgger$beta_MR, tolerance = 1e-10)
+  expect_equal(baseResult$mrEgger$intercept, flippedResult$mrEgger$intercept, tolerance = 1e-10)
+})
+
+test_that("Steiger requires sample sizes for a formal directional test", {
+  perSnp <- data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    beta_ZY = c(0.05, 0.06, 0.07),
+    se_ZY = rep(0.02, 3),
+    beta_ZX = c(0.20, 0.22, 0.24),
+    se_ZX = rep(0.03, 3),
+    stringsAsFactors = FALSE
+  )
+
+  expect_warning(
+    results <- suppressMessages(runSensitivityAnalyses(perSnp, methods = "Steiger")),
+    "requires both outcomeSampleSize and exposureSampleSize"
+  )
+
   expect_true(is.na(results$steiger$beta_MR))
 })

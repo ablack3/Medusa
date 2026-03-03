@@ -55,6 +55,6 @@ estimation in Mendelian randomization with some invalid instruments using a
 weighted median estimator. \emph{Genetic Epidemiology}, 40(4), 304-314.
 }
 \author{
-\strong{Maintainer}: First Last \email{author@institution.edu}
+\strong{Maintainer}: Adam Black \email{black@ohdsi.org}
 
 }

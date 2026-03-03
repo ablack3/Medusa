@@ -16,14 +16,14 @@
 
 #' Fit Outcome Model and Evaluate Profile Log-Likelihood
 #'
-#' @title Regularized outcome model with grid likelihood evaluation
+#' @title Outcome model with exact grid likelihood evaluation
 #'
 #' @description
-#' Fits a regularized logistic regression of the binary outcome on SNP
-#' genotype(s) plus covariates, then evaluates the profile log-likelihood
-#' across a pre-specified grid of beta_ZY values. This is the core
-#' methodological function for federated MR: each site runs this locally
-#' and shares only the resulting log-likelihood profile vector.
+#' Fits a logistic regression of the binary outcome on SNP genotype(s) plus
+#' covariates, then evaluates the profile log-likelihood across a pre-specified
+#' grid of beta_ZY values. This is the core methodological function for
+#' federated MR: each site runs this locally and shares only the resulting
+#' log-likelihood profile vector.
 #'
 #' Two analysis modes are supported: \code{alleleScore} fits a single model
 #' using a weighted allele score as the genetic exposure variable, while
@@ -54,30 +54,35 @@
 #'     \item{siteId}{Character site identifier.}
 #'     \item{betaGrid}{Numeric vector of grid points (same as input).}
 #'     \item{logLikProfile}{Numeric vector of profile log-likelihood values,
-#'       same length as betaGrid. For perSNP mode, a matrix with one column
-#'       per SNP.}
+#'       same length as betaGrid. In \code{perSNP} mode this remains the valid
+#'       allele-score profile used for pooling.}
 #'     \item{nCases}{Number of outcome cases.}
 #'     \item{nControls}{Number of controls.}
 #'     \item{snpIds}{Character vector of SNP IDs used.}
 #'     \item{diagnosticFlags}{List of diagnostic flags from the model fit.}
 #'     \item{betaHat}{Point estimate of beta_ZY (MLE from profile).}
 #'     \item{seHat}{Approximate standard error from profile curvature.}
+#'     \item{perSnpEstimates}{When \code{analysisType = "perSNP"}, a data frame
+#'       of per-SNP beta_ZY / se_ZY estimates for summarized-data sensitivity
+#'       analyses.}
 #'   }
 #'   This object contains no individual-level data and is safe to share.
 #'
 #' @details
 #' The profile log-likelihood evaluation works as follows:
 #' \enumerate{
-#'   \item Fit the unconstrained model to obtain initial estimates.
-#'   \item At each grid point, fix beta_ZY to that value and evaluate the
-#'     log-likelihood (optimizing over all other parameters).
-#'   \item The implementation uses a quadratic approximation to the profile
-#'     log-likelihood: \code{logLik(beta) = logLik_max - 0.5 * (beta - beta_hat)^2 /
-#'     se^2}, which is efficient and accurate for large samples.
+#'   \item Fit the unconstrained model to obtain the MLE and its Wald SE.
+#'   \item At each grid point, fix beta_ZY to that value and re-fit the
+#'     nuisance parameters using the fixed term as an offset.
+#'   \item Record the maximized constrained log-likelihood at each grid point.
+#'     This is the exact profile likelihood for the coefficient in a logistic
+#'     generalized linear model.
 #' }
 #'
-#' When using the allele score, weights are beta_ZX / se_ZX^2, normalized
-#' to sum to 1.
+#' When using the allele score, weights are
+#' \eqn{w_j = \gamma_j / \mathrm{SE}(\gamma_j)^2}, normalized by
+#' \eqn{\sum_j |w_j|}. The same weights are reused downstream so that the
+#' MR denominator matches the exact score fitted at each site.
 #'
 #' @references
 #' Suchard, M. A., et al. (2013). Massive parallelization of serial inference
@@ -186,6 +191,9 @@ fitOutcomeModel <- function(cohortData,
     betaHat = result$betaHat,
     seHat = result$seHat
   )
+  if (!is.null(result$perSnpEstimates)) {
+    profile$perSnpEstimates <- result$perSnpEstimates
+  }
   class(profile) <- "medusaSiteProfile"
 
   message(sprintf("Site '%s': beta_ZY_hat = %.4f (SE = %.4f).",
@@ -202,10 +210,11 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
   snpCols <- grep("^snp_", names(cohortData), value = TRUE)
   nSnps <- min(length(snpCols), nrow(instrumentTable))
 
-  # Compute weighted allele score
-  weights <- instrumentTable$beta_ZX[seq_len(nSnps)] /
-    (instrumentTable$se_ZX[seq_len(nSnps)]^2)
-  weights <- weights / sum(abs(weights))
+  # Burgess et al. (2013): the allele score is a weighted sum of genotypes,
+  # using external SNP-exposure effects to define fixed score weights.
+  weights <- computeAlleleScoreWeights(
+    instrumentTable[seq_len(nSnps), , drop = FALSE]
+  )
 
   snpMatrix <- as.matrix(cohortData[, snpCols[seq_len(nSnps)], drop = FALSE])
   # Replace NA with 0 for score computation (common imputation for missing genotypes)
@@ -219,40 +228,14 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
     outcome = cohortData$outcome,
     alleleScore = alleleScore
   )
+  modelParts <- appendCovariatesToModelData(modelData, cohortData, covariateData)
+  modelData <- modelParts$modelData
+  covCols <- modelParts$covariateColumns
 
-  # Add covariates if available
-  covCols <- character(0)
-  if (!is.null(covariateData)) {
-    if (is.data.frame(covariateData)) {
-      covCols <- setdiff(names(covariateData),
-                          c("person_id", "personId", "rowId"))
-      if ("personId" %in% names(covariateData)) {
-        mergedCov <- dplyr::left_join(
-          data.frame(personId = cohortData$personId),
-          covariateData,
-          by = "personId"
-        )
-      } else {
-        mergedCov <- covariateData
-      }
-      for (col in covCols) {
-        if (col %in% names(mergedCov)) {
-          modelData[[col]] <- mergedCov[[col]]
-        }
-      }
-    }
-  }
-
-  # Also add basic confounders from cohortData if available
-  for (confCol in c("confounder_1", "confounder_2")) {
-    if (confCol %in% names(cohortData)) {
-      modelData[[confCol]] <- cohortData[[confCol]]
-      covCols <- c(covCols, confCol)
-    }
-  }
-
-  # Remove rows with missing outcome
-  completeIdx <- !is.na(modelData$outcome)
+  # Use one common complete-case sample for the unconstrained model and every
+  # constrained fit. Otherwise the profile compares likelihoods on different
+  # patient sets.
+  completeIdx <- complete.cases(modelData)
   modelData <- modelData[completeIdx, , drop = FALSE]
 
   # Fit unconstrained logistic regression
@@ -264,9 +247,16 @@ fitAlleleScoreModel <- function(cohortData, covariateData, instrumentTable,
     betaHat <- coef(fit)["alleleScore"]
     seHat <- summary(fit)$coefficients["alleleScore", "Std. Error"]
 
-    # Profile log-likelihood via quadratic approximation
-    # logLik(beta) = logLik_max - 0.5 * (beta - betaHat)^2 / se^2
-    logLikProfile <- -0.5 * ((betaGrid - betaHat) / seHat)^2
+    # Exact profile likelihood for a fixed coefficient:
+    #   l_p(beta) = max_alpha l(alpha, beta)
+    # We implement this by re-fitting the nuisance parameters with
+    # beta * alleleScore supplied as an offset.
+    logLikProfile <- evaluateBinaryProfile(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = covCols,
+      betaGrid = betaGrid
+    )
 
     list(
       logLikProfile = logLikProfile,
@@ -291,17 +281,22 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
   snpCols <- grep("^snp_", names(cohortData), value = TRUE)
   nSnps <- min(length(snpCols), nrow(instrumentTable))
 
+  # A site can provide per-SNP summary estimates for IVW / MR-Egger / weighted
+  # median, but those single-SNP regressions do not form a joint likelihood that
+  # can be summed across SNPs. Keep the pooled site profile tied to the valid
+  # allele-score model and expose the per-SNP fits as auxiliary outputs only.
+  alleleScoreFit <- fitAlleleScoreModel(
+    cohortData = cohortData,
+    covariateData = covariateData,
+    instrumentTable = instrumentTable,
+    betaGrid = betaGrid,
+    regularizationVariance = regularizationVariance,
+    instrumentRegularization = instrumentRegularization
+  )
+
   profileMatrix <- matrix(NA_real_, nrow = length(betaGrid), ncol = nSnps)
   betaHats <- numeric(nSnps)
   seHats <- numeric(nSnps)
-
-  # Add confounders if available
-  covCols <- character(0)
-  for (confCol in c("confounder_1", "confounder_2")) {
-    if (confCol %in% names(cohortData)) {
-      covCols <- c(covCols, confCol)
-    }
-  }
 
   for (j in seq_len(nSnps)) {
     snpCol <- snpCols[j]
@@ -309,15 +304,15 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
       outcome = cohortData$outcome,
       snp = cohortData[[snpCol]]
     )
-    for (col in covCols) {
-      modelData[[col]] <- cohortData[[col]]
-    }
+    modelParts <- appendCovariatesToModelData(modelData, cohortData, covariateData)
+    modelData <- modelParts$modelData
+    covCols <- modelParts$covariateColumns
 
     completeIdx <- complete.cases(modelData)
     modelData <- modelData[completeIdx, , drop = FALSE]
 
     if (nrow(modelData) < 20 || length(unique(modelData$outcome)) < 2) {
-      profileMatrix[, j] <- rep(0, length(betaGrid))
+      profileMatrix[, j] <- rep(-Inf, length(betaGrid))
       betaHats[j] <- NA_real_
       seHats[j] <- NA_real_
       next
@@ -331,29 +326,145 @@ fitPerSNPModels <- function(cohortData, covariateData, instrumentTable,
       betaHat <- coef(fit)["snp"]
       seHat <- summary(fit)$coefficients["snp", "Std. Error"]
 
-      profileMatrix[, j] <- -0.5 * ((betaGrid - betaHat) / seHat)^2
+      profileMatrix[, j] <- evaluateBinaryProfile(
+        modelData = modelData,
+        exposureColumn = "snp",
+        covariateColumns = covCols,
+        betaGrid = betaGrid
+      )
       betaHats[j] <- unname(betaHat)
       seHats[j] <- unname(seHat)
     }, error = function(e) {
-      profileMatrix[, j] <<- rep(0, length(betaGrid))
+      profileMatrix[, j] <<- rep(-Inf, length(betaGrid))
       betaHats[j] <<- NA_real_
       seHats[j] <<- NA_real_
     })
   }
 
   colnames(profileMatrix) <- instrumentTable$snp_id[seq_len(nSnps)]
-
-  # Combined profile is the sum across SNPs (independence)
-  combinedProfile <- rowSums(profileMatrix, na.rm = TRUE)
+  perSnpEstimates <- data.frame(
+    snp_id = instrumentTable$snp_id[seq_len(nSnps)],
+    beta_ZY = betaHats,
+    se_ZY = seHats,
+    beta_ZX = instrumentTable$beta_ZX[seq_len(nSnps)],
+    se_ZX = instrumentTable$se_ZX[seq_len(nSnps)],
+    stringsAsFactors = FALSE
+  )
 
   list(
-    logLikProfile = combinedProfile,
+    logLikProfile = alleleScoreFit$logLikProfile,
     perSnpProfiles = profileMatrix,
-    betaHat = betaGrid[which.max(combinedProfile)],
-    seHat = estimateSEFromProfile(betaGrid, combinedProfile),
+    betaHat = alleleScoreFit$betaHat,
+    seHat = alleleScoreFit$seHat,
     perSnpBetaHats = betaHats,
-    perSnpSEHats = seHats
+    perSnpSEHats = seHats,
+    perSnpEstimates = perSnpEstimates[stats::complete.cases(perSnpEstimates), , drop = FALSE]
   )
+}
+
+
+#' @keywords internal
+appendCovariatesToModelData <- function(modelData, cohortData, covariateData) {
+  covCols <- character(0)
+
+  if (!is.null(covariateData) && is.data.frame(covariateData)) {
+    covCols <- setdiff(names(covariateData), c("person_id", "personId", "rowId"))
+
+    if ("personId" %in% names(covariateData) && "personId" %in% names(cohortData)) {
+      mergedCov <- dplyr::left_join(
+        data.frame(personId = cohortData$personId),
+        covariateData,
+        by = "personId"
+      )
+    } else {
+      mergedCov <- covariateData
+    }
+
+    for (col in covCols) {
+      if (col %in% names(mergedCov)) {
+        modelData[[col]] <- mergedCov[[col]]
+      }
+    }
+  }
+
+  for (confCol in c("confounder_1", "confounder_2")) {
+    if (confCol %in% names(cohortData)) {
+      modelData[[confCol]] <- cohortData[[confCol]]
+      covCols <- c(covCols, confCol)
+    }
+  }
+
+  list(
+    modelData = modelData,
+    covariateColumns = unique(covCols)
+  )
+}
+
+
+#' @keywords internal
+evaluateBinaryProfile <- function(modelData,
+                                  exposureColumn,
+                                  covariateColumns,
+                                  betaGrid) {
+  checkmate::assertDataFrame(modelData, min.rows = 1)
+  checkmate::assertString(exposureColumn)
+  if (!is.character(covariateColumns)) {
+    stop("covariateColumns must be a character vector.")
+  }
+
+  profileFormula <- if (length(covariateColumns) > 0) {
+    as.formula(paste("outcome ~", paste(covariateColumns, collapse = " + ")))
+  } else {
+    stats::as.formula("outcome ~ 1")
+  }
+
+  response <- modelData$outcome
+  designMatrix <- stats::model.matrix(profileFormula, data = modelData)
+  exposure <- modelData[[exposureColumn]]
+  logLikProfile <- vapply(betaGrid, function(betaFixed) {
+    fit <- tryCatch(
+      suppressWarnings(
+        stats::glm.fit(
+          x = designMatrix,
+          y = response,
+          family = stats::binomial(),
+          offset = betaFixed * exposure
+        )
+      ),
+      error = function(e) NULL
+    )
+
+    if (is.null(fit)) {
+      return(-Inf)
+    }
+
+    fittedProb <- pmin(pmax(fit$fitted.values, 1e-12), 1 - 1e-12)
+    fitLogLik <- sum(stats::dbinom(response, size = 1, prob = fittedProb, log = TRUE))
+    if (!is.finite(fitLogLik)) {
+      return(-Inf)
+    }
+
+    fitLogLik
+  }, numeric(1))
+
+  if (all(!is.finite(logLikProfile))) {
+    stop("Profile likelihood failed at all grid points.")
+  }
+
+  logLikProfile
+}
+
+
+#' @keywords internal
+computeAlleleScoreWeights <- function(instrumentTable) {
+  rawWeights <- instrumentTable$beta_ZX / (instrumentTable$se_ZX^2)
+  scalingConstant <- sum(abs(rawWeights))
+
+  if (!is.finite(scalingConstant) || scalingConstant <= 0) {
+    stop("Instrument weights are not finite. Check beta_ZX and se_ZX.")
+  }
+
+  rawWeights / scalingConstant
 }
 
 

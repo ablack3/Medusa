@@ -2,7 +2,7 @@
 % Please edit documentation in R/fitOutcomeModel.R
 \name{fitOutcomeModel}
 \alias{fitOutcomeModel}
-\title{Regularized outcome model with grid likelihood evaluation}
+\title{Outcome model with exact grid likelihood evaluation}
 \usage{
 fitOutcomeModel(
   cohortData,
@@ -50,23 +50,26 @@ A list with class "medusaSiteProfile" containing:
     \item{siteId}{Character site identifier.}
     \item{betaGrid}{Numeric vector of grid points (same as input).}
     \item{logLikProfile}{Numeric vector of profile log-likelihood values,
-      same length as betaGrid. For perSNP mode, a matrix with one column
-      per SNP.}
+      same length as betaGrid. In \code{perSNP} mode this remains the valid
+      allele-score profile used for pooling.}
     \item{nCases}{Number of outcome cases.}
     \item{nControls}{Number of controls.}
     \item{snpIds}{Character vector of SNP IDs used.}
     \item{diagnosticFlags}{List of diagnostic flags from the model fit.}
     \item{betaHat}{Point estimate of beta_ZY (MLE from profile).}
     \item{seHat}{Approximate standard error from profile curvature.}
+    \item{perSnpEstimates}{When \code{analysisType = "perSNP"}, a data frame
+      of per-SNP beta_ZY / se_ZY estimates for summarized-data sensitivity
+      analyses.}
   }
   This object contains no individual-level data and is safe to share.
 }
 \description{
-Fits a regularized logistic regression of the binary outcome on SNP
-genotype(s) plus covariates, then evaluates the profile log-likelihood
-across a pre-specified grid of beta_ZY values. This is the core
-methodological function for federated MR: each site runs this locally
-and shares only the resulting log-likelihood profile vector.
+Fits a logistic regression of the binary outcome on SNP genotype(s) plus
+covariates, then evaluates the profile log-likelihood across a pre-specified
+grid of beta_ZY values. This is the core methodological function for
+federated MR: each site runs this locally and shares only the resulting
+log-likelihood profile vector.
 
 Two analysis modes are supported: \code{alleleScore} fits a single model
 using a weighted allele score as the genetic exposure variable, while
@@ -79,16 +82,18 @@ Fit Outcome Model and Evaluate Profile Log-Likelihood
 
 The profile log-likelihood evaluation works as follows:
 \enumerate{
-  \item Fit the unconstrained model to obtain initial estimates.
-  \item At each grid point, fix beta_ZY to that value and evaluate the
-    log-likelihood (optimizing over all other parameters).
-  \item The implementation uses a quadratic approximation to the profile
-    log-likelihood: \code{logLik(beta) = logLik_max - 0.5 * (beta - beta_hat)^2 /
-    se^2}, which is efficient and accurate for large samples.
+  \item Fit the unconstrained model to obtain the MLE and its Wald SE.
+  \item At each grid point, fix beta_ZY to that value and re-fit the
+    nuisance parameters using the fixed term as an offset.
+  \item Record the maximized constrained log-likelihood at each grid point.
+    This is the exact profile likelihood for the coefficient in a logistic
+    generalized linear model.
 }
 
-When using the allele score, weights are beta_ZX / se_ZX^2, normalized
-to sum to 1.
+When using the allele score, weights are
+\eqn{w_j = \gamma_j / \mathrm{SE}(\gamma_j)^2}, normalized by
+\eqn{\sum_j |w_j|}. The same weights are reused downstream so that the
+MR denominator matches the exact score fitted at each site.
 }
 \examples{
 simData <- simulateMRData(n = 2000, nSnps = 5, trueEffect = 0.3)

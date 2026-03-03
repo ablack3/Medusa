@@ -87,6 +87,8 @@ test_that("alleleScore and perSNP modes both return valid profiles", {
   expect_equal(length(profilePS$logLikProfile), length(grid))
   expect_true(is.finite(profileAS$betaHat))
   expect_true(is.finite(profilePS$betaHat))
+  expect_true("perSnpEstimates" %in% names(profilePS))
+  expect_true(nrow(profilePS$perSnpEstimates) > 0)
 })
 
 test_that("warning issued when MLE is at grid boundary", {

@@ -21,9 +21,11 @@
 #' @description
 #' Takes the pooled profile log-likelihood from \code{\link{poolLikelihoodProfiles}}
 #' and the instrument table to compute the MR causal estimate via the Wald ratio.
-#' The SNP-outcome association (beta_ZY) is estimated from the profile likelihood
-#' peak, and the causal estimate is beta_MR = beta_ZY / beta_ZX. Uncertainty is
-#' propagated using the delta method.
+#' The SNP-outcome association (beta_ZY) is estimated from the profile
+#' likelihood peak, and the causal estimate is beta_MR = beta_ZY / beta_ZX.
+#' For multi-SNP analyses, beta_ZX is the association of the exact weighted
+#' allele score used at each site, not a simple mean of the component SNP
+#' effects. Uncertainty is propagated using the delta method.
 #'
 #' Confidence intervals are computed both from the profile likelihood (likelihood
 #' ratio method) and via the delta method (normal approximation). The likelihood-
@@ -47,7 +49,7 @@
 #'     \item{orCiLower}{Lower CI for odds ratio.}
 #'     \item{orCiUpper}{Upper CI for odds ratio.}
 #'     \item{ciLevel}{The confidence level used.}
-#'     \item{betaZX}{The SNP-exposure effect used (mean across instruments).}
+#'     \item{betaZX}{The exposure effect of the fitted allele score.}
 #'     \item{seZX}{The SE of betaZX used.}
 #'     \item{nInstruments}{Number of instruments used.}
 #'     \item{combinedProfile}{The full combined profile for plotting.}
@@ -56,7 +58,10 @@
 #' @details
 #' \strong{Wald ratio}: For a single instrument, beta_MR = beta_ZY / beta_ZX.
 #' When multiple instruments are pooled into a single allele score, the
-#' effective beta_ZX is the precision-weighted mean.
+#' denominator must be the exposure effect of that same score:
+#' \deqn{\beta_{ZX, score} = \sum_j w_j \gamma_j}
+#' where \eqn{w_j} are the fixed score weights used at the sites and
+#' \eqn{\gamma_j} are the SNP-exposure coefficients.
 #'
 #' \strong{Delta method SE}: se_MR = sqrt( (se_ZY/beta_ZX)^2 +
 #' (beta_ZY * se_ZX / beta_ZX^2)^2 ).
@@ -69,6 +74,8 @@
 #' Burgess, S., Butterworth, A., & Thompson, S. G. (2013). Mendelian
 #' randomization analysis with multiple genetic variants using summarized
 #' data. \emph{Genetic Epidemiology}, 37(7), 658-665.
+#' doi:10.1002/gepi.21758.
+#' Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC4377079/
 #'
 #' @examples
 #' profiles <- simulateSiteProfiles(nSites = 3, trueBeta = 0.5)
@@ -121,10 +128,19 @@ computeMREstimate <- function(combinedProfile,
     betaZYCIUpper <- betaZYHat + qnorm(1 - (1 - ciLevel) / 2) * seZY
   }
 
-  # Step 4: Compute effective beta_ZX (precision-weighted mean)
-  weights <- 1 / (instrumentTable$se_ZX^2)
-  betaZX <- weighted.mean(instrumentTable$beta_ZX, weights)
-  seZX <- sqrt(1 / sum(weights))
+  # Step 4: Compute the exposure association of the exact allele score fitted
+  # at each site. Following Burgess et al. (2013), if S = sum_j w_j G_j, then
+  # gamma_S = sum_j w_j gamma_j.
+  scoreWeights <- computeAlleleScoreWeights(instrumentTable)
+  betaZX <- sum(scoreWeights * instrumentTable$beta_ZX)
+
+  # Under the standard LD-pruned approximation for uncorrelated variants,
+  # Var(gamma_S) = sum_j w_j^2 Var(gamma_j).
+  seZX <- sqrt(sum((scoreWeights^2) * (instrumentTable$se_ZX^2)))
+
+  if (!is.finite(betaZX) || abs(betaZX) < .Machine$double.eps^0.5) {
+    stop("The fitted allele score has an exposure association too close to zero for a stable Wald ratio.")
+  }
 
   # Step 5: Wald ratio
   betaMR <- betaZYHat / betaZX
@@ -154,10 +170,10 @@ computeMREstimate <- function(combinedProfile,
   orCiLower <- exp(ciLower)
   orCiUpper <- exp(ciUpper)
 
-  message(sprintf("MR estimate: beta = %.4f (95%% CI: %.4f, %.4f), p = %.2e",
-                  betaMR, ciLower, ciUpper, pValue))
-  message(sprintf("Odds ratio: %.3f (95%% CI: %.3f, %.3f)",
-                  oddsRatio, orCiLower, orCiUpper))
+  message(sprintf("MR estimate: beta = %.4f (%.0f%% CI: %.4f, %.4f), p = %.2e",
+                  betaMR, ciLevel * 100, ciLower, ciUpper, pValue))
+  message(sprintf("Odds ratio: %.3f (%.0f%% CI: %.3f, %.3f)",
+                  oddsRatio, ciLevel * 100, orCiLower, orCiUpper))
 
   result <- list(
     betaZY = betaZYHat,

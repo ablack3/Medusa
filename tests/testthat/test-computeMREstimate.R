@@ -213,3 +213,38 @@ test_that("warning issued for profile with multiple local maxima", {
     "multiple local maxima"
   )
 })
+
+test_that("multi-SNP estimate uses the fitted allele-score denominator", {
+  betaGrid <- seq(-3, 3, by = 0.01)
+  trueBetaZY <- 0.6
+  se <- 0.1
+  logLikProfile <- -0.5 * ((betaGrid - trueBetaZY) / se)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = c("rs1", "rs2"),
+    effect_allele = c("A", "G"),
+    other_allele = c("C", "T"),
+    beta_ZX = c(0.2, 0.4),
+    se_ZX = c(0.1, 0.1),
+    pval_ZX = c(1e-20, 1e-30),
+    eaf = c(0.3, 0.4),
+    stringsAsFactors = FALSE
+  )
+
+  result <- suppressMessages(computeMREstimate(combined, instruments))
+  expectedWeights <- c(0.3333333, 0.6666667)
+  expectedBetaZX <- sum(expectedWeights * instruments$beta_ZX)
+
+  expect_equal(result$betaZX, expectedBetaZX, tolerance = 1e-6)
+  expect_equal(result$betaMR, trueBetaZY / expectedBetaZX, tolerance = 0.05)
+})

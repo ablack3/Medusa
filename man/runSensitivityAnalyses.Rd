@@ -56,13 +56,15 @@ with weights 1/se_ZY^2. This is the primary MR estimate assuming all
 instruments are valid.
 
 \strong{MR-Egger}: Weighted regression of beta_ZY on beta_ZX with an
-intercept. A non-zero intercept indicates directional pleiotropy. The slope
-is a consistent causal estimate even under directional pleiotropy, provided
-the InSIDE assumption holds.
+intercept, after orienting all SNPs so that beta_ZX is positive. A non-zero
+intercept indicates directional pleiotropy. The slope is a consistent causal
+estimate even under directional pleiotropy, provided the InSIDE assumption
+holds.
 
-\strong{Weighted Median}: Bootstrap-based weighted median of per-SNP Wald
-ratio estimates. Produces a consistent estimate if fewer than 50% of the
-weight comes from invalid instruments.
+\strong{Weighted Median}: Weighted median of per-SNP Wald ratio estimates
+using first-order inverse-variance weights for the ratio estimates
+(\eqn{w_j = \beta_{Xj}^2 / \mathrm{SE}(\beta_{Yj})^2}). Produces a consistent
+estimate if fewer than 50% of the total weight comes from invalid instruments.
 
 \strong{Steiger}: Tests whether each SNP explains more variance in the
 exposure than the outcome (the expected causal direction). SNPs failing
@@ -84,7 +86,11 @@ perSnp <- data.frame(
   beta_ZX = betaZX,
   se_ZX = rep(0.05, nSnps)
 )
-results <- runSensitivityAnalyses(perSnp)
+results <- runSensitivityAnalyses(
+  perSnp,
+  outcomeSampleSize = 10000,
+  exposureSampleSize = 10000
+)
 results$summary
 
 }
@@ -92,14 +98,21 @@ results$summary
 Bowden, J., Davey Smith, G., & Burgess, S. (2015). Mendelian randomization
 with invalid instruments: effect estimation and bias detection through Egger
 regression. \emph{International Journal of Epidemiology}, 44(2), 512-525.
+doi:10.1093/ije/dyv080.
+Abstract: https://pubmed.ncbi.nlm.nih.gov/26050253/
+Full text (if available to you): https://academic.oup.com/ije/article-pdf/44/2/512/18631079/dyv080.pdf
 
 Bowden, J., et al. (2016). Consistent estimation in Mendelian randomization
 with some invalid instruments using a weighted median estimator.
 \emph{Genetic Epidemiology}, 40(4), 304-314.
+doi:10.1002/gepi.21965.
+Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC4849733/
 
 Hemani, G., Tilling, K., & Davey Smith, G. (2017). Orienting the causal
 relationship between imprecisely measured traits using GWAS summary data.
 \emph{PLoS Genetics}, 13(11), e1007081.
+doi:10.1371/journal.pgen.1007081.
+Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC5711033/
 }
 \seealso{
 \code{\link{computeMREstimate}}, \code{\link{fitOutcomeModel}},

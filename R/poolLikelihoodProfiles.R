@@ -25,7 +25,7 @@
 #' the joint likelihood under independence across sites.
 #'
 #' Before summing, the function validates that all sites used identical beta
-#' grid vectors. If grids differ, spline interpolation to a common grid is
+#' grid vectors. If grids differ, linear interpolation to a common grid is
 #' applied with a warning.
 #'
 #' @param siteProfileList Named list of site profile objects, each the output
@@ -50,10 +50,11 @@
 #' \deqn{\ell_{combined}(b_k) = \sum_{s=1}^{S} \ell_s(b_k)}
 #' where \eqn{\ell_s} is the profile log-likelihood from site \eqn{s}.
 #'
-#' This pooling is exact (not an approximation) under the assumption that
-#' observations are independent across sites. No iterative communication
-#' protocol is needed — each site computes its profile once and shares only
-#' the numeric vector.
+#' This pooling is exact under the assumption that observations are independent
+#' across sites and every site uses the same beta grid. If interpolation is
+#' needed, pooling remains a close numerical approximation on the common grid.
+#' No iterative communication protocol is needed: each site computes its
+#' profile once and shares only the numeric vector.
 #'
 #' @references
 #' Luo, Y., et al. (2022). dPQL: a lossless distributed algorithm for
@@ -135,11 +136,13 @@ poolLikelihoodProfiles <- function(siteProfileList,
         (length(profile$betaGrid) != length(commonGrid) ||
          !all(abs(profile$betaGrid - commonGrid) < 1e-10))) {
       # Interpolate to common grid
-      interpolated <- spline(
+      interpolated <- approx(
         x = profile$betaGrid,
         y = profile$logLikProfile,
         xout = commonGrid,
-        method = "natural"
+        method = "linear",
+        rule = 2,
+        ties = "ordered"
       )
       combinedLogLik <- combinedLogLik + interpolated$y
     } else {
