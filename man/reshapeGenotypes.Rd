@@ -16,7 +16,7 @@ genotype.}
 Data frame in wide format with personId and one column per SNP.
 }
 \description{
-Converts genotype data from long format (person_id, snp_id,
+Converts genotype data from long format (personId, snpId,
   genotype) to wide format with one column per SNP. Missing genotypes
   are coded as NA.
 }

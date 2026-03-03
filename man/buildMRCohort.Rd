@@ -11,12 +11,10 @@ buildMRCohort(
   cohortTable,
   outcomeCohortId,
   instrumentTable,
-  genomicLinkageSchema,
-  genomicLinkageTable,
+  genomicDatabaseSchema = cdmDatabaseSchema,
   indexDateOffset = 0,
   washoutPeriod = 365,
-  excludePriorOutcome = TRUE,
-  genomicPersonIdColumn = "person_id"
+  excludePriorOutcome = TRUE
 )
 }
 \arguments{
@@ -35,11 +33,8 @@ specifying the database connection.}
 \item{instrumentTable}{Data frame. Output of \code{\link{getMRInstruments}} or
 \code{\link{createInstrumentTable}} containing the instrument SNPs.}
 
-\item{genomicLinkageSchema}{Character. Schema containing the genomic linkage table.}
-
-\item{genomicLinkageTable}{Character. Name of the table linking person_id to
-SNP genotypes. Must contain columns for person identifier, snp_id, and
-genotype (coded as 0/1/2 count of effect alleles).}
+\item{genomicDatabaseSchema}{Character. Schema containing the VARIANT_OCCURRENCE
+table from the OMOP Genomic Extension. Defaults to \code{cdmDatabaseSchema}.}
 
 \item{indexDateOffset}{Integer. Days offset from cohort start date for
 defining the index date. Default is 0.}
@@ -49,10 +44,6 @@ before index date. Default is 365.}
 
 \item{excludePriorOutcome}{Logical. If TRUE, persons with the outcome before
 their index date are excluded. Default is TRUE.}
-
-\item{genomicPersonIdColumn}{Character. Name of the person identifier column
-in the genomic linkage table if it differs from "person_id". Default is
-"person_id".}
 }
 \value{
 A data frame with one row per person and columns:
@@ -73,9 +64,21 @@ outcome cohort data and genotype data, performs allele harmonization to ensure
 genotype coding matches the instrument table, and returns a local R data frame
 suitable for downstream analysis. The returned data never leaves the site.
 
-The function queries: PERSON (age, sex), CONDITION_OCCURRENCE (outcome),
-OBSERVATION_PERIOD (eligibility), and the genomic linkage table (genotypes).
-All SQL is rendered and translated via SqlRender for cross-dialect compatibility.
+Genotype data is extracted from the \strong{VARIANT_OCCURRENCE} table defined
+by the OMOP CDM Genomic Extension. The minimal required columns from that
+table are:
+\itemize{
+  \item \code{person_id} — links variants to persons
+  \item \code{rs_id} — dbSNP rs identifier for the variant
+  \item \code{genotype} — genotype call (VCF-style "0/0", "0/1", "1/1" or
+    plain integer "0", "1", "2")
+}
+Additionally, \code{reference_allele} and \code{alternate_allele} are used
+for allele harmonization when available.
+
+The function also queries: PERSON (age, sex), CONDITION_OCCURRENCE (outcome),
+and OBSERVATION_PERIOD (eligibility). All SQL is rendered and translated via
+SqlRender for cross-dialect compatibility.
 }
 \details{
 Build Study Cohort for Mendelian Randomization at a Single Site
@@ -84,7 +87,8 @@ Build Study Cohort for Mendelian Randomization at a Single Site
 Genotype coding: genotypes are coded as 0, 1, 2 representing the count of
 effect alleles. The function performs allele harmonization by comparing the
 effect allele in the instrument table to the allele coding in the genotype
-data. If alleles are swapped, genotypes are flipped (2 - genotype).
+data (alternate allele from VARIANT_OCCURRENCE). If alleles are swapped,
+genotypes are flipped (2 - genotype) and instrument beta_ZX is negated.
 }
 \examples{
 \dontrun{
@@ -102,8 +106,7 @@ cohort <- buildMRCohort(
   cohortTable = "cohort",
   outcomeCohortId = 1234,
   instrumentTable = instruments,
-  genomicLinkageSchema = "genomics",
-  genomicLinkageTable = "genotype_data"
+  genomicDatabaseSchema = "genomics"
 )
 }
 
