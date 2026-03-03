@@ -34,6 +34,46 @@ randomization study”, 2023).
 
 <div class="section level2">
 
+## Two-Sample MR in One Page
+
+This vignette uses **two-sample Mendelian randomization (MR)**. In plain
+terms:
+
+1.  We obtain the SNP-exposure associations (`beta_ZX`) from an external
+    GWAS. Here, the “exposure” is genetically proxied IL-6 signaling.
+
+2.  We estimate the SNP-outcome associations (`beta_ZY`) in a separate
+    outcome dataset. In Medusa, that outcome dataset can be a single
+    OMOP site or a federated network of sites.
+
+3.  For each instrument, the core causal signal is the **Wald ratio**:
+    `beta_ZY / beta_ZX`. If multiple SNPs are used, Medusa’s primary
+    analysis combines them into a fixed weighted allele score and
+    applies the same logic to that score.
+
+This is called “two-sample” because the exposure and outcome
+associations come from two distinct samples, not because two hospitals
+are required. In this package, the exposure side typically comes from a
+public GWAS, while the outcome side comes from local OMOP-linked
+genotype data.
+
+The usual MR assumptions are:
+
+-   **Relevance**: the selected SNPs truly predict the exposure of
+    interest.
+-   **Independence**: the SNPs are not associated with major confounders
+    of the exposure-outcome relationship.
+-   **Exclusion restriction**: the SNPs affect the outcome primarily
+    through the exposure pathway being studied.
+
+The rest of the vignette shows how Medusa operationalizes that design in
+a federated setting: the coordinator provides `beta_ZX`, sites estimate
+`beta_ZY`, and only profile-likelihood summaries leave each site.
+
+</div>
+
+<div class="section level2">
+
 ## Step 1: Instrument Assembly
 
 In a real analysis, you would query OpenGWAS:
@@ -190,6 +230,136 @@ profile <- fitOutcomeModel(
 
 <div class="section level2">
 
+## Checking Two-Sample MR Assumptions with Medusa
+
+Medusa does not “prove” the MR assumptions, but it gives you a
+structured way to look for violations before trusting the causal
+estimate.
+
+-   **Relevance**: `runInstrumentDiagnostics()` reports per-SNP
+    F-statistics. Weak instruments (`F < 10`) can bias MR estimates.
+-   **Independence**: the instrument PheWAS checks whether SNPs are
+    associated with observed covariates. Strong associations with likely
+    confounders can be a warning sign.
+-   **Exclusion restriction**: Medusa cannot verify this directly, but
+    unexpected PheWAS hits, allele-frequency mismatches, or major
+    missingness can indicate pleiotropy, data-quality problems, or
+    harmonization issues that threaten this assumption.
+
+The package also has a `negativeControlResults` slot in the diagnostics
+object, but this vignette focuses on the currently executable checks:
+F-statistics, covariate associations, allele-frequency comparison, and
+genotype missingness.
+
+<div id="cb5" class="sourceCode">
+
+``` r
+# Build a diagnostics-ready copy of the synthetic cohort
+diagnosticCohort <- cohortData
+diagnosticCohort$personId <- diagnosticCohort$person_id
+diagnosticCohort$exposure <- exposure
+
+# Add a small amount of missingness so the missingness report is visible
+set.seed(2027)
+missingIdx <- sample.int(n, size = round(0.12 * n))
+diagnosticCohort$snp_rs4453032[missingIdx] <- NA_integer_
+
+# Create synthetic covariates and add one deliberately SNP-correlated trait
+diagnosticCovariates <- simulateCovariateData(
+  n = n,
+  nCovariates = 8,
+  seed = 2026
+)
+names(diagnosticCovariates)[names(diagnosticCovariates) == "person_id"] <- "personId"
+diagnosticCovariates$proxy_inflammation_trait <-
+  as.numeric(scale(diagnosticCohort$snp_rs2228145 + rnorm(n, sd = 0.05)))
+
+diagnostics <- suppressWarnings(
+  runInstrumentDiagnostics(
+    cohortData = diagnosticCohort,
+    covariateData = diagnosticCovariates,
+    instrumentTable = instruments,
+    exposureProxyConceptIds = 1L,
+    pValueThreshold = 1e-4
+  )
+)
+#> Running instrument diagnostics for 7 SNPs...
+#>   Computing F-statistics...
+#>   Running instrument PheWAS...
+#>   Comparing allele frequencies...
+#>   Summarizing genotype missingness...
+#> Instrument diagnostics complete.
+
+# Assumption 1: relevance
+print(diagnostics$fStatistics[, c("snp_id", "fStatistic", "source", "weakFlag")])
+#>       snp_id fStatistic      source weakFlag
+#> 1  rs2228145 16.7154796 cohort_data    FALSE
+#> 2  rs4129267 28.3757255 cohort_data    FALSE
+#> 3  rs7529229 11.8867337 cohort_data    FALSE
+#> 4  rs4845625  6.0412963 cohort_data     TRUE
+#> 5  rs6689306  0.2330404 cohort_data     TRUE
+#> 6 rs12118721  2.8435524 cohort_data     TRUE
+#> 7  rs4453032  0.2413660 cohort_data     TRUE
+
+# Assumptions 2 and 3: look for suspicious covariate associations
+subset(
+  diagnostics$phewasResults,
+  significant,
+  select = c("snp_id", "covariate_name", "pval")
+)
+#>      snp_id           covariate_name pval
+#> 9 rs2228145 proxy_inflammation_trait    0
+
+# Data integrity checks that support harmonisation review
+subset(
+  diagnostics$afComparison,
+  select = c("snp_id", "eaf_gwas", "eaf_cohort", "eaf_diff", "discrepancyFlag")
+)
+#>       snp_id eaf_gwas eaf_cohort    eaf_diff discrepancyFlag
+#> 1  rs2228145     0.39  0.3905000 0.000500000           FALSE
+#> 2  rs4129267     0.37  0.3702500 0.000250000           FALSE
+#> 3  rs7529229     0.35  0.3486250 0.001375000           FALSE
+#> 4  rs4845625     0.42  0.4206875 0.000687500           FALSE
+#> 5  rs6689306     0.28  0.2856875 0.005687500           FALSE
+#> 6 rs12118721     0.31  0.3158125 0.005812500           FALSE
+#> 7  rs4453032     0.22  0.2174006 0.002599432           FALSE
+subset(
+  diagnostics$missingnessReport,
+  select = c("snp_id", "pct_missing", "highMissingFlag")
+)
+#>       snp_id pct_missing highMissingFlag
+#> 1  rs2228145           0           FALSE
+#> 2  rs4129267           0           FALSE
+#> 3  rs7529229           0           FALSE
+#> 4  rs4845625           0           FALSE
+#> 5  rs6689306           0           FALSE
+#> 6 rs12118721           0           FALSE
+#> 7  rs4453032          12            TRUE
+
+# High-level summary of which checks need follow-up
+diagnostics$diagnosticFlags
+#>        weakInstruments      phewasSignificant negativeControlFailure 
+#>                   TRUE                   TRUE                  FALSE 
+#>  alleleFreqDiscrepancy        highMissingness 
+#>                  FALSE                   TRUE
+```
+
+</div>
+
+In practice, you would use these diagnostics as a screening step:
+
+-   Proceed with more confidence when instruments are strong, PheWAS
+    signals are limited, and allele frequencies look consistent.
+-   Investigate or prune instruments when specific SNPs are weak,
+    associated with likely confounders, or show allele-frequency
+    discrepancies.
+-   Treat missingness and harmonization anomalies as data-quality issues
+    to fix before interpreting the MR result.
+
+</div>
+
+<div class="section level2">
+
 ## Step 4: Federated Pooling
 
 To illustrate federated pooling without requiring three live data
@@ -197,7 +367,7 @@ partners, we retain the observed `site_A` profile and create two
 additional site profiles with the same score definition but slightly
 different information content.
 
-<div id="cb5" class="sourceCode">
+<div id="cb6" class="sourceCode">
 
 ``` r
 makeSyntheticSite <- function(baseProfile, siteId, infoScale, betaShift, caseScale) {
@@ -253,7 +423,7 @@ plotLikelihoodProfile(
 
 ## Step 5: MR Estimate
 
-<div id="cb6" class="sourceCode">
+<div id="cb7" class="sourceCode">
 
 ``` r
 estimate <- computeMREstimate(combined, instruments)
@@ -281,9 +451,11 @@ Because the one-shot pooled likelihood is defined on the shared allele
 score, pleiotropy-robust summarized-data methods are a secondary
 analysis. Here we use per-SNP estimates from the same synthetic site. We
 omit Steiger filtering because `runSensitivityAnalyses()` currently does
-not implement it for binary outcomes.
+not implement it for binary outcomes. We also force Medusa’s internal
+engine here so the vignette remains fully reproducible without requiring
+`TwoSampleMR`.
 
-<div id="cb7" class="sourceCode">
+<div id="cb8" class="sourceCode">
 
 ``` r
 # Fit the same site in per-SNP mode for summarized-data sensitivity methods
@@ -300,17 +472,14 @@ profilePerSnp <- fitOutcomeModel(
 
 sensitivity <- runSensitivityAnalyses(
   profilePerSnp$perSnpEstimates,
-  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut")
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+  engine = "internal"
 )
 #> Running sensitivity analyses with 7 SNPs...
-#>   Engine: TwoSampleMR
-#> Harmonising exposure (medusa_exposure) and outcome (medusa_outcome)
+#>   Engine: internal
 #>   IVW...
-#> Analysing 'medusa_exposure' on 'medusa_outcome'
 #>   MR-Egger...
-#> Analysing 'medusa_exposure' on 'medusa_outcome'
 #>   Weighted Median...
-#> Analysing 'medusa_exposure' on 'medusa_outcome'
 #>   Leave-One-Out...
 #> Sensitivity analyses complete.
 
@@ -318,8 +487,8 @@ sensitivity <- runSensitivityAnalyses(
 print(sensitivity$summary)
 #>            method     beta_MR      se_MR   ci_lower   ci_upper      pval
 #> 1             IVW -0.05796889 0.05178126 -0.1594601 0.04352238 0.2629288
-#> 2        MR-Egger -0.05055973 0.16484130 -0.3736487 0.27252922 0.7714205
-#> 3 Weighted Median -0.03476007 0.06410561 -0.1604071 0.09088693 0.5876592
+#> 2        MR-Egger -0.05055973 0.10924328 -0.2646766 0.16355710 0.6629393
+#> 3 Weighted Median -0.03482852 0.06398487 -0.1602389 0.09058183 0.5862184
 ```
 
 </div>
@@ -354,6 +523,13 @@ on four checks:
     for circulating interleukins remains mixed, so this is best treated
     as a motivating oncology use case rather than a settled causal
     claim.
+
+For readers newer to MR, the key conceptual takeaway is that the package
+is not estimating “the effect of carrying a risk SNP.” It is using
+inherited genetic variation as a proxy for a modifiable biology (here,
+IL-6 signaling), then asking whether people with genetically shifted
+pathway activity also differ in colorectal cancer risk in the expected
+direction.
 
 </div>
 

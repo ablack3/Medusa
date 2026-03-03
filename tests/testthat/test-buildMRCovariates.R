@@ -105,3 +105,55 @@ test_that("buildMRCovariates can create default settings and skip ancestry extra
   expect_null(covariates$ancestryPCs)
   expect_true(identical(covariates$settings, defaultSettings))
 })
+
+test_that("buildMRCovariates and createDefaultMRCovariateSettings fail cleanly when dependencies are missing", {
+  skip_if_not_installed("mockery")
+
+  buildFn <- buildMRCovariates
+  mockery::stub(buildFn, "requireNamespace", function(package, ...) {
+    if (identical(package, "DatabaseConnector")) {
+      FALSE
+    } else {
+      TRUE
+    }
+  })
+
+  expect_error(
+    buildFn(
+      connectionDetails = structure(list(dbms = "postgresql"), class = "connectionDetails"),
+      cdmDatabaseSchema = "cdm",
+      cohortDatabaseSchema = "results",
+      cohortTable = "cohort",
+      outcomeCohortId = 1L,
+      covariateSettings = structure(list(dummy = TRUE), class = "covariateSettings")
+    ),
+    "Package 'DatabaseConnector' is required"
+  )
+
+  featureBuildFn <- buildMRCovariates
+  mockery::stub(featureBuildFn, "requireNamespace", function(package, ...) {
+    if (identical(package, "FeatureExtraction")) {
+      FALSE
+    } else {
+      TRUE
+    }
+  })
+  expect_error(
+    featureBuildFn(
+      connectionDetails = structure(list(dbms = "postgresql"), class = "connectionDetails"),
+      cdmDatabaseSchema = "cdm",
+      cohortDatabaseSchema = "results",
+      cohortTable = "cohort",
+      outcomeCohortId = 1L,
+      covariateSettings = structure(list(dummy = TRUE), class = "covariateSettings")
+    ),
+    "Package 'FeatureExtraction' is required"
+  )
+
+  settingsFn <- createDefaultMRCovariateSettings
+  mockery::stub(settingsFn, "requireNamespace", function(package, ...) FALSE)
+  expect_error(
+    settingsFn(),
+    "Package 'FeatureExtraction' is required"
+  )
+})

@@ -118,6 +118,74 @@ test_that("buildMRCohort validates inputs", {
   )
 })
 
+test_that("buildMRCohort fails cleanly when required dependencies are missing", {
+  skip_if_not_installed("mockery")
+
+  dbMissingFn <- buildMRCohort
+  mockery::stub(dbMissingFn, "requireNamespace", function(package, ...) {
+    if (identical(package, "DatabaseConnector")) {
+      FALSE
+    } else {
+      TRUE
+    }
+  })
+
+  expect_error(
+    dbMissingFn(
+      connectionDetails = structure(list(dbms = "postgresql"), class = "connectionDetails"),
+      cdmDatabaseSchema = "cdm",
+      cohortDatabaseSchema = "results",
+      cohortTable = "cohort",
+      outcomeCohortId = 1L,
+      instrumentTable = data.frame(
+        snp_id = "rs1",
+        effect_allele = "A",
+        other_allele = "C",
+        beta_ZX = 0.5,
+        se_ZX = 0.05,
+        pval_ZX = 1e-10,
+        eaf = 0.3,
+        stringsAsFactors = FALSE
+      ),
+      genomicLinkageSchema = "genomics",
+      genomicLinkageTable = "genotype_data"
+    ),
+    "Package 'DatabaseConnector' is required"
+  )
+
+  sqlMissingFn <- buildMRCohort
+  mockery::stub(sqlMissingFn, "requireNamespace", function(package, ...) {
+    if (identical(package, "SqlRender")) {
+      FALSE
+    } else {
+      TRUE
+    }
+  })
+
+  expect_error(
+    sqlMissingFn(
+      connectionDetails = structure(list(dbms = "postgresql"), class = "connectionDetails"),
+      cdmDatabaseSchema = "cdm",
+      cohortDatabaseSchema = "results",
+      cohortTable = "cohort",
+      outcomeCohortId = 1L,
+      instrumentTable = data.frame(
+        snp_id = "rs1",
+        effect_allele = "A",
+        other_allele = "C",
+        beta_ZX = 0.5,
+        se_ZX = 0.05,
+        pval_ZX = 1e-10,
+        eaf = 0.3,
+        stringsAsFactors = FALSE
+      ),
+      genomicLinkageSchema = "genomics",
+      genomicLinkageTable = "genotype_data"
+    ),
+    "Package 'SqlRender' is required"
+  )
+})
+
 test_that("buildMRCohort executes the main extraction flow with stubbed database calls", {
   skip_if_not_installed("mockery")
 

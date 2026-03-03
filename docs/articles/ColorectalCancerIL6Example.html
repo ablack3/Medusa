@@ -79,6 +79,27 @@
 <p>The IL-6 receptor (IL6R) gene region on chromosome 1q21 contains well-characterized variants (notably rs2228145/Asp358Ala) that alter IL-6 signaling. These serve as strong genetic instruments for MR analysis. Recent MR work on circulating interleukins and colorectal cancer has not established a clear causal signal for IL-6/IL-6 receptor traits, so this vignette should be read as a realistic workflow example anchored in a real scientific question, not as a claim that the synthetic estimate below reproduces a published effect size (“Circulating interleukins and risk of colorectal cancer: a Mendelian randomization study”, 2023).</p>
 </div>
 <div class="section level2">
+<h2 id="two-sample-mr-in-one-page">Two-Sample MR in One Page<a class="anchor" aria-label="anchor" href="#two-sample-mr-in-one-page"></a>
+</h2>
+<p>This vignette uses <strong>two-sample Mendelian randomization (MR)</strong>. In plain terms:</p>
+<ol style="list-style-type: decimal">
+<li><p>We obtain the SNP-exposure associations (<code>beta_ZX</code>) from an external GWAS. Here, the “exposure” is genetically proxied IL-6 signaling.</p></li>
+<li><p>We estimate the SNP-outcome associations (<code>beta_ZY</code>) in a separate outcome dataset. In Medusa, that outcome dataset can be a single OMOP site or a federated network of sites.</p></li>
+<li><p>For each instrument, the core causal signal is the <strong>Wald ratio</strong>: <code>beta_ZY / beta_ZX</code>. If multiple SNPs are used, Medusa’s primary analysis combines them into a fixed weighted allele score and applies the same logic to that score.</p></li>
+</ol>
+<p>This is called “two-sample” because the exposure and outcome associations come from two distinct samples, not because two hospitals are required. In this package, the exposure side typically comes from a public GWAS, while the outcome side comes from local OMOP-linked genotype data.</p>
+<p>The usual MR assumptions are:</p>
+<ul>
+<li>
+<strong>Relevance</strong>: the selected SNPs truly predict the exposure of interest.</li>
+<li>
+<strong>Independence</strong>: the SNPs are not associated with major confounders of the exposure-outcome relationship.</li>
+<li>
+<strong>Exclusion restriction</strong>: the SNPs affect the outcome primarily through the exposure pathway being studied.</li>
+</ul>
+<p>The rest of the vignette shows how Medusa operationalizes that design in a federated setting: the coordinator provides <code>beta_ZX</code>, sites estimate <code>beta_ZY</code>, and only profile-likelihood summaries leave each site.</p>
+</div>
+<div class="section level2">
 <h2 id="step-1-instrument-assembly">Step 1: Instrument Assembly<a class="anchor" aria-label="anchor" href="#step-1-instrument-assembly"></a>
 </h2>
 <p>In a real analysis, you would query OpenGWAS:</p>
@@ -195,10 +216,119 @@
 <span><span class="co">#&gt; Site 'site_A': beta_ZY_hat = -0.0766 (SE = 0.0749).</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="checking-two-sample-mr-assumptions-with-medusa">Checking Two-Sample MR Assumptions with Medusa<a class="anchor" aria-label="anchor" href="#checking-two-sample-mr-assumptions-with-medusa"></a>
+</h2>
+<p>Medusa does not “prove” the MR assumptions, but it gives you a structured way to look for violations before trusting the causal estimate.</p>
+<ul>
+<li>
+<strong>Relevance</strong>: <code><a href="../reference/runInstrumentDiagnostics.html">runInstrumentDiagnostics()</a></code> reports per-SNP F-statistics. Weak instruments (<code>F &lt; 10</code>) can bias MR estimates.</li>
+<li>
+<strong>Independence</strong>: the instrument PheWAS checks whether SNPs are associated with observed covariates. Strong associations with likely confounders can be a warning sign.</li>
+<li>
+<strong>Exclusion restriction</strong>: Medusa cannot verify this directly, but unexpected PheWAS hits, allele-frequency mismatches, or major missingness can indicate pleiotropy, data-quality problems, or harmonization issues that threaten this assumption.</li>
+</ul>
+<p>The package also has a <code>negativeControlResults</code> slot in the diagnostics object, but this vignette focuses on the currently executable checks: F-statistics, covariate associations, allele-frequency comparison, and genotype missingness.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Build a diagnostics-ready copy of the synthetic cohort</span></span>
+<span><span class="va">diagnosticCohort</span> <span class="op">&lt;-</span> <span class="va">cohortData</span></span>
+<span><span class="va">diagnosticCohort</span><span class="op">$</span><span class="va">personId</span> <span class="op">&lt;-</span> <span class="va">diagnosticCohort</span><span class="op">$</span><span class="va">person_id</span></span>
+<span><span class="va">diagnosticCohort</span><span class="op">$</span><span class="va">exposure</span> <span class="op">&lt;-</span> <span class="va">exposure</span></span>
+<span></span>
+<span><span class="co"># Add a small amount of missingness so the missingness report is visible</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2027</span><span class="op">)</span></span>
+<span><span class="va">missingIdx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="va">n</span>, size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">0.12</span> <span class="op">*</span> <span class="va">n</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">diagnosticCohort</span><span class="op">$</span><span class="va">snp_rs4453032</span><span class="op">[</span><span class="va">missingIdx</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_integer_</span></span>
+<span></span>
+<span><span class="co"># Create synthetic covariates and add one deliberately SNP-correlated trait</span></span>
+<span><span class="va">diagnosticCovariates</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulateCovariateData.html">simulateCovariateData</a></span><span class="op">(</span></span>
+<span>  n <span class="op">=</span> <span class="va">n</span>,</span>
+<span>  nCovariates <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">2026</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">diagnosticCovariates</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">diagnosticCovariates</span><span class="op">)</span> <span class="op">==</span> <span class="st">"person_id"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"personId"</span></span>
+<span><span class="va">diagnosticCovariates</span><span class="op">$</span><span class="va">proxy_inflammation_trait</span> <span class="op">&lt;-</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">diagnosticCohort</span><span class="op">$</span><span class="va">snp_rs2228145</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, sd <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">diagnostics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/runInstrumentDiagnostics.html">runInstrumentDiagnostics</a></span><span class="op">(</span></span>
+<span>    cohortData <span class="op">=</span> <span class="va">diagnosticCohort</span>,</span>
+<span>    covariateData <span class="op">=</span> <span class="va">diagnosticCovariates</span>,</span>
+<span>    instrumentTable <span class="op">=</span> <span class="va">instruments</span>,</span>
+<span>    exposureProxyConceptIds <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>    pValueThreshold <span class="op">=</span> <span class="fl">1e-4</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; Running instrument diagnostics for 7 SNPs...</span></span>
+<span><span class="co">#&gt;   Computing F-statistics...</span></span>
+<span><span class="co">#&gt;   Running instrument PheWAS...</span></span>
+<span><span class="co">#&gt;   Comparing allele frequencies...</span></span>
+<span><span class="co">#&gt;   Summarizing genotype missingness...</span></span>
+<span><span class="co">#&gt; Instrument diagnostics complete.</span></span>
+<span></span>
+<span><span class="co"># Assumption 1: relevance</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">fStatistics</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snp_id"</span>, <span class="st">"fStatistic"</span>, <span class="st">"source"</span>, <span class="st">"weakFlag"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       snp_id fStatistic      source weakFlag</span></span>
+<span><span class="co">#&gt; 1  rs2228145 16.7154796 cohort_data    FALSE</span></span>
+<span><span class="co">#&gt; 2  rs4129267 28.3757255 cohort_data    FALSE</span></span>
+<span><span class="co">#&gt; 3  rs7529229 11.8867337 cohort_data    FALSE</span></span>
+<span><span class="co">#&gt; 4  rs4845625  6.0412963 cohort_data     TRUE</span></span>
+<span><span class="co">#&gt; 5  rs6689306  0.2330404 cohort_data     TRUE</span></span>
+<span><span class="co">#&gt; 6 rs12118721  2.8435524 cohort_data     TRUE</span></span>
+<span><span class="co">#&gt; 7  rs4453032  0.2413660 cohort_data     TRUE</span></span>
+<span></span>
+<span><span class="co"># Assumptions 2 and 3: look for suspicious covariate associations</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span></span>
+<span>  <span class="va">diagnostics</span><span class="op">$</span><span class="va">phewasResults</span>,</span>
+<span>  <span class="va">significant</span>,</span>
+<span>  select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snp_id"</span>, <span class="st">"covariate_name"</span>, <span class="st">"pval"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt;      snp_id           covariate_name pval</span></span>
+<span><span class="co">#&gt; 9 rs2228145 proxy_inflammation_trait    0</span></span>
+<span></span>
+<span><span class="co"># Data integrity checks that support harmonisation review</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span></span>
+<span>  <span class="va">diagnostics</span><span class="op">$</span><span class="va">afComparison</span>,</span>
+<span>  select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snp_id"</span>, <span class="st">"eaf_gwas"</span>, <span class="st">"eaf_cohort"</span>, <span class="st">"eaf_diff"</span>, <span class="st">"discrepancyFlag"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt;       snp_id eaf_gwas eaf_cohort    eaf_diff discrepancyFlag</span></span>
+<span><span class="co">#&gt; 1  rs2228145     0.39  0.3905000 0.000500000           FALSE</span></span>
+<span><span class="co">#&gt; 2  rs4129267     0.37  0.3702500 0.000250000           FALSE</span></span>
+<span><span class="co">#&gt; 3  rs7529229     0.35  0.3486250 0.001375000           FALSE</span></span>
+<span><span class="co">#&gt; 4  rs4845625     0.42  0.4206875 0.000687500           FALSE</span></span>
+<span><span class="co">#&gt; 5  rs6689306     0.28  0.2856875 0.005687500           FALSE</span></span>
+<span><span class="co">#&gt; 6 rs12118721     0.31  0.3158125 0.005812500           FALSE</span></span>
+<span><span class="co">#&gt; 7  rs4453032     0.22  0.2174006 0.002599432           FALSE</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span></span>
+<span>  <span class="va">diagnostics</span><span class="op">$</span><span class="va">missingnessReport</span>,</span>
+<span>  select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snp_id"</span>, <span class="st">"pct_missing"</span>, <span class="st">"highMissingFlag"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt;       snp_id pct_missing highMissingFlag</span></span>
+<span><span class="co">#&gt; 1  rs2228145           0           FALSE</span></span>
+<span><span class="co">#&gt; 2  rs4129267           0           FALSE</span></span>
+<span><span class="co">#&gt; 3  rs7529229           0           FALSE</span></span>
+<span><span class="co">#&gt; 4  rs4845625           0           FALSE</span></span>
+<span><span class="co">#&gt; 5  rs6689306           0           FALSE</span></span>
+<span><span class="co">#&gt; 6 rs12118721           0           FALSE</span></span>
+<span><span class="co">#&gt; 7  rs4453032          12            TRUE</span></span>
+<span></span>
+<span><span class="co"># High-level summary of which checks need follow-up</span></span>
+<span><span class="va">diagnostics</span><span class="op">$</span><span class="va">diagnosticFlags</span></span>
+<span><span class="co">#&gt;        weakInstruments      phewasSignificant negativeControlFailure </span></span>
+<span><span class="co">#&gt;                   TRUE                   TRUE                  FALSE </span></span>
+<span><span class="co">#&gt;  alleleFreqDiscrepancy        highMissingness </span></span>
+<span><span class="co">#&gt;                  FALSE                   TRUE</span></span></code></pre></div>
+<p>In practice, you would use these diagnostics as a screening step:</p>
+<ul>
+<li>Proceed with more confidence when instruments are strong, PheWAS signals are limited, and allele frequencies look consistent.</li>
+<li>Investigate or prune instruments when specific SNPs are weak, associated with likely confounders, or show allele-frequency discrepancies.</li>
+<li>Treat missingness and harmonization anomalies as data-quality issues to fix before interpreting the MR result.</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="step-4-federated-pooling">Step 4: Federated Pooling<a class="anchor" aria-label="anchor" href="#step-4-federated-pooling"></a>
 </h2>
 <p>To illustrate federated pooling without requiring three live data partners, we retain the observed <code>site_A</code> profile and create two additional site profiles with the same score definition but slightly different information content.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">makeSyntheticSite</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">baseProfile</span>, <span class="va">siteId</span>, <span class="va">infoScale</span>, <span class="va">betaShift</span>, <span class="va">caseScale</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">peak</span> <span class="op">&lt;-</span> <span class="va">baseProfile</span><span class="op">$</span><span class="va">betaHat</span> <span class="op">+</span> <span class="va">betaShift</span></span>
 <span>  <span class="va">info</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="va">baseProfile</span><span class="op">$</span><span class="va">seHat</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="va">infoScale</span></span>
@@ -245,7 +375,7 @@
 <div class="section level2">
 <h2 id="step-5-mr-estimate">Step 5: MR Estimate<a class="anchor" aria-label="anchor" href="#step-5-mr-estimate"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/computeMREstimate.html">computeMREstimate</a></span><span class="op">(</span><span class="va">combined</span>, <span class="va">instruments</span><span class="op">)</span></span>
 <span><span class="co">#&gt; MR estimate: beta = -0.2879 (95% CI: -0.5758, 0.0000), p = 6.47e-02</span></span>
 <span><span class="co">#&gt; Odds ratio: 0.750 (95% CI: 0.562, 1.000)</span></span>
@@ -261,8 +391,8 @@
 <div class="section level2">
 <h2 id="step-6-sensitivity-analyses">Step 6: Sensitivity Analyses<a class="anchor" aria-label="anchor" href="#step-6-sensitivity-analyses"></a>
 </h2>
-<p>Because the one-shot pooled likelihood is defined on the shared allele score, pleiotropy-robust summarized-data methods are a secondary analysis. Here we use per-SNP estimates from the same synthetic site. We omit Steiger filtering because <code><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses()</a></code> currently does not implement it for binary outcomes.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<p>Because the one-shot pooled likelihood is defined on the shared allele score, pleiotropy-robust summarized-data methods are a secondary analysis. Here we use per-SNP estimates from the same synthetic site. We omit Steiger filtering because <code><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses()</a></code> currently does not implement it for binary outcomes. We also force Medusa’s internal engine here so the vignette remains fully reproducible without requiring <code>TwoSampleMR</code>.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fit the same site in per-SNP mode for summarized-data sensitivity methods</span></span>
 <span><span class="va">profilePerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>
 <span>  cohortData <span class="op">=</span> <span class="va">cohortData</span>,</span>
@@ -277,17 +407,14 @@
 <span></span>
 <span><span class="va">sensitivity</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses</a></span><span class="op">(</span></span>
 <span>  <span class="va">profilePerSnp</span><span class="op">$</span><span class="va">perSnpEstimates</span>,</span>
-<span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span></span>
+<span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"internal"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt; Running sensitivity analyses with 7 SNPs...</span></span>
-<span><span class="co">#&gt;   Engine: TwoSampleMR</span></span>
-<span><span class="co">#&gt; Harmonising exposure (medusa_exposure) and outcome (medusa_outcome)</span></span>
+<span><span class="co">#&gt;   Engine: internal</span></span>
 <span><span class="co">#&gt;   IVW...</span></span>
-<span><span class="co">#&gt; Analysing 'medusa_exposure' on 'medusa_outcome'</span></span>
 <span><span class="co">#&gt;   MR-Egger...</span></span>
-<span><span class="co">#&gt; Analysing 'medusa_exposure' on 'medusa_outcome'</span></span>
 <span><span class="co">#&gt;   Weighted Median...</span></span>
-<span><span class="co">#&gt; Analysing 'medusa_exposure' on 'medusa_outcome'</span></span>
 <span><span class="co">#&gt;   Leave-One-Out...</span></span>
 <span><span class="co">#&gt; Sensitivity analyses complete.</span></span>
 <span></span>
@@ -295,8 +422,8 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">sensitivity</span><span class="op">$</span><span class="va">summary</span><span class="op">)</span></span>
 <span><span class="co">#&gt;            method     beta_MR      se_MR   ci_lower   ci_upper      pval</span></span>
 <span><span class="co">#&gt; 1             IVW -0.05796889 0.05178126 -0.1594601 0.04352238 0.2629288</span></span>
-<span><span class="co">#&gt; 2        MR-Egger -0.05055973 0.16484130 -0.3736487 0.27252922 0.7714205</span></span>
-<span><span class="co">#&gt; 3 Weighted Median -0.03476007 0.06410561 -0.1604071 0.09088693 0.5876592</span></span></code></pre></div>
+<span><span class="co">#&gt; 2        MR-Egger -0.05055973 0.10924328 -0.2646766 0.16355710 0.6629393</span></span>
+<span><span class="co">#&gt; 3 Weighted Median -0.03482852 0.06398487 -0.1602389 0.09058183 0.5862184</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interpretation-for-drug-development">Interpretation for Drug Development<a class="anchor" aria-label="anchor" href="#interpretation-for-drug-development"></a>
@@ -309,6 +436,7 @@
 <li><p><strong>Clinical triangulation</strong>: Any MR signal should be compared against human genetics, disease biology, and trial safety data for IL-6 pathway blockade.</p></li>
 <li><p><strong>Literature context</strong>: The current colorectal-cancer MR literature for circulating interleukins remains mixed, so this is best treated as a motivating oncology use case rather than a settled causal claim.</p></li>
 </ol>
+<p>For readers newer to MR, the key conceptual takeaway is that the package is not estimating “the effect of carrying a risk SNP.” It is using inherited genetic variation as a proxy for a modifiable biology (here, IL-6 signaling), then asking whether people with genetically shifted pathway activity also differ in colorectal cancer risk in the expected direction.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

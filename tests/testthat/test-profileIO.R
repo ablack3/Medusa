@@ -150,3 +150,31 @@ test_that("exportSiteProfile respects custom prefix", {
   expect_true(grepl("^mystudy_profile_", basename(paths[["profile"]])))
   expect_true(grepl("^mystudy_metadata_", basename(paths[["metadata"]])))
 })
+
+test_that("exportSiteProfile validates required fields before writing files", {
+  expect_error(
+    exportSiteProfile(
+      profile = list(siteId = "site_1", betaGrid = c(-1, 0, 1), logLikProfile = c(-1, 0, -1)),
+      outputDir = tempdir()
+    ),
+    "missing required fields"
+  )
+})
+
+test_that("importSiteProfile errors when the profile CSV is malformed", {
+  tmpDir <- tempfile("medusa_import_")
+  dir.create(tmpDir)
+  on.exit(unlink(tmpDir, recursive = TRUE))
+
+  badPath <- file.path(tmpDir, "bad_profile.csv")
+  write.csv(
+    data.frame(not_beta = c(0, 1), not_loglik = c(-1, -2)),
+    badPath,
+    row.names = FALSE
+  )
+
+  expect_error(
+    importSiteProfile(badPath),
+    "Profile CSV is missing required columns"
+  )
+})

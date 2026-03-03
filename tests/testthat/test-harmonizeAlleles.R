@@ -203,6 +203,60 @@ test_that("multiple SNPs harmonized correctly in batch", {
   expect_equal(result$instrumentTable$beta_ZX[result$instrumentTable$snp_id == "rs3"], 0.2)
 })
 
+test_that("complement allele match is retained without flipping", {
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.05,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+  genoAlleles <- data.frame(
+    snp_id = "rs1",
+    allele_coded = "T",
+    allele_noncoded = "G",
+    stringsAsFactors = FALSE
+  )
+
+  result <- harmonizeAlleles(instruments, genoAlleles)
+
+  expect_equal(result$instrumentTable$beta_ZX, 0.5)
+  expect_equal(result$instrumentTable$eaf, 0.3)
+  expect_false(result$instrumentTable$flipped)
+  expect_equal(nrow(result$removedSnps), 0)
+})
+
+test_that("complement allele swap flips effect direction and eaf", {
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.05,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+  genoAlleles <- data.frame(
+    snp_id = "rs1",
+    allele_coded = "G",
+    allele_noncoded = "T",
+    stringsAsFactors = FALSE
+  )
+
+  result <- harmonizeAlleles(instruments, genoAlleles)
+
+  expect_equal(result$instrumentTable$beta_ZX, -0.5)
+  expect_equal(result$instrumentTable$eaf, 0.7)
+  expect_equal(result$instrumentTable$effect_allele, "G")
+  expect_equal(result$instrumentTable$other_allele, "T")
+  expect_true(result$instrumentTable$flipped)
+  expect_equal(nrow(result$removedSnps), 0)
+})
+
 test_that("complementAllele returns correct complements", {
   expect_equal(complementAllele("A"), "T")
   expect_equal(complementAllele("T"), "A")

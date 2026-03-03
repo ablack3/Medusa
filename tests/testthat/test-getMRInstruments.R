@@ -301,3 +301,115 @@ test_that("LD clumping failures surface an informative error", {
     "LD clumping failed"
   )
 })
+
+test_that("getMRInstruments handles package-missing, post-filter empty, and post-clumping empty branches", {
+  skip_if_not_installed("mockery")
+
+  noPkgFn <- getMRInstruments
+  mockery::stub(noPkgFn, "requireNamespace", function(package, ...) {
+    if (identical(package, "ieugwasr")) {
+      FALSE
+    } else {
+      TRUE
+    }
+  })
+  expect_error(
+    noPkgFn("trait1"),
+    "Package 'ieugwasr' is required"
+  )
+
+  highPAssociations <- data.frame(
+    rsid = c("rs1", "rs2"),
+    ea = c("A", "G"),
+    nea = c("C", "T"),
+    beta = c(0.5, 0.3),
+    se = c(0.05, 0.08),
+    p = c(1e-3, 1e-4),
+    eaf = c(0.3, 0.5),
+    id = rep("trait1", 2),
+    stringsAsFactors = FALSE
+  )
+  local_mocked_bindings(
+    associations = function(...) highPAssociations,
+    .package = "ieugwasr"
+  )
+  expect_error(
+    getMRInstruments("trait1", pThreshold = 1e-8),
+    "at p <"
+  )
+
+  local_mocked_bindings(
+    associations = function(...) {
+      data.frame(
+        rsid = c("rs1", "rs2"),
+        ea = c("A", "G"),
+        nea = c("C", "T"),
+        beta = c(0.5, 0.3),
+        se = c(0.05, 0.08),
+        p = c(1e-20, 1e-10),
+        eaf = c(0.3, 0.5),
+        id = rep("trait1", 2),
+        stringsAsFactors = FALSE
+      )
+    },
+    ld_clump = function(...) data.frame(rsid = character(0), pval = numeric(0), id = character(0)),
+    .package = "ieugwasr"
+  )
+  expect_error(
+    getMRInstruments("trait1"),
+    "No SNPs remained after LD clumping"
+  )
+})
+
+test_that("getMRInstruments warns when forced-include retrieval fails and createInstrumentTable accepts geneRegion", {
+  mainAssociations <- data.frame(
+    rsid = c("rs1", "rs2"),
+    ea = c("A", "G"),
+    nea = c("C", "T"),
+    beta = c(0.5, 0.3),
+    se = c(0.05, 0.08),
+    p = c(1e-20, 1e-10),
+    eaf = c(0.3, 0.5),
+    id = rep("trait1", 2),
+    gene = c("GENE1", "GENE2"),
+    stringsAsFactors = FALSE
+  )
+
+  local_mocked_bindings(
+    associations = function(variants = NULL, ...) {
+      if (is.null(variants)) {
+        return(mainAssociations)
+      }
+      stop("api down")
+    },
+    ld_clump = function(...) {
+      data.frame(
+        rsid = "rs1",
+        pval = 1e-20,
+        id = "trait1",
+        stringsAsFactors = FALSE
+      )
+    },
+    .package = "ieugwasr"
+  )
+
+  expect_warning(
+    result <- getMRInstruments("trait1", additionalSnps = "rs_extra"),
+    "Failed to retrieve additional SNPs"
+  )
+  expect_equal(result$gene_region[1], "GENE1")
+
+  created <- createInstrumentTable(
+    snpId = c("rs1", "rs2"),
+    effectAllele = c("a", "g"),
+    otherAllele = c("c", "t"),
+    betaZX = c(0.5, 0.3),
+    seZX = c(0.05, 0.08),
+    pvalZX = c(1e-10, 1e-5),
+    eaf = c(0.3, 0.45),
+    geneRegion = c("GENE1", "GENE2")
+  )
+
+  expect_equal(created$gene_region, c("GENE1", "GENE2"))
+  expect_equal(created$effect_allele, c("A", "G"))
+})

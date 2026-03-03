@@ -222,3 +222,297 @@ test_that("fitOutcomeModel helper utilities align instruments and evaluate finit
   zeroWeightTable$beta_ZX <- 0
   expect_error(computeAlleleScoreWeights(zeroWeightTable), "not finite")
 })
+
+test_that("fitOutcomeModel validates missing SNPs and no-case cohorts", {
+  simData <- Medusa::simulateMRData(n = 120, nSnps = 2, trueEffect = 0.2, seed = 557)
+  noSnp <- simData$data[, setdiff(names(simData$data), grep("^snp_", names(simData$data), value = TRUE))]
+  noCases <- simData$data
+  noCases$outcome <- 0L
+
+  expect_error(
+    fitOutcomeModel(
+      cohortData = noSnp,
+      covariateData = NULL,
+      instrumentTable = simData$instrumentTable,
+      betaGrid = seq(-1, 1, by = 0.1)
+    ),
+    "No SNP columns"
+  )
+  expect_error(
+    fitOutcomeModel(
+      cohortData = noCases,
+      covariateData = NULL,
+      instrumentTable = simData$instrumentTable,
+      betaGrid = seq(-1, 1, by = 0.1)
+    ),
+    "No outcome cases"
+  )
+})
+
+test_that("fitOutcomeModel helper fallback paths return flat or unavailable outputs", {
+  simData <- Medusa::simulateMRData(n = 40, nSnps = 2, trueEffect = 0.2, seed = 558)
+  badCohort <- simData$data
+  snpCols <- grep("^snp_", names(badCohort), value = TRUE)
+  badCohort[[snpCols[1]]] <- NA_integer_
+
+  perSnp <- fitPerSNPModels(
+    cohortData = badCohort,
+    covariateData = NULL,
+    instrumentTable = simData$instrumentTable,
+    betaGrid = seq(-1, 1, by = 0.1),
+    regularizationVariance = 0.1,
+    instrumentRegularization = FALSE,
+    modelBackend = "glm"
+  )
+  expect_true(all(is.na(perSnp$perSnpBetaHats) | is.finite(perSnp$perSnpBetaHats)))
+  expect_true(any(!is.finite(perSnp$perSnpProfiles[, 1])))
+
+  expect_error(
+    alignInstrumentColumns(
+      cohortData = badCohort[, c("outcome", "person_id"), drop = FALSE],
+      instrumentTable = simData$instrumentTable
+    ),
+    "No cohortData SNP columns match"
+  )
+
+  expect_error(
+    evaluateBinaryProfile(
+      modelData = data.frame(outcome = c(1, 0), alleleScore = c(0.1, 0.2)),
+      exposureColumn = "alleleScore",
+      covariateColumns = 1,
+      betaGrid = seq(-1, 1, by = 0.1)
+    ),
+    "character vector"
+  )
+  expect_error(
+    evaluateBinaryProfile(
+      modelData = data.frame(outcome = NA_real_, alleleScore = 0.1),
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      betaGrid = 0
+    ),
+    "failed at all grid points"
+  )
+
+  expect_true(is.infinite(estimateSEFromProfile(seq(-1, 1, by = 0.1), c(0, rep(-1, 20)))))
+  expect_true(is.infinite(estimateSEFromProfile(seq(-1, 1, by = 0.1), rep(0, 21))))
+})
+
+test_that("fitOutcomeModel covers warning and internal fallback branches", {
+  skip_if_not_installed("mockery")
+
+  simData <- Medusa::simulateMRData(n = 80, nSnps = 2, trueEffect = 0.2, seed = 559)
+  lowCaseData <- simData$data
+  lowCaseData$outcome <- c(rep(1L, 20), rep(0L, 60))
+
+  expect_warning(
+    suppressMessages(
+      fitOutcomeModel(
+        cohortData = lowCaseData,
+        covariateData = NULL,
+        instrumentTable = simData$instrumentTable,
+        betaGrid = seq(-1, 1, by = 0.1)
+      )
+    ),
+    "Only 20 cases"
+  )
+
+  cyclopsCheckFn <- fitOutcomeModel
+  mockery::stub(cyclopsCheckFn, "requireNamespace", function(...) FALSE)
+  expect_error(
+    cyclopsCheckFn(
+      cohortData = simData$data,
+      covariateData = NULL,
+      instrumentTable = simData$instrumentTable,
+      betaGrid = seq(-1, 1, by = 0.1),
+      modelBackend = "cyclops"
+    ),
+    "Package 'Cyclops' is required"
+  )
+
+  flatProfileFn <- fitOutcomeModel
+  mockery::stub(
+    flatProfileFn,
+    "fitAlleleScoreModel",
+    function(...) {
+      list(
+        logLikProfile = rep(0, 21),
+        betaHat = 0,
+        seHat = 1,
+        alignedInstruments = simData$instrumentTable,
+        scoreDefinition = list(
+          snpIds = simData$instrumentTable$snp_id,
+          scoreWeights = c(0.5, 0.5),
+          betaZX = 0.2,
+          seZX = 0.05
+        )
+      )
+    }
+  )
+  expect_warning(
+    suppressMessages(
+      flatProfileFn(
+        cohortData = simData$data,
+        covariateData = NULL,
+        instrumentTable = simData$instrumentTable,
+        betaGrid = seq(-1, 1, by = 0.1)
+      )
+    ),
+    "Profile likelihood is flat"
+  )
+
+  alleleFn <- fitAlleleScoreModel
+  mockery::stub(alleleFn, "fitBinaryOutcomeCoefficient", function(...) stop("coefficient failed"))
+  expect_warning(
+    flatFit <- alleleFn(
+      cohortData = simData$data,
+      covariateData = NULL,
+      instrumentTable = simData$instrumentTable,
+      betaGrid = seq(-1, 1, by = 0.1),
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE,
+      modelBackend = "glm"
+    ),
+    "Model fitting failed"
+  )
+  expect_equal(flatFit$betaHat, 0)
+  expect_true(is.infinite(flatFit$seHat))
+
+  perSnpFn <- fitPerSNPModels
+  mockery::stub(
+    perSnpFn,
+    "alignInstrumentColumns",
+    function(...) {
+      list(
+        instrumentTable = subset(simData$instrumentTable, select = -pval_ZX),
+        snpColumns = grep("^snp_", names(simData$data), value = TRUE)
+      )
+    }
+  )
+  mockery::stub(
+    perSnpFn,
+    "fitAlleleScoreModel",
+    function(...) {
+      list(
+        logLikProfile = rep(0, 21),
+        betaHat = 0,
+        seHat = 1,
+        scoreDefinition = list(snpIds = c("rs1", "rs2"), scoreWeights = c(0.5, 0.5), betaZX = 0.2, seZX = 0.05)
+      )
+    }
+  )
+  perSnpNoP <- perSnpFn(
+    cohortData = simData$data,
+    covariateData = NULL,
+    instrumentTable = simData$instrumentTable,
+    betaGrid = seq(-1, 1, by = 0.1),
+    regularizationVariance = 0.1,
+    instrumentRegularization = FALSE,
+    modelBackend = "glm"
+  )
+  expect_true("pval_ZX" %in% names(perSnpNoP$perSnpEstimates))
+
+  appendResult <- appendCovariatesToModelData(
+    modelData = data.frame(outcome = simData$data$outcome, alleleScore = 0),
+    cohortData = simData$data,
+    covariateData = data.frame(other_id = 1:80, cov_x = rnorm(80))
+  )
+  expect_true("cov_x" %in% names(appendResult$modelData))
+
+  expect_equal(createCyclopsPrior(Inf), Cyclops::createPrior("none"))
+  convexGrid <- seq(-1, 1, by = 0.1)
+  convexProfile <- convexGrid^2
+  expect_true(is.infinite(estimateSEFromProfile(convexGrid, convexProfile)))
+})
+
+test_that("fitOutcomeModel helper branches cover Cyclops and profile-point fallbacks", {
+  skip_if_not_installed("mockery")
+  skip_if_not_installed("Cyclops")
+
+  simData <- Medusa::simulateMRData(n = 120, nSnps = 2, trueEffect = 0.2, seed = 560)
+  modelData <- data.frame(
+    outcome = simData$data$outcome,
+    alleleScore = rowSums(simData$data[, grep("^snp_", names(simData$data), value = TRUE), drop = FALSE])
+  )
+
+  cyclopsCoef <- fitBinaryOutcomeCoefficient(
+    modelData = modelData,
+    exposureColumn = "alleleScore",
+    covariateColumns = character(0),
+    modelBackend = "cyclops",
+    regularizationVariance = 0.1,
+    instrumentRegularization = TRUE
+  )
+  expect_true(is.finite(cyclopsCoef$betaHat))
+
+  expect_equal(
+    evaluateBinaryProfilePoint(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "glm",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    ),
+    evaluateBinaryProfilePoint(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "glm",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    )
+  )
+
+  glmPointFn <- evaluateBinaryProfilePoint
+  mockery::stub(
+    glmPointFn,
+    "stats::glm.fit",
+    function(...) list(converged = FALSE, boundary = FALSE, fitted.values = rep(0.5, nrow(modelData)))
+  )
+  expect_equal(
+    glmPointFn(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "glm",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    ),
+    -Inf
+  )
+
+  pointFn <- evaluateBinaryProfilePoint
+  mockery::stub(pointFn, "fitCyclopsLogistic", function(...) NULL)
+  expect_equal(
+    pointFn(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "cyclops",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    ),
+    -Inf
+  )
+
+  predictNullFn <- evaluateBinaryProfilePoint
+  mockery::stub(predictNullFn, "fitCyclopsLogistic", function(...) structure(list(), class = "cyclopsFit"))
+  mockery::stub(predictNullFn, "stats::predict", function(...) NULL)
+  expect_equal(
+    predictNullFn(
+      modelData = modelData,
+      exposureColumn = "alleleScore",
+      covariateColumns = character(0),
+      offsetVector = rep(0, nrow(modelData)),
+      modelBackend = "cyclops",
+      regularizationVariance = 0.1,
+      instrumentRegularization = FALSE
+    ),
+    -Inf
+  )
+})

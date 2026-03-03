@@ -39,6 +39,39 @@ synthetic estimate below reproduces a published effect size ("Circulating
 interleukins and risk of colorectal cancer: a Mendelian randomization study",
 2023).
 
+## Two-Sample MR in One Page
+
+This vignette uses **two-sample Mendelian randomization (MR)**. In plain terms:
+
+1. We obtain the SNP-exposure associations (`beta_ZX`) from an external GWAS.
+   Here, the "exposure" is genetically proxied IL-6 signaling.
+
+2. We estimate the SNP-outcome associations (`beta_ZY`) in a separate outcome
+   dataset. In Medusa, that outcome dataset can be a single OMOP site or a
+   federated network of sites.
+
+3. For each instrument, the core causal signal is the **Wald ratio**:
+   `beta_ZY / beta_ZX`. If multiple SNPs are used, Medusa's primary analysis
+   combines them into a fixed weighted allele score and applies the same logic
+   to that score.
+
+This is called "two-sample" because the exposure and outcome associations come
+from two distinct samples, not because two hospitals are required. In this
+package, the exposure side typically comes from a public GWAS, while the outcome
+side comes from local OMOP-linked genotype data.
+
+The usual MR assumptions are:
+
+- **Relevance**: the selected SNPs truly predict the exposure of interest.
+- **Independence**: the SNPs are not associated with major confounders of the
+  exposure-outcome relationship.
+- **Exclusion restriction**: the SNPs affect the outcome primarily through the
+  exposure pathway being studied.
+
+The rest of the vignette shows how Medusa operationalizes that design in a
+federated setting: the coordinator provides `beta_ZX`, sites estimate `beta_ZY`,
+and only profile-likelihood summaries leave each site.
+
 ## Step 1: Instrument Assembly
 
 In a real analysis, you would query OpenGWAS:
@@ -159,6 +192,89 @@ profile <- fitOutcomeModel(
 )
 ```
 
+## Checking Two-Sample MR Assumptions with Medusa
+
+Medusa does not "prove" the MR assumptions, but it gives you a structured way
+to look for violations before trusting the causal estimate.
+
+- **Relevance**: `runInstrumentDiagnostics()` reports per-SNP F-statistics. Weak
+  instruments (`F < 10`) can bias MR estimates.
+- **Independence**: the instrument PheWAS checks whether SNPs are associated
+  with observed covariates. Strong associations with likely confounders can be a
+  warning sign.
+- **Exclusion restriction**: Medusa cannot verify this directly, but unexpected
+  PheWAS hits, allele-frequency mismatches, or major missingness can indicate
+  pleiotropy, data-quality problems, or harmonization issues that threaten this
+  assumption.
+
+The package also has a `negativeControlResults` slot in the diagnostics object,
+but this vignette focuses on the currently executable checks: F-statistics,
+covariate associations, allele-frequency comparison, and genotype missingness.
+
+```{r assumption-diagnostics}
+# Build a diagnostics-ready copy of the synthetic cohort
+diagnosticCohort <- cohortData
+diagnosticCohort$personId <- diagnosticCohort$person_id
+diagnosticCohort$exposure <- exposure
+
+# Add a small amount of missingness so the missingness report is visible
+set.seed(2027)
+missingIdx <- sample.int(n, size = round(0.12 * n))
+diagnosticCohort$snp_rs4453032[missingIdx] <- NA_integer_
+
+# Create synthetic covariates and add one deliberately SNP-correlated trait
+diagnosticCovariates <- simulateCovariateData(
+  n = n,
+  nCovariates = 8,
+  seed = 2026
+)
+names(diagnosticCovariates)[names(diagnosticCovariates) == "person_id"] <- "personId"
+diagnosticCovariates$proxy_inflammation_trait <-
+  as.numeric(scale(diagnosticCohort$snp_rs2228145 + rnorm(n, sd = 0.05)))
+
+diagnostics <- suppressWarnings(
+  runInstrumentDiagnostics(
+    cohortData = diagnosticCohort,
+    covariateData = diagnosticCovariates,
+    instrumentTable = instruments,
+    exposureProxyConceptIds = 1L,
+    pValueThreshold = 1e-4
+  )
+)
+
+# Assumption 1: relevance
+print(diagnostics$fStatistics[, c("snp_id", "fStatistic", "source", "weakFlag")])
+
+# Assumptions 2 and 3: look for suspicious covariate associations
+subset(
+  diagnostics$phewasResults,
+  significant,
+  select = c("snp_id", "covariate_name", "pval")
+)
+
+# Data integrity checks that support harmonisation review
+subset(
+  diagnostics$afComparison,
+  select = c("snp_id", "eaf_gwas", "eaf_cohort", "eaf_diff", "discrepancyFlag")
+)
+subset(
+  diagnostics$missingnessReport,
+  select = c("snp_id", "pct_missing", "highMissingFlag")
+)
+
+# High-level summary of which checks need follow-up
+diagnostics$diagnosticFlags
+```
+
+In practice, you would use these diagnostics as a screening step:
+
+- Proceed with more confidence when instruments are strong, PheWAS signals are
+  limited, and allele frequencies look consistent.
+- Investigate or prune instruments when specific SNPs are weak, associated with
+  likely confounders, or show allele-frequency discrepancies.
+- Treat missingness and harmonization anomalies as data-quality issues to fix
+  before interpreting the MR result.
+
 ## Step 4: Federated Pooling
 
 To illustrate federated pooling without requiring three live data partners, we
@@ -224,7 +340,8 @@ Because the one-shot pooled likelihood is defined on the shared allele score,
 pleiotropy-robust summarized-data methods are a secondary analysis. Here we use
 per-SNP estimates from the same synthetic site. We omit Steiger filtering
 because `runSensitivityAnalyses()` currently does not implement it for binary
-outcomes.
+outcomes. We also force Medusa's internal engine here so the vignette remains
+fully reproducible without requiring `TwoSampleMR`.
 
 ```{r sensitivity}
 # Fit the same site in per-SNP mode for summarized-data sensitivity methods
@@ -239,7 +356,8 @@ profilePerSnp <- fitOutcomeModel(
 
 sensitivity <- runSensitivityAnalyses(
   profilePerSnp$perSnpEstimates,
-  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut")
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+  engine = "internal"
 )
 
 # Summary
@@ -269,6 +387,12 @@ four checks:
 4. **Literature context**: The current colorectal-cancer MR literature for
    circulating interleukins remains mixed, so this is best treated as a
    motivating oncology use case rather than a settled causal claim.
+
+For readers newer to MR, the key conceptual takeaway is that the package is not
+estimating "the effect of carrying a risk SNP." It is using inherited genetic
+variation as a proxy for a modifiable biology (here, IL-6 signaling), then
+asking whether people with genetically shifted pathway activity also differ in
+colorectal cancer risk in the expected direction.
 
 ## References
 

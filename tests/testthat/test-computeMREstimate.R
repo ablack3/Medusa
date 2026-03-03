@@ -248,3 +248,120 @@ test_that("multi-SNP estimate uses the fitted allele-score denominator", {
   expect_equal(result$betaZX, expectedBetaZX, tolerance = 1e-6)
   expect_equal(result$betaMR, trueBetaZY / expectedBetaZX, tolerance = 0.05)
 })
+
+test_that("computeMREstimate falls back to Wald CI when no connected profile interval is found", {
+  betaGrid <- seq(-2, 2, by = 0.01)
+  betaZY <- 0.4
+  seZY <- 0.15
+  logLikProfile <- -0.5 * ((betaGrid - betaZY) / seZY)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 1.0,
+    se_ZX = 0.01,
+    pval_ZX = 1e-20,
+    eaf = 0.2,
+    stringsAsFactors = FALSE
+  )
+
+  computeMREstimateStub <- computeMREstimate
+  mockery::stub(computeMREstimateStub, "findProfileInterval", function(ciMask, peakIdx) NULL)
+
+  result <- suppressMessages(computeMREstimateStub(combined, instruments))
+  expectedHalfWidth <- qnorm(0.975) * result$seZY
+
+  expect_equal(result$ciLower, result$betaMR - expectedHalfWidth, tolerance = 0.02)
+  expect_equal(result$ciUpper, result$betaMR + expectedHalfWidth, tolerance = 0.02)
+})
+
+test_that("computeMREstimate errors when the stored score denominator is effectively zero", {
+  betaGrid <- seq(-1, 1, by = 0.01)
+  logLikProfile <- -0.5 * (betaGrid / 0.1)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900,
+    scoreDefinition = list(
+      snp_id = "rs1",
+      weights = 1,
+      betaZX = 0,
+      seZX = 0.01
+    )
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.2,
+    se_ZX = 0.02,
+    pval_ZX = 1e-20,
+    eaf = 0.2,
+    stringsAsFactors = FALSE
+  )
+
+  expect_error(
+    suppressMessages(computeMREstimate(combined, instruments)),
+    "too close to zero"
+  )
+})
+
+test_that("computeMREstimate reorders confidence limits when the score denominator is negative", {
+  betaGrid <- seq(-2, 2, by = 0.01)
+  betaZY <- 0.3
+  seZY <- 0.1
+  logLikProfile <- -0.5 * ((betaGrid - betaZY) / seZY)^2
+  logLikProfile <- logLikProfile - max(logLikProfile)
+
+  combined <- list(
+    betaGrid = betaGrid,
+    logLikProfile = logLikProfile,
+    siteContributions = data.frame(siteId = "A", nCases = 100, nControls = 900),
+    nSites = 1,
+    totalCases = 100,
+    totalControls = 900,
+    scoreDefinition = list(
+      snp_id = "rs1",
+      weights = 1,
+      betaZX = -0.5,
+      seZX = 0.02
+    )
+  )
+
+  instruments <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.2,
+    se_ZX = 0.02,
+    pval_ZX = 1e-20,
+    eaf = 0.2,
+    stringsAsFactors = FALSE
+  )
+
+  result <- suppressMessages(computeMREstimate(combined, instruments))
+
+  expect_lt(result$ciLower, result$ciUpper)
+  expect_lt(result$betaZX, 0)
+})
+
+test_that("findProfileInterval returns NULL when the peak is outside the CI mask", {
+  expect_null(findProfileInterval(c(FALSE, TRUE, TRUE), peakIdx = 1))
+})

@@ -136,3 +136,34 @@ test_that("poolLikelihoodProfiles rejects mismatched score definitions", {
     "different allele-score definition"
   )
 })
+
+test_that("poolLikelihoodProfiles adopts a finer grid from a later site when needed", {
+  coarseGrid <- seq(-2, 2, by = 0.2)
+  fineGrid <- seq(-2, 2, by = 0.1)
+  profiles <- list(
+    site_A = list(
+      siteId = "site_A",
+      betaGrid = coarseGrid,
+      logLikProfile = -0.5 * (coarseGrid - 0.1)^2,
+      nCases = 50,
+      nControls = 150,
+      snpIds = "rs1"
+    ),
+    site_B = list(
+      siteId = "site_B",
+      betaGrid = fineGrid,
+      logLikProfile = -0.5 * (fineGrid - 0.1)^2,
+      nCases = 60,
+      nControls = 140,
+      snpIds = "rs1"
+    )
+  )
+
+  expect_warning(
+    combined <- poolLikelihoodProfiles(profiles),
+    "different betaGrid"
+  )
+
+  expect_equal(length(combined$betaGrid), length(fineGrid))
+  expect_equal(combined$betaGrid, fineGrid)
+})

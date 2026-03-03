@@ -1,8 +1,9 @@
 # Medusa <img src="man/figures/logo.png" align="right" height="80" />
 
 <!-- badges: start -->
-  [![R-CMD-check](https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml)
-  <!-- badges: end -->
+[![R-CMD-check](https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ablack3/Medusa/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/ablack3/Medusa/graph/badge.svg)](https://app.codecov.io/gh/ablack3/Medusa)
+<!-- badges: end -->
   
 **Mendelian Estimation in Distributed Standardized Analytics**
 

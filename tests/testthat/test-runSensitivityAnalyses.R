@@ -336,3 +336,241 @@ test_that("TwoSampleMR helper builders populate summary-data metadata", {
   expect_equal(unique(harmonised$units.outcome), "log odds")
   expect_true(identical(resolveSensitivityEngine("auto"), "TwoSampleMR"))
 })
+
+test_that("TwoSampleMR helper builders preserve explicit labels, ids, and default binary units", {
+  perSnp <- with_harmonisation_columns(data.frame(
+    snp_id = c("rs1", "rs2"),
+    beta_ZY = c(0.05, 0.06),
+    se_ZY = c(0.02, 0.02),
+    beta_ZX = c(0.10, 0.12),
+    se_ZX = c(0.02, 0.02),
+    exposure_label = c("BMI", "BMI"),
+    id_exposure = c("exp-1", "exp-1"),
+    outcome_label = c("CAD", "CAD"),
+    id_outcome = c("out-1", "out-1"),
+    stringsAsFactors = FALSE
+  ))
+
+  exposureDat <- buildTwoSampleMRData(perSnp, type = "exposure", outcomeType = "binary")
+  outcomeDat <- buildTwoSampleMRData(perSnp, type = "outcome", outcomeType = "binary")
+  harmonised <- addTwoSampleMRUnits(
+    harmonised = data.frame(SNP = perSnp$snp_id, stringsAsFactors = FALSE),
+    perSnpEstimates = perSnp,
+    outcomeType = "binary"
+  )
+
+  expect_equal(unique(exposureDat$phenotype), "BMI")
+  expect_equal(unique(exposureDat$id), "exp-1")
+  expect_equal(unique(outcomeDat$phenotype), "CAD")
+  expect_equal(unique(outcomeDat$id), "out-1")
+  expect_equal(unique(harmonised$units.outcome), "log odds")
+})
+
+test_that("runSensitivityAnalyses TwoSampleMR helpers cover Steiger and leave-one-out branches", {
+  skip_if_not_installed("mockery")
+
+  harmonised <- data.frame(
+    SNP = c("rs1", "rs2"),
+    b = c(0.1, 0.2),
+    se = c(0.05, 0.06),
+    p = c(0.01, 0.02),
+    stringsAsFactors = FALSE
+  )
+
+  steigerFn <- computeSteigerTwoSampleMR
+  mockery::stub(steigerFn, "TwoSampleMR::steiger_filtering", function(...) {
+    data.frame(
+      SNP = c("rs1", "rs2"),
+      steiger_dir = c(TRUE, FALSE),
+      steiger_pval = c(0.01, 0.2),
+      stringsAsFactors = FALSE
+    )
+  })
+  mockery::stub(steigerFn, "computeIVWTwoSampleMR", function(...) {
+    data.frame(
+      method = "IVW",
+      beta_MR = 0.5,
+      se_MR = 0.1,
+      ci_lower = 0.3,
+      ci_upper = 0.7,
+      pval = 0.001,
+      cochran_Q = NA_real_,
+      cochran_Q_pval = NA_real_,
+      stringsAsFactors = FALSE
+    )
+  })
+  steigerResult <- suppressWarnings(steigerFn(harmonised))
+  expect_equal(steigerResult$n_removed, 1)
+  expect_equal(steigerResult$n_remaining, 1)
+  expect_equal(steigerResult$method, "Steiger-filtered IVW")
+
+  steigerErrorFn <- computeSteigerTwoSampleMR
+  mockery::stub(steigerErrorFn, "TwoSampleMR::steiger_filtering", function(...) stop("boom"))
+  expect_warning(
+    unavailable <- steigerErrorFn(harmonised),
+    "could not be evaluated"
+  )
+  expect_true(is.na(unavailable$beta_MR))
+
+  steigerMissingFn <- computeSteigerTwoSampleMR
+  mockery::stub(steigerMissingFn, "TwoSampleMR::steiger_filtering", function(...) {
+    data.frame(SNP = "rs1", stringsAsFactors = FALSE)
+  })
+  expect_warning(
+    missingDir <- steigerMissingFn(harmonised),
+    "did not return steiger_dir"
+  )
+  expect_true(is.na(missingDir$beta_MR))
+
+  steigerAllFailFn <- computeSteigerTwoSampleMR
+  mockery::stub(steigerAllFailFn, "TwoSampleMR::steiger_filtering", function(...) {
+    data.frame(
+      SNP = c("rs1", "rs2"),
+      steiger_dir = c(FALSE, FALSE),
+      steiger_pval = c(0.4, 0.5),
+      stringsAsFactors = FALSE
+    )
+  })
+  expect_warning(
+    allFail <- steigerAllFailFn(harmonised),
+    "All SNPs failed Steiger filter"
+  )
+  expect_equal(allFail$n_remaining, 0)
+
+  looFn <- computeLeaveOneOutTwoSampleMR
+  mockery::stub(looFn, "TwoSampleMR::mr_leaveoneout", function(...) {
+    data.frame(
+      SNP = c("rs1", "rs2", "All"),
+      b = c(0.1, 0.2, 0.15),
+      se = c(0.05, 0.06, 0.04),
+      p = c(0.05, 0.02, 0.01),
+      stringsAsFactors = FALSE
+    )
+  })
+  loo <- looFn(harmonised)
+  expect_equal(nrow(loo), 2)
+  expect_false("All" %in% loo$snp_removed)
+})
+
+test_that("runSensitivityAnalyses delegates Steiger and leave-one-out through TwoSampleMR hooks", {
+  skip_if_not_installed("mockery")
+
+  perSnp <- with_harmonisation_columns(data.frame(
+    snp_id = c("rs1", "rs2", "rs3"),
+    beta_ZY = c(0.04, 0.05, 0.06),
+    se_ZY = c(0.02, 0.02, 0.02),
+    beta_ZX = c(0.10, 0.11, 0.12),
+    se_ZX = c(0.02, 0.02, 0.02),
+    stringsAsFactors = FALSE
+  ))
+
+  runFn <- runSensitivityAnalyses
+  mockery::stub(runFn, "resolveSensitivityEngine", function(...) "TwoSampleMR")
+  mockery::stub(
+    runFn,
+    "harmonisePerSnpEstimates",
+    function(...) data.frame(SNP = perSnp$snp_id, stringsAsFactors = FALSE)
+  )
+  mockery::stub(
+    runFn,
+    "computeSteigerTwoSampleMR",
+    function(...) {
+      list(
+        method = "Steiger-filtered IVW",
+        beta_MR = 0.4,
+        se_MR = 0.1,
+        ci_lower = 0.2,
+        ci_upper = 0.6,
+        pval = 0.01,
+        n_removed = 1L,
+        n_remaining = 2L
+      )
+    }
+  )
+  mockery::stub(
+    runFn,
+    "computeLeaveOneOutTwoSampleMR",
+    function(...) {
+      data.frame(
+        snp_removed = c("rs1", "rs2", "rs3"),
+        beta_MR = c(0.41, 0.40, 0.39),
+        se_MR = c(0.1, 0.1, 0.1),
+        pval = c(0.02, 0.03, 0.04),
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+
+  results <- suppressMessages(
+    runFn(
+      perSnpEstimates = perSnp,
+      methods = c("Steiger", "LeaveOneOut"),
+      outcomeSampleSize = 1000,
+      exposureSampleSize = 1000,
+      outcomeType = "continuous",
+      engine = "TwoSampleMR"
+    )
+  )
+
+  expect_equal(results$steiger$method, "Steiger-filtered IVW")
+  expect_equal(nrow(results$leaveOneOut), 3)
+})
+
+test_that("runSensitivityAnalyses helper branches cover fallback and error paths", {
+  skip_if_not_installed("mockery")
+
+  resolveFn <- resolveSensitivityEngine
+  mockery::stub(resolveFn, "requireNamespace", function(package, ...) FALSE)
+  expect_warning(expect_equal(resolveFn("auto"), "internal"), "falling back")
+  expect_error(resolveFn("TwoSampleMR"), "Package 'TwoSampleMR' is required")
+
+  emptyHarmoniseFn <- harmonisePerSnpEstimates
+  basePerSnp <- with_harmonisation_columns(data.frame(
+    snp_id = c("rs1", "rs2"),
+    beta_ZY = c(0.1, 0.2),
+    se_ZY = c(0.05, 0.05),
+    beta_ZX = c(0.2, 0.3),
+    se_ZX = c(0.05, 0.05),
+    stringsAsFactors = FALSE
+  ))
+  mockery::stub(emptyHarmoniseFn, "TwoSampleMR::format_data", function(dat, ...) dat)
+  mockery::stub(emptyHarmoniseFn, "TwoSampleMR::harmonise_data", function(...) {
+    data.frame(SNP = c("rs1", "rs2"), mr_keep = c(FALSE, FALSE), stringsAsFactors = FALSE)
+  })
+  expect_error(
+    emptyHarmoniseFn(basePerSnp, outcomeType = "continuous"),
+    "No SNPs remained after harmonisation"
+  )
+
+  steigerSingle <- with_harmonisation_columns(data.frame(
+    snp_id = c("rs1", "rs2"),
+    beta_ZY = c(0.1, 0.01),
+    se_ZY = c(0.01, 0.01),
+    beta_ZX = c(0.2, 0.001),
+    se_ZX = c(0.01, 0.01),
+    stringsAsFactors = FALSE
+  ))
+  singleSteiger <- suppressMessages(
+    computeSteiger(
+      steigerSingle,
+      outcomeSampleSize = 10000,
+      exposureSampleSize = 10000,
+      outcomeType = "continuous"
+    )
+  )
+  expect_true(is.na(singleSteiger$se_MR))
+
+  expect_error(
+    computeRatioSummary(
+      with_harmonisation_columns(data.frame(
+        snp_id = "rs1",
+        beta_ZY = 0.1,
+        se_ZY = 0.05,
+        beta_ZX = 0,
+        se_ZX = 0.05,
+        stringsAsFactors = FALSE
+      ))
+    ),
+    "Cannot compute ratio estimates"
+  )
+})

@@ -36,6 +36,9 @@ test_that("helper validation and formatting utilities behave as expected", {
   badProfile <- siteProfile
   badProfile$logLikProfile <- rep(0, 20)
   expect_error(validateSiteProfile(badProfile), "same length")
+  badProfile2 <- siteProfile
+  badProfile2$scoreDefinition$scoreWeights <- 0.6
+  expect_error(validateSiteProfile(badProfile2), "must have the same length")
 })
 
 test_that("mrTheme returns a usable object", {
@@ -62,4 +65,27 @@ test_that("loadRenderTranslateSql renders and translates package SQL", {
   expect_true(nchar(sql) > 0)
   expect_match(sql, "cdm")
   expect_false(grepl("@cdm_database_schema", sql, fixed = TRUE))
+})
+
+test_that("loadRenderTranslateSql validates dependencies and SQL file presence", {
+  skip_if_not_installed("mockery")
+
+  helperFn <- loadRenderTranslateSql
+  mockery::stub(helperFn, "requireNamespace", function(package, ...) {
+    if (identical(package, "SqlRender")) {
+      FALSE
+    } else {
+      base::requireNamespace(package, quietly = TRUE)
+    }
+  })
+
+  expect_error(
+    helperFn("extractOutcomeCohort.sql", dbms = "postgresql"),
+    "Package 'SqlRender' is required"
+  )
+
+  expect_error(
+    loadRenderTranslateSql("definitely_missing.sql", dbms = "postgresql"),
+    "SQL file not found"
+  )
 })
