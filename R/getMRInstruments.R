@@ -254,6 +254,10 @@ getMRInstruments <- function(exposureTraitId,
           stringsAsFactors = FALSE
         )
         instrumentTable <- rbind(instrumentTable, additionalRows)
+        warning(
+          "Force-included SNPs were not checked for LD with clumped instruments. ",
+          "Correlated instruments may violate MR assumptions."
+        )
       }
     }
   }

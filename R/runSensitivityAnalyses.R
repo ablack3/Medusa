@@ -668,6 +668,9 @@ computeMREgger <- function(perSnpEstimates) {
   weights <- 1 / (perSnpEstimates$se_ZY^2)
 
   # Weighted regression with intercept: beta_ZY = alpha + beta * beta_ZX
+  # Note: lm() with weights produces a multiplicative random-effects SE that
+  # incorporates the residual variance (sigma-hat-squared). This matches the
+  # default in TwoSampleMR. The fixed-effect version would assume sigma^2 = 1.
   fit <- lm(beta_ZY ~ beta_ZX,
             data = perSnpEstimates,
             weights = weights)
@@ -819,7 +822,9 @@ computeSteiger <- function(perSnpEstimates, outcomeSampleSize = NULL,
   )
   steigerZ <- (atanh(abs(rExposure)) - atanh(abs(rOutcome))) / fisherDenominator
   steigerPval <- 2 * pnorm(-abs(steigerZ))
-  steigerPass <- abs(rExposure) > abs(rOutcome)
+  # Hemani et al. (2017) recommend requiring both the point estimate
+  # comparison AND statistical significance to establish causal direction.
+  steigerPass <- abs(rExposure) > abs(rOutcome) & steigerPval < 0.05
 
   nRemoved <- sum(!steigerPass)
 

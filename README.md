@@ -9,6 +9,8 @@
 
 Federated two-sample Mendelian Randomization on the OMOP Common Data Model.
 
+**PACKAGE UNDER CONSTRUCTION: DO NOT USE**
+
 ## Overview
 
 Medusa implements two-sample Mendelian Randomization (MR) natively within the OHDSI ecosystem. It enables causal inference across distributed health networks without requiring individual-level data to leave any site.

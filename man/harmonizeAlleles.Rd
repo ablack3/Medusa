@@ -7,7 +7,8 @@
 harmonizeAlleles(
   instrumentTable,
   genotypeAlleles,
-  eafPalindromicThreshold = 0.08
+  eafPalindromicThreshold = 0.08,
+  cohortAlleleFrequencies = NULL
 )
 }
 \arguments{
@@ -23,6 +24,11 @@ at a particular site.}
 SNPs. Palindromic SNPs with EAF between (0.5 - threshold) and
 (0.5 + threshold) are removed. Default is 0.08 (i.e., EAF between
 0.42 and 0.58).}
+
+\item{cohortAlleleFrequencies}{Optional named numeric vector of cohort
+allele frequencies, keyed by SNP ID. The frequency should be for the
+coded allele in the genotype data (i.e., mean(genotype)/2). Used to
+resolve palindromic SNPs when EAF is far enough from 0.5.}
 }
 \value{
 A list with two elements:

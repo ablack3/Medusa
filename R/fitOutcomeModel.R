@@ -467,6 +467,11 @@ alignInstrumentColumns <- function(cohortData, instrumentTable) {
 appendCovariatesToModelData <- function(modelData, cohortData, covariateData) {
   covCols <- character(0)
 
+  # Unwrap medusaCovariateData to a plain data frame
+  if (inherits(covariateData, "medusaCovariateData")) {
+    covariateData <- extractCovariateDataFrame(covariateData, cohortData)
+  }
+
   if (!is.null(covariateData) && is.data.frame(covariateData)) {
     covCols <- setdiff(names(covariateData), c("person_id", "personId", "rowId"))
 
@@ -643,7 +648,18 @@ evaluateBinaryProfilePoint <- function(modelData,
     return(-Inf)
   }
 
-  fittedProb <- tryCatch(stats::predict(fit), error = function(e) NULL)
+  # Cyclops predict() may return linear predictors or probabilities depending
+  # on the version. Explicitly request response-scale (probabilities) if the
+  # API supports it, otherwise transform from the linear predictor.
+  fittedProb <- tryCatch({
+    pred <- stats::predict(fit)
+    # If any value is outside [0,1], assume linear predictor (log-odds)
+    if (any(pred < 0 | pred > 1, na.rm = TRUE)) {
+      1 / (1 + exp(-pred))
+    } else {
+      pred
+    }
+  }, error = function(e) NULL)
   if (is.null(fittedProb)) {
     return(-Inf)
   }
@@ -739,14 +755,69 @@ estimateSEFromProfile <- function(betaGrid, logLikProfile) {
     return(Inf)
   }
 
-  # Finite difference approximation of second derivative at peak
-  gridStep <- betaGrid[peakIdx + 1] - betaGrid[peakIdx]
-  d2 <- (logLikProfile[peakIdx + 1] - 2 * logLikProfile[peakIdx] +
-           logLikProfile[peakIdx - 1]) / (gridStep^2)
+  # Use a local quadratic fit over up to 5 points around the peak, which is
 
-  if (d2 >= 0) {
+  # robust to non-uniform grid spacing (e.g., after interpolation).
+  loIdx <- max(1, peakIdx - 2)
+  hiIdx <- min(length(betaGrid), peakIdx + 2)
+  localBeta <- betaGrid[loIdx:hiIdx]
+  localLL <- logLikProfile[loIdx:hiIdx]
+
+  if (length(localBeta) < 3) {
+    return(Inf)
+  }
+
+  # Fit y = a * x^2 + b * x + c; second derivative is 2a
+  quadFit <- tryCatch(
+    lm(localLL ~ poly(localBeta, 2, raw = TRUE)),
+    error = function(e) NULL
+  )
+  if (is.null(quadFit)) {
+    return(Inf)
+  }
+
+  d2 <- 2 * unname(coef(quadFit)[3])
+
+  if (is.na(d2) || d2 >= 0) {
     return(Inf)
   }
 
   sqrt(-1 / d2)
+}
+
+
+#' @keywords internal
+extractCovariateDataFrame <- function(medusaCovData, cohortData) {
+  # Convert a medusaCovariateData list (from buildMRCovariates) into a plain
+
+  # data frame that appendCovariatesToModelData can merge.
+  covDf <- NULL
+
+  if (!is.null(medusaCovData$covariateData)) {
+    covObj <- medusaCovData$covariateData
+    # FeatureExtraction returns Andromeda-backed objects; collect to data frame
+    if ("covariates" %in% names(covObj)) {
+      covDf <- tryCatch(
+        as.data.frame(covObj$covariates),
+        error = function(e) NULL
+      )
+    }
+  }
+
+  # Append ancestry PCs if present
+  if (!is.null(medusaCovData$ancestryPCs) &&
+      is.data.frame(medusaCovData$ancestryPCs)) {
+    pcDf <- medusaCovData$ancestryPCs
+    if (is.null(covDf)) {
+      covDf <- pcDf
+    } else {
+      joinCol <- intersect(names(covDf), names(pcDf))
+      joinCol <- joinCol[joinCol %in% c("personId", "person_id", "rowId")]
+      if (length(joinCol) > 0) {
+        covDf <- merge(covDf, pcDf, by = joinCol[1], all.x = TRUE)
+      }
+    }
+  }
+
+  covDf
 }

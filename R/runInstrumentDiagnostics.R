@@ -308,7 +308,10 @@ runInstrumentPheWAS <- function(cohortData, covariateData, instrumentTable,
 #' @keywords internal
 testNegativeControls <- function(cohortData, instrumentTable,
                                   negativeControlOutcomeIds) {
-  # Placeholder — requires negative control data in cohortData
+  # TODO: Implement negative control outcome testing. This requires outcome
+  # columns for each negative control in cohortData, which are not yet
+  # extracted by buildMRCohort. Until implemented, the negativeControlFailure
+  # diagnostic flag will always be FALSE.
   data.frame(
     snp_id = character(0),
     outcome_id = integer(0),
@@ -334,8 +337,9 @@ compareAlleleFrequencies <- function(cohortData, instrumentTable) {
   )
 
   for (i in seq_len(nrow(instrumentTable))) {
-    if (i <= length(snpCols)) {
-      genotypes <- cohortData[[snpCols[i]]]
+    snpCol <- makeSnpColumnName(instrumentTable$snp_id[i])
+    if (snpCol %in% names(cohortData)) {
+      genotypes <- cohortData[[snpCol]]
       validGeno <- genotypes[!is.na(genotypes)]
       if (length(validGeno) > 0) {
         eafCohort <- mean(validGeno) / 2
@@ -365,8 +369,9 @@ summarizeGenotypeMissingness <- function(cohortData, instrumentTable) {
   )
 
   for (i in seq_len(nrow(instrumentTable))) {
-    if (i <= length(snpCols)) {
-      nMissing <- sum(is.na(cohortData[[snpCols[i]]]))
+    snpCol <- makeSnpColumnName(instrumentTable$snp_id[i])
+    if (snpCol %in% names(cohortData)) {
+      nMissing <- sum(is.na(cohortData[[snpCol]]))
       missingnessReport$n_missing[i] <- nMissing
       missingnessReport$pct_missing[i] <- 100 * nMissing / nTotal
       missingnessReport$highMissingFlag[i] <- (nMissing / nTotal) > 0.10

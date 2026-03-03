@@ -16,13 +16,14 @@ working directory.}
 }
 \value{
 A named character vector with the paths to the written files
-  (invisibly). Names are "profile" and "metadata".
+  (invisibly).
 }
 \description{
-Writes a site profile (output of \code{\link{fitOutcomeModel}}) to two
-human-readable CSV files: one containing the profile log-likelihood grid and
-one containing site metadata. These CSV files are the artifacts shared between
-sites and the coordinator in a federated Medusa analysis.
+Writes a site profile (output of \code{\link{fitOutcomeModel}}) to
+human-readable CSV files: one for the profile log-likelihood grid, one for
+site metadata, one for the allele-score definition, and optionally one for
+per-SNP estimates. These CSV files are the artifacts shared between sites
+and the coordinator in a federated Medusa analysis.
 
 CSV is used instead of binary formats so that every value leaving a site is
 human-readable and auditable.

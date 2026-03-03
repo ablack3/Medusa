@@ -120,9 +120,18 @@ buildMRCovariates <- function(connectionDetails,
     aggregated = FALSE
   )
 
-  message(sprintf("Extracted %d covariates for %d persons.",
-                  length(unique(covariateData$covariateRef$covariateId)),
-                  length(unique(covariateData$covariates$rowId))))
+  # Andromeda-backed tables need collect/pull to compute length(unique())
+  nCovariates <- tryCatch(
+    nrow(as.data.frame(covariateData$covariateRef)),
+    error = function(e) NA_integer_
+  )
+  nPersons <- tryCatch(
+    length(unique(as.data.frame(covariateData$covariates)$rowId)),
+    error = function(e) NA_integer_
+  )
+  message(sprintf("Extracted %s covariates for %s persons.",
+                  if (is.na(nCovariates)) "unknown" else as.character(nCovariates),
+                  if (is.na(nPersons)) "unknown" else as.character(nPersons)))
 
   # Extract ancestry PCs if available
   ancestryPCs <- NULL

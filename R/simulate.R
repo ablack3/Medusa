@@ -147,7 +147,9 @@ simulateMRData <- function(n = 5000,
 #' @export
 simulateInstrumentTable <- function(nSnps = 10, seed = 42) {
   set.seed(seed)
-  betaZX <- rnorm(nSnps, mean = 0, sd = 0.3)
+  # Use positive effects with realistic magnitudes to avoid near-zero
+  # instruments that cause numerical issues in ratio estimates
+  betaZX <- runif(nSnps, 0.1, 0.5) * sample(c(-1, 1), nSnps, replace = TRUE)
   seZX <- runif(nSnps, 0.02, 0.08)
 
   nonAmbiguousPairs <- list(
@@ -201,6 +203,19 @@ simulateSiteProfiles <- function(nSites = 3,
   set.seed(seed)
   profiles <- list()
 
+  # All sites must use the same score definition (same instrument table)
+  snpIds <- paste0("rs", 1:5)
+  simBetaZX <- runif(5, 0.1, 0.5)
+  simSeZX <- runif(5, 0.02, 0.08)
+  rawWeights <- simBetaZX / (simSeZX^2)
+  scoreWeights <- rawWeights / sum(abs(rawWeights))
+  sharedScoreDefinition <- list(
+    snpIds = snpIds,
+    scoreWeights = scoreWeights,
+    betaZX = sum(scoreWeights * simBetaZX),
+    seZX = sqrt(sum((scoreWeights^2) * (simSeZX^2)))
+  )
+
   for (s in seq_len(nSites)) {
     # Each site has a slightly different MLE due to sampling variability
     siteBeta <- trueBeta + rnorm(1, 0, 0.1)
@@ -214,19 +229,24 @@ simulateSiteProfiles <- function(nSites = 3,
     nCases <- round(nPerSite * runif(1, 0.05, 0.15))
     nControls <- nPerSite - nCases
 
-    profiles[[paste0("site_", LETTERS[s])]] <- list(
+    profile <- list(
       siteId = paste0("site_", LETTERS[s]),
       betaGrid = betaGrid,
       logLikProfile = logLik,
       nCases = nCases,
       nControls = nControls,
-      snpIds = paste0("rs", 1:5),
+      snpIds = snpIds,
       diagnosticFlags = list(
         weakInstruments = FALSE,
         lowCaseCount = nCases < 50,
         gridBoundaryMLE = FALSE
-      )
+      ),
+      betaHat = siteBeta,
+      seHat = 1 / sqrt(info),
+      scoreDefinition = sharedScoreDefinition
     )
+    class(profile) <- "medusaSiteProfile"
+    profiles[[paste0("site_", LETTERS[s])]] <- profile
   }
 
   profiles

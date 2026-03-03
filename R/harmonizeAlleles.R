@@ -39,6 +39,10 @@
 #'   SNPs. Palindromic SNPs with EAF between (0.5 - threshold) and
 #'   (0.5 + threshold) are removed. Default is 0.08 (i.e., EAF between
 #'   0.42 and 0.58).
+#' @param cohortAlleleFrequencies Optional named numeric vector of cohort
+#'   allele frequencies, keyed by SNP ID. The frequency should be for the
+#'   coded allele in the genotype data (i.e., mean(genotype)/2). Used to
+#'   resolve palindromic SNPs when EAF is far enough from 0.5.
 #'
 #' @return A list with two elements:
 #'   \describe{
@@ -100,7 +104,8 @@
 #' @export
 harmonizeAlleles <- function(instrumentTable,
                              genotypeAlleles,
-                             eafPalindromicThreshold = 0.08) {
+                             eafPalindromicThreshold = 0.08,
+                             cohortAlleleFrequencies = NULL) {
   checkmate::assertDataFrame(instrumentTable, min.rows = 1)
   checkmate::assertSubset(c("snp_id", "effect_allele", "other_allele",
                             "beta_ZX", "se_ZX", "eaf"),
@@ -109,6 +114,10 @@ harmonizeAlleles <- function(instrumentTable,
   checkmate::assertSubset(c("snp_id", "allele_coded", "allele_noncoded"),
                           names(genotypeAlleles))
   checkmate::assertNumber(eafPalindromicThreshold, lower = 0, upper = 0.5)
+  if (!is.null(cohortAlleleFrequencies)) {
+    checkmate::assertNumeric(cohortAlleleFrequencies, lower = 0, upper = 1,
+                             names = "named")
+  }
 
   removed <- data.frame(
     snp_id = character(0),
@@ -151,6 +160,39 @@ harmonizeAlleles <- function(instrumentTable,
       next
     }
 
+    # For palindromic SNPs with EAF far from 0.5, use EAF to resolve strand
+    if (isPalindromic) {
+      if (!is.null(cohortAlleleFrequencies) && snpId %in% names(cohortAlleleFrequencies)) {
+        cohortAF <- cohortAlleleFrequencies[[snpId]]
+        # Compare GWAS EAF with cohort coded-allele frequency
+        # If concordant (both high or both low), the coding matches
+        # If discordant (one high, one low), need to flip
+        eafConcordant <- abs(eaf - cohortAF) < abs(eaf - (1 - cohortAF))
+        if (eafConcordant) {
+          # Coding is concordant — ensure allele labels match genotype
+          instrumentTable$effect_allele[i] <- genoCodedAllele
+          instrumentTable$other_allele[i] <- genoNoncodedAllele
+          next
+        } else {
+          # Coding is discordant — flip beta and EAF
+          instrumentTable$beta_ZX[i] <- -instrumentTable$beta_ZX[i]
+          instrumentTable$eaf[i] <- 1 - instrumentTable$eaf[i]
+          instrumentTable$effect_allele[i] <- genoCodedAllele
+          instrumentTable$other_allele[i] <- genoNoncodedAllele
+          instrumentTable$flipped[i] <- TRUE
+          next
+        }
+      } else {
+        # No cohort allele frequency available for this palindromic SNP;
+        # allele matching alone cannot resolve strand ambiguity.
+        warning(sprintf(
+          paste0("Palindromic SNP %s (EAF = %.3f) resolved by allele matching alone. ",
+                 "Provide cohortAlleleFrequencies for reliable EAF-based strand resolution."),
+          snpId, eaf
+        ))
+      }
+    }
+
     # Case 1: Direct match — effect allele matches coded allele
     if (ea == genoCodedAllele && oa == genoNoncodedAllele) {
       next
@@ -166,14 +208,18 @@ harmonizeAlleles <- function(instrumentTable,
       next
     }
 
-    # Case 3: Try complement alleles
+    # Case 3: Complement direct match — strand flip, same allele order
     eaComp <- complementAllele(ea)
     oaComp <- complementAllele(oa)
 
-    # Try complement match
     if (eaComp == genoCodedAllele && oaComp == genoNoncodedAllele) {
+      # Update allele labels to match genotype coding
+      instrumentTable$effect_allele[i] <- genoCodedAllele
+      instrumentTable$other_allele[i] <- genoNoncodedAllele
       next
     }
+
+    # Case 4: Complement + swap — strand flip with allele order reversed
     if (eaComp == genoNoncodedAllele && oaComp == genoCodedAllele) {
       instrumentTable$beta_ZX[i] <- -instrumentTable$beta_ZX[i]
       instrumentTable$eaf[i] <- 1 - instrumentTable$eaf[i]
@@ -183,7 +229,7 @@ harmonizeAlleles <- function(instrumentTable,
       next
     }
 
-    # Case 4: No match possible
+    # Case 5: No match possible
     removed <- rbind(removed, data.frame(
       snp_id = snpId, reason = "allele_mismatch",
       stringsAsFactors = FALSE

@@ -147,7 +147,8 @@ computeMREstimate <- function(combinedProfile,
   # Step 5: Wald ratio
   betaMR <- betaZYHat / betaZX
 
-  # Step 6: Delta method SE
+  # Step 6: Delta method SE (two-sample MR: covariance between beta_ZX and
+  # beta_ZY is zero by design because they come from independent samples)
   seMR <- sqrt(
     (seZY / betaZX)^2 +
       (betaZYHat * seZX / betaZX^2)^2

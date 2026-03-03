@@ -17,10 +17,11 @@
 #' Export a Site Profile to CSV
 #'
 #' @description
-#' Writes a site profile (output of \code{\link{fitOutcomeModel}}) to two
-#' human-readable CSV files: one containing the profile log-likelihood grid and
-#' one containing site metadata. These CSV files are the artifacts shared between
-#' sites and the coordinator in a federated Medusa analysis.
+#' Writes a site profile (output of \code{\link{fitOutcomeModel}}) to
+#' human-readable CSV files: one for the profile log-likelihood grid, one for
+#' site metadata, one for the allele-score definition, and optionally one for
+#' per-SNP estimates. These CSV files are the artifacts shared between sites
+#' and the coordinator in a federated Medusa analysis.
 #'
 #' CSV is used instead of binary formats so that every value leaving a site is
 #' human-readable and auditable.
@@ -31,7 +32,7 @@
 #' @param prefix Character. Filename prefix. Default is "medusa".
 #'
 #' @return A named character vector with the paths to the written files
-#'   (invisibly). Names are "profile" and "metadata".
+#'   (invisibly).
 #'
 #' @examples
 #' simData <- simulateMRData(n = 500, nSnps = 3, trueEffect = 0.3)
@@ -69,6 +70,7 @@ exportSiteProfile <- function(profile,
   }
 
   siteId <- profile$siteId
+  paths <- character(0)
 
   # --- Profile CSV: beta grid and log-likelihood values ---
   profilePath <- file.path(outputDir,
@@ -78,6 +80,7 @@ exportSiteProfile <- function(profile,
     log_likelihood = profile$logLikProfile
   )
   utils::write.csv(profileDf, profilePath, row.names = FALSE)
+  paths["profile"] <- profilePath
 
   # --- Metadata CSV: site summary and diagnostic flags ---
   metadataPath <- file.path(outputDir,
@@ -98,10 +101,47 @@ exportSiteProfile <- function(profile,
     stringsAsFactors = FALSE
   )
   utils::write.csv(metaDf, metadataPath, row.names = FALSE)
+  paths["metadata"] <- metadataPath
 
-  message(sprintf("Exported site profile to:\n  %s\n  %s",
-                  profilePath, metadataPath))
-  invisible(c(profile = profilePath, metadata = metadataPath))
+  # --- Score definition CSV: allele-score weights and exposure summary ---
+  if (!is.null(profile$scoreDefinition)) {
+    scorePath <- file.path(outputDir,
+                            sprintf("%s_score_%s.csv", prefix, siteId))
+    scoreDef <- profile$scoreDefinition
+    scoreDf <- data.frame(
+      snp_id = scoreDef$snpIds,
+      score_weight = scoreDef$scoreWeights,
+      stringsAsFactors = FALSE
+    )
+    # Store betaZX and seZX as attributes in a one-row summary at the top
+    utils::write.csv(scoreDf, scorePath, row.names = FALSE)
+
+    # Write a companion summary file with the aggregate score statistics
+    scoreSummaryPath <- file.path(outputDir,
+                                   sprintf("%s_score_summary_%s.csv", prefix, siteId))
+    scoreSummaryDf <- data.frame(
+      beta_zx_score = scoreDef$betaZX,
+      se_zx_score = scoreDef$seZX,
+      stringsAsFactors = FALSE
+    )
+    utils::write.csv(scoreSummaryDf, scoreSummaryPath, row.names = FALSE)
+    paths["score"] <- scorePath
+    paths["score_summary"] <- scoreSummaryPath
+  }
+
+  # --- Per-SNP estimates CSV (optional) ---
+  if (!is.null(profile$perSnpEstimates) &&
+      is.data.frame(profile$perSnpEstimates) &&
+      nrow(profile$perSnpEstimates) > 0) {
+    perSnpPath <- file.path(outputDir,
+                             sprintf("%s_per_snp_%s.csv", prefix, siteId))
+    utils::write.csv(profile$perSnpEstimates, perSnpPath, row.names = FALSE)
+    paths["per_snp"] <- perSnpPath
+  }
+
+  message(sprintf("Exported site profile to:\n  %s",
+                  paste(paths, collapse = "\n  ")))
+  invisible(paths)
 }
 
 
@@ -136,10 +176,12 @@ importSiteProfile <- function(profilePath,
     stop(sprintf("Profile file not found: %s", profilePath))
   }
 
-  # Infer metadata path if not provided
+  # Infer companion file paths from the profile path
   if (is.null(metadataPath)) {
     metadataPath <- sub("_profile_", "_metadata_", profilePath)
   }
+  scorePath <- sub("_profile_", "_score_", profilePath)
+  scoreSummaryPath <- sub("_profile_", "_score_summary_", profilePath)
 
   # Read profile grid
   profileDf <- utils::read.csv(profilePath, stringsAsFactors = FALSE)
@@ -187,6 +229,27 @@ importSiteProfile <- function(profilePath,
     warning(sprintf("Metadata file not found: %s. Using defaults.", metadataPath))
   }
 
+  # Read score definition if present
+  scoreDefinition <- NULL
+  if (file.exists(scorePath)) {
+    scoreDf <- utils::read.csv(scorePath, stringsAsFactors = FALSE)
+    scoreDefinition <- list(
+      snpIds = scoreDf$snp_id,
+      scoreWeights = scoreDf$score_weight,
+      betaZX = NA_real_,
+      seZX = NA_real_
+    )
+    if (file.exists(scoreSummaryPath)) {
+      summDf <- utils::read.csv(scoreSummaryPath, stringsAsFactors = FALSE)
+      if ("beta_zx_score" %in% names(summDf)) {
+        scoreDefinition$betaZX <- summDf$beta_zx_score[1]
+      }
+      if ("se_zx_score" %in% names(summDf)) {
+        scoreDefinition$seZX <- summDf$se_zx_score[1]
+      }
+    }
+  }
+
   profile <- list(
     siteId = siteId,
     betaGrid = profileDf$beta,
@@ -196,7 +259,8 @@ importSiteProfile <- function(profilePath,
     snpIds = snpIds,
     diagnosticFlags = diagnosticFlags,
     betaHat = betaHat,
-    seHat = seHat
+    seHat = seHat,
+    scoreDefinition = scoreDefinition
   )
   class(profile) <- "medusaSiteProfile"
 
