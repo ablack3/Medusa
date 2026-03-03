@@ -84,6 +84,7 @@
 <strong>SNP-outcome associations</strong> (beta_ZY): Estimated from your own cohort data</li>
 </ol>
 <p>The causal estimate is the <strong>Wald ratio</strong>: beta_MR = beta_ZY / beta_ZX.</p>
+<p>This vignette is a runnable sandbox: every example below uses synthetic data, so the goal is to show the workflow and the shape of the outputs rather than to make a scientific claim.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -121,6 +122,8 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">Medusa</span><span class="op">)</span></span>
 <span></span>
+<span><span class="va">betaGrid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span>
+<span></span>
 <span><span class="co"># Simulate MR data with a known causal effect of 0.5 (log-OR)</span></span>
 <span><span class="va">simData</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulateMRData.html">simulateMRData</a></span><span class="op">(</span></span>
 <span>  n <span class="op">=</span> <span class="fl">5000</span>,</span>
@@ -143,62 +146,78 @@
 </h3>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fit the outcome model and get the profile likelihood</span></span>
-<span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>
+<span><span class="va">profileSiteA</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>
 <span>  cohortData <span class="op">=</span> <span class="va">simData</span><span class="op">$</span><span class="va">data</span>,</span>
 <span>  covariateData <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  instrumentTable <span class="op">=</span> <span class="va">simData</span><span class="op">$</span><span class="va">instrumentTable</span>,</span>
-<span>  betaGrid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>,</span>
-<span>  siteId <span class="op">=</span> <span class="st">"simulated_site"</span></span>
+<span>  betaGrid <span class="op">=</span> <span class="va">betaGrid</span>,</span>
+<span>  siteId <span class="op">=</span> <span class="st">"site_A"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; Fitting outcome model at site 'simulated_site' (3452 cases, 1548 controls)...</span></span>
-<span><span class="co">#&gt; Site 'simulated_site': beta_ZY_hat = 0.6137 (SE = 0.1410).</span></span>
+<span><span class="co">#&gt; Fitting outcome model at site 'site_A' (3452 cases, 1548 controls)...</span></span>
+<span><span class="co">#&gt; Site 'site_A': beta_ZY_hat = 0.6137 (SE = 0.1410).</span></span>
 <span></span>
 <span><span class="co"># The profile contains no individual-level data</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">profile</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">profileSiteA</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  [1] "siteId"          "betaGrid"        "logLikProfile"   "nCases"         </span></span>
 <span><span class="co">#&gt;  [5] "nControls"       "snpIds"          "diagnosticFlags" "betaHat"        </span></span>
 <span><span class="co">#&gt;  [9] "seHat"           "scoreDefinition"</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"beta_ZY estimate: %.3f (SE: %.3f)\n"</span>, <span class="va">profile</span><span class="op">$</span><span class="va">betaHat</span>, <span class="va">profile</span><span class="op">$</span><span class="va">seHat</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"beta_ZY estimate: %.3f (SE: %.3f)\n"</span>,</span>
+<span>            <span class="va">profileSiteA</span><span class="op">$</span><span class="va">betaHat</span>, <span class="va">profileSiteA</span><span class="op">$</span><span class="va">seHat</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; beta_ZY estimate: 0.614 (SE: 0.141)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="pool-profiles-simulating-federation">Pool Profiles (Simulating Federation)<a class="anchor" aria-label="anchor" href="#pool-profiles-simulating-federation"></a>
 </h3>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Simulate 3 sites with similar data</span></span>
-<span><span class="va">profiles</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulateSiteProfiles.html">simulateSiteProfiles</a></span><span class="op">(</span></span>
-<span>  nSites <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>  betaGrid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>,</span>
-<span>  trueBeta <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>  nPerSite <span class="op">=</span> <span class="fl">3000</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
+<code class="sourceCode R"><span><span class="co"># Create synthetic partner sites that reuse the same allele-score definition.</span></span>
+<span><span class="co"># This keeps the pooled likelihood compatible with the denominator used later</span></span>
+<span><span class="co"># in computeMREstimate().</span></span>
+<span><span class="va">makePartnerProfile</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">template</span>, <span class="va">siteId</span>, <span class="va">shift</span>, <span class="va">infoScale</span>, <span class="va">nCases</span>, <span class="va">nControls</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">partner</span> <span class="op">&lt;-</span> <span class="va">template</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">siteId</span> <span class="op">&lt;-</span> <span class="va">siteId</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">betaHat</span> <span class="op">&lt;-</span> <span class="va">template</span><span class="op">$</span><span class="va">betaHat</span> <span class="op">+</span> <span class="va">shift</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">seHat</span> <span class="op">&lt;-</span> <span class="va">template</span><span class="op">$</span><span class="va">seHat</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">infoScale</span><span class="op">)</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">logLikProfile</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">0.5</span> <span class="op">*</span> <span class="va">infoScale</span> <span class="op">*</span></span>
+<span>    <span class="op">(</span><span class="op">(</span><span class="va">template</span><span class="op">$</span><span class="va">betaGrid</span> <span class="op">-</span> <span class="va">partner</span><span class="op">$</span><span class="va">betaHat</span><span class="op">)</span> <span class="op">/</span> <span class="va">template</span><span class="op">$</span><span class="va">seHat</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">logLikProfile</span> <span class="op">&lt;-</span> <span class="va">partner</span><span class="op">$</span><span class="va">logLikProfile</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">partner</span><span class="op">$</span><span class="va">logLikProfile</span><span class="op">)</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">nCases</span> <span class="op">&lt;-</span> <span class="va">nCases</span></span>
+<span>  <span class="va">partner</span><span class="op">$</span><span class="va">nControls</span> <span class="op">&lt;-</span> <span class="va">nControls</span></span>
+<span>  <span class="va">partner</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">profiles</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  site_A <span class="op">=</span> <span class="va">profileSiteA</span>,</span>
+<span>  site_B <span class="op">=</span> <span class="fu">makePartnerProfile</span><span class="op">(</span><span class="va">profileSiteA</span>, <span class="st">"site_B"</span>, shift <span class="op">=</span> <span class="fl">0.06</span>,</span>
+<span>                              infoScale <span class="op">=</span> <span class="fl">1.1</span>, nCases <span class="op">=</span> <span class="fl">295</span>, nControls <span class="op">=</span> <span class="fl">2705</span><span class="op">)</span>,</span>
+<span>  site_C <span class="op">=</span> <span class="fu">makePartnerProfile</span><span class="op">(</span><span class="va">profileSiteA</span>, <span class="st">"site_C"</span>, shift <span class="op">=</span> <span class="op">-</span><span class="fl">0.04</span>,</span>
+<span>                              infoScale <span class="op">=</span> <span class="fl">0.9</span>, nCases <span class="op">=</span> <span class="fl">260</span>, nControls <span class="op">=</span> <span class="fl">2740</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Pool the profiles</span></span>
 <span><span class="va">combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/poolLikelihoodProfiles.html">poolLikelihoodProfiles</a></span><span class="op">(</span><span class="va">profiles</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Pooling profile likelihoods from 3 site(s)...</span></span>
-<span><span class="co">#&gt; Pooling complete: 3 sites, 955 total cases, 8045 total controls.</span></span>
+<span><span class="co">#&gt; Pooling complete: 3 sites, 4007 total cases, 6993 total controls.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Pooled %d sites: %d total cases, %d total controls\n"</span>,</span>
 <span>            <span class="va">combined</span><span class="op">$</span><span class="va">nSites</span>, <span class="va">combined</span><span class="op">$</span><span class="va">totalCases</span>, <span class="va">combined</span><span class="op">$</span><span class="va">totalControls</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Pooled 3 sites: 955 total cases, 8045 total controls</span></span></code></pre></div>
+<span><span class="co">#&gt; Pooled 3 sites: 4007 total cases, 6993 total controls</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="compute-the-mr-estimate">Compute the MR Estimate<a class="anchor" aria-label="anchor" href="#compute-the-mr-estimate"></a>
 </h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">instruments</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulateInstrumentTable.html">simulateInstrumentTable</a></span><span class="op">(</span>nSnps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
-<span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/computeMREstimate.html">computeMREstimate</a></span><span class="op">(</span><span class="va">combined</span>, <span class="va">instruments</span><span class="op">)</span></span>
-<span><span class="co">#&gt; MR estimate: beta = 2.0646 (95% CI: 1.5015, 2.8154), p = 2.55e-06</span></span>
-<span><span class="co">#&gt; Odds ratio: 7.882 (95% CI: 4.489, 16.699)</span></span>
+<code class="sourceCode R"><span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/computeMREstimate.html">computeMREstimate</a></span><span class="op">(</span><span class="va">combined</span>, <span class="va">simData</span><span class="op">$</span><span class="va">instrumentTable</span><span class="op">)</span></span>
+<span><span class="co">#&gt; MR estimate: beta = 2.1158 (95% CI: 1.7631, 2.6447), p = 3.99e-12</span></span>
+<span><span class="co">#&gt; Odds ratio: 8.296 (95% CI: 5.831, 14.079)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Causal estimate (beta_MR): %.3f\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">betaMR</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Causal estimate (beta_MR): 2.065</span></span>
+<span><span class="co">#&gt; Causal estimate (beta_MR): 2.116</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"95%% CI: [%.3f, %.3f]\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">ciLower</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">ciUpper</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 95% CI: [1.502, 2.815]</span></span>
+<span><span class="co">#&gt; 95% CI: [1.763, 2.645]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"P-value: %.2e\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">pValue</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; P-value: 2.55e-06</span></span>
+<span><span class="co">#&gt; P-value: 3.99e-12</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Odds ratio: %.3f\n"</span>, <span class="va">estimate</span><span class="op">$</span><span class="va">oddsRatio</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Odds ratio: 7.882</span></span></code></pre></div>
+<span><span class="co">#&gt; Odds ratio: 8.296</span></span></code></pre></div>
+<p>The key detail is that the pooled profile carries the exact allele-score definition used at each site. Passing the same instrument table back into <code><a href="../reference/computeMREstimate.html">computeMREstimate()</a></code> keeps the Wald ratio denominator aligned with the fitted score rather than with an unrelated simulated instrument set.</p>
 </div>
 <div class="section level3">
 <h3 id="run-sensitivity-analyses">Run Sensitivity Analyses<a class="anchor" aria-label="anchor" href="#run-sensitivity-analyses"></a>
@@ -254,7 +273,7 @@
 <li>
 <strong>Sensitivity Analyses</strong> — Forest plot comparing methods</li>
 <li>
-<strong>Diagnostics</strong> — PheWAS plot, negative controls, missingness</li>
+<strong>Diagnostics</strong> — instrument PheWAS, allele-frequency checks, missingness</li>
 <li>
 <strong>Methods Section</strong> — Auto-generated text for manuscripts</li>
 </ol>

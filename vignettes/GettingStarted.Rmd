@@ -34,6 +34,10 @@ provide evidence for causality from observational data.
 
 The causal estimate is the **Wald ratio**: beta_MR = beta_ZY / beta_ZX.
 
+This vignette is a runnable sandbox: every example below uses synthetic data,
+so the goal is to show the workflow and the shape of the outputs rather than
+to make a scientific claim.
+
 ## Installation
 
 ```{r install, eval=FALSE}
@@ -67,6 +71,8 @@ No database connection needed for this example.
 ```{r quickstart}
 library(Medusa)
 
+betaGrid <- seq(-2, 2, by = 0.05)
+
 # Simulate MR data with a known causal effect of 0.5 (log-OR)
 simData <- simulateMRData(
   n = 5000,
@@ -83,29 +89,45 @@ head(simData$instrumentTable[, c("snp_id", "beta_ZX", "se_ZX", "eaf")])
 
 ```{r fit-model}
 # Fit the outcome model and get the profile likelihood
-profile <- fitOutcomeModel(
+profileSiteA <- fitOutcomeModel(
   cohortData = simData$data,
   covariateData = NULL,
   instrumentTable = simData$instrumentTable,
-  betaGrid = seq(-2, 2, by = 0.05),
-  siteId = "simulated_site"
+  betaGrid = betaGrid,
+  siteId = "site_A"
 )
 
 # The profile contains no individual-level data
-names(profile)
-cat(sprintf("beta_ZY estimate: %.3f (SE: %.3f)\n", profile$betaHat, profile$seHat))
+names(profileSiteA)
+cat(sprintf("beta_ZY estimate: %.3f (SE: %.3f)\n",
+            profileSiteA$betaHat, profileSiteA$seHat))
 ```
 
 ### Pool Profiles (Simulating Federation)
 
 ```{r pool}
-# Simulate 3 sites with similar data
-profiles <- simulateSiteProfiles(
-  nSites = 3,
-  betaGrid = seq(-2, 2, by = 0.05),
-  trueBeta = 0.5,
-  nPerSite = 3000,
-  seed = 42
+# Create synthetic partner sites that reuse the same allele-score definition.
+# This keeps the pooled likelihood compatible with the denominator used later
+# in computeMREstimate().
+makePartnerProfile <- function(template, siteId, shift, infoScale, nCases, nControls) {
+  partner <- template
+  partner$siteId <- siteId
+  partner$betaHat <- template$betaHat + shift
+  partner$seHat <- template$seHat / sqrt(infoScale)
+  partner$logLikProfile <- -0.5 * infoScale *
+    ((template$betaGrid - partner$betaHat) / template$seHat)^2
+  partner$logLikProfile <- partner$logLikProfile - max(partner$logLikProfile)
+  partner$nCases <- nCases
+  partner$nControls <- nControls
+  partner
+}
+
+profiles <- list(
+  site_A = profileSiteA,
+  site_B = makePartnerProfile(profileSiteA, "site_B", shift = 0.06,
+                              infoScale = 1.1, nCases = 295, nControls = 2705),
+  site_C = makePartnerProfile(profileSiteA, "site_C", shift = -0.04,
+                              infoScale = 0.9, nCases = 260, nControls = 2740)
 )
 
 # Pool the profiles
@@ -117,14 +139,18 @@ cat(sprintf("Pooled %d sites: %d total cases, %d total controls\n",
 ### Compute the MR Estimate
 
 ```{r estimate}
-instruments <- simulateInstrumentTable(nSnps = 5)
-estimate <- computeMREstimate(combined, instruments)
+estimate <- computeMREstimate(combined, simData$instrumentTable)
 
 cat(sprintf("Causal estimate (beta_MR): %.3f\n", estimate$betaMR))
 cat(sprintf("95%% CI: [%.3f, %.3f]\n", estimate$ciLower, estimate$ciUpper))
 cat(sprintf("P-value: %.2e\n", estimate$pValue))
 cat(sprintf("Odds ratio: %.3f\n", estimate$oddsRatio))
 ```
+
+The key detail is that the pooled profile carries the exact allele-score
+definition used at each site. Passing the same instrument table back into
+`computeMREstimate()` keeps the Wald ratio denominator aligned with the fitted
+score rather than with an unrelated simulated instrument set.
 
 ### Run Sensitivity Analyses
 
@@ -161,7 +187,7 @@ The `generateMRReport()` function creates a self-contained HTML report with:
 3. **Likelihood Profile** — Visual of site and combined likelihood curves
 4. **Main Result** — Odds ratio with confidence interval
 5. **Sensitivity Analyses** — Forest plot comparing methods
-6. **Diagnostics** — PheWAS plot, negative controls, missingness
+6. **Diagnostics** — instrument PheWAS, allele-frequency checks, missingness
 7. **Methods Section** — Auto-generated text for manuscripts
 
 ## FAQ

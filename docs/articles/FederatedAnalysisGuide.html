@@ -75,6 +75,7 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>This guide walks OHDSI network coordinators through setting up and running a federated Medusa analysis across multiple sites. The key principle: <strong>only profile log-likelihood vectors leave each site</strong> — no individual-level data is shared.</p>
+<p>The code chunks in this vignette are templates, not executable examples. They are shown with <code>eval = FALSE</code> because every network needs to substitute its own connection details, cohort IDs, file paths, and governance controls.</p>
 </div>
 <div class="section level2">
 <h2 id="what-data-leaves-each-site">What Data Leaves Each Site<a class="anchor" aria-label="anchor" href="#what-data-leaves-each-site"></a>
@@ -102,12 +103,16 @@
 <td>Covariate values</td>
 </tr>
 <tr class="even">
+<td>Optional per-SNP summary estimates for sensitivity analyses</td>
+<td>Raw SNP-by-person data</td>
+</tr>
+<tr class="odd">
 <td>Site identifier</td>
 <td>Demographics</td>
 </tr>
 </tbody>
 </table>
-<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals.</p>
+<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals. If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each site can also share one row per SNP containing <code>beta_ZY</code> and <code>se_ZY</code>. Those are still aggregate summaries, but they are optional and separate from the main pooled likelihood workflow.</p>
 </div>
 <div class="section level2">
 <h2 id="site-setup-requirements">Site Setup Requirements<a class="anchor" aria-label="anchor" href="#site-setup-requirements"></a>
@@ -228,7 +233,12 @@
 <span>  analysisType <span class="op">=</span> <span class="st">"alleleScore"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Also fit per-SNP models for sensitivity analyses</span></span>
+<span><span class="co"># ----- Step 5: Export and share -----</span></span>
+<span><span class="co"># Required for the primary federated MR estimate:</span></span>
+<span><span class="fu"><a href="../reference/exportSiteProfile.html">exportSiteProfile</a></span><span class="op">(</span><span class="va">profile</span>, outputDir <span class="op">=</span> <span class="st">"."</span>, prefix <span class="op">=</span> <span class="st">"medusa"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Optional: only run this block if the coordinator requested per-SNP summaries</span></span>
+<span><span class="co"># for IVW / MR-Egger / weighted-median sensitivity analyses.</span></span>
 <span><span class="va">profilePerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>
 <span>  cohortData <span class="op">=</span> <span class="va">cohortData</span>,</span>
 <span>  covariateData <span class="op">=</span> <span class="va">covariateData</span>,</span>
@@ -237,12 +247,13 @@
 <span>  siteId <span class="op">=</span> <span class="va">siteId</span>,</span>
 <span>  analysisType <span class="op">=</span> <span class="st">"perSNP"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span></span>
+<span>  <span class="va">profilePerSnp</span><span class="op">$</span><span class="va">perSnpEstimates</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"medusa_per_snp_%s.csv"</span>, <span class="va">siteId</span><span class="op">)</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ----- Step 5: Export and share -----</span></span>
-<span><span class="co"># ONLY these CSV files leave the site:</span></span>
-<span><span class="fu"><a href="../reference/exportSiteProfile.html">exportSiteProfile</a></span><span class="op">(</span><span class="va">profile</span>, outputDir <span class="op">=</span> <span class="st">"."</span>, prefix <span class="op">=</span> <span class="st">"medusa"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Analysis complete. Share the CSV files with the coordinator."</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Analysis complete. Share the required profile CSVs and, if requested, the per-SNP summary CSV."</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="coordinator-pooling-script">Coordinator Pooling Script<a class="anchor" aria-label="anchor" href="#coordinator-pooling-script"></a>
@@ -267,12 +278,49 @@
 <span><span class="co"># Estimate</span></span>
 <span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/computeMREstimate.html">computeMREstimate</a></span><span class="op">(</span><span class="va">combined</span>, <span class="va">instrumentTable</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Sensitivity analyses (if per-SNP profiles available)</span></span>
-<span><span class="co"># ... construct perSnpEstimates from per-SNP profiles ...</span></span>
+<span><span class="co"># Optional: set this to NULL unless per-SNP CSVs were collected.</span></span>
+<span><span class="va">sensitivity</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
+<span></span>
+<span><span class="co"># Optional: fixed-effect pool the per-SNP summaries before sensitivity analyses.</span></span>
+<span><span class="co"># Each site's per-SNP CSV should contain one row per SNP with beta_ZY and se_ZY.</span></span>
+<span><span class="va">perSnpBySite</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  site_A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"medusa_per_snp_site_A.csv"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>  site_B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"medusa_per_snp_site_B.csv"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>  site_C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"medusa_per_snp_site_C.csv"</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">stackedPerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">perSnpBySite</span><span class="op">)</span></span>
+<span><span class="va">splitPerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/split.html" class="external-link">split</a></span><span class="op">(</span><span class="va">stackedPerSnp</span>, <span class="va">stackedPerSnp</span><span class="op">$</span><span class="va">snp_id</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">perSnpPooled</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>  <span class="va">rbind</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">splitPerSnp</span>, <span class="kw">function</span><span class="op">(</span><span class="va">df</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">weights</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">se_ZY</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>      snp_id <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">snp_id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      effect_allele <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">effect_allele</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      other_allele <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">other_allele</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      eaf <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">eaf</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      beta_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span> <span class="op">*</span> <span class="va">df</span><span class="op">$</span><span class="va">beta_ZY</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span>,</span>
+<span>      se_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      beta_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">beta_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      se_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">se_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      pval_ZX <span class="op">=</span> <span class="va">df</span><span class="op">$</span><span class="va">pval_ZX</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sensitivity</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses</a></span><span class="op">(</span></span>
+<span>  <span class="va">perSnpPooled</span>,</span>
+<span>  methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IVW"</span>, <span class="st">"MREgger"</span>, <span class="st">"WeightedMedian"</span>, <span class="st">"LeaveOneOut"</span><span class="op">)</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"internal"</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Report</span></span>
 <span><span class="fu"><a href="../reference/generateMRReport.html">generateMRReport</a></span><span class="op">(</span></span>
 <span>  mrEstimate <span class="op">=</span> <span class="va">estimate</span>,</span>
+<span>  sensitivityResults <span class="op">=</span> <span class="va">sensitivity</span>,</span>
 <span>  combinedProfile <span class="op">=</span> <span class="va">combined</span>,</span>
 <span>  siteProfileList <span class="op">=</span> <span class="va">siteProfiles</span>,</span>
 <span>  instrumentTable <span class="op">=</span> <span class="va">instrumentTable</span>,</span>
@@ -289,7 +337,18 @@
 <li>Institutional secure file sharing (e.g., Box, SharePoint with encryption)</li>
 <li>OHDSI network file transfer protocols (if available)</li>
 </ul>
-<p>The CSV files are human-readable and typically very small (&lt; 100 KB) as they contain only numeric grid values and summary statistics. Using CSV ensures that every value leaving a site can be inspected and audited before transfer.</p>
+<p>The required profile CSV files are human-readable and typically very small (&lt; 100 KB) because they contain only numeric grid values and summary statistics. Optional per-SNP summary CSVs are also compact. Using CSV ensures that every value leaving a site can be inspected and audited before transfer.</p>
+</div>
+<div class="section level2">
+<h2 id="coordinator-pre-flight-checklist">Coordinator Pre-flight Checklist<a class="anchor" aria-label="anchor" href="#coordinator-pre-flight-checklist"></a>
+</h2>
+<p>Before pooling, verify:</p>
+<ul>
+<li>Every site used the same <code>instruments.csv</code> file.</li>
+<li>Every site used the same <code>betaGrid</code> values.</li>
+<li>Every imported profile has the expected site identifier and non-zero case count.</li>
+<li>If per-SNP summaries were requested, each file uses the same SNP IDs and allele coding.</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="handling-different-omop-versions">Handling Different OMOP Versions<a class="anchor" aria-label="anchor" href="#handling-different-omop-versions"></a>

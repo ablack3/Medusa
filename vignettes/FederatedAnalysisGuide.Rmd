@@ -22,6 +22,10 @@ federated Medusa analysis across multiple sites. The key principle: **only
 profile log-likelihood vectors leave each site** — no individual-level data
 is shared.
 
+The code chunks in this vignette are templates, not executable examples. They
+are shown with `eval = FALSE` because every network needs to substitute its own
+connection details, cohort IDs, file paths, and governance controls.
+
 ## What Data Leaves Each Site
 
 | Shared with coordinator | NOT shared |
@@ -29,10 +33,15 @@ is shared.
 | Log-likelihood profile (numeric vector, ~600 numbers) | Individual genotypes |
 | Number of cases and controls | Person-level outcomes |
 | Diagnostic flags (logical values) | Covariate values |
+| Optional per-SNP summary estimates for sensitivity analyses | Raw SNP-by-person data |
 | Site identifier | Demographics |
 
 The profile vector is a smooth curve that represents the aggregate statistical
 evidence at a site. It cannot be reverse-engineered to identify individuals.
+If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each
+site can also share one row per SNP containing `beta_ZY` and `se_ZY`. Those are
+still aggregate summaries, but they are optional and separate from the main
+pooled likelihood workflow.
 
 ## Site Setup Requirements
 
@@ -155,7 +164,12 @@ profile <- fitOutcomeModel(
   analysisType = "alleleScore"
 )
 
-# Also fit per-SNP models for sensitivity analyses
+# ----- Step 5: Export and share -----
+# Required for the primary federated MR estimate:
+exportSiteProfile(profile, outputDir = ".", prefix = "medusa")
+
+# Optional: only run this block if the coordinator requested per-SNP summaries
+# for IVW / MR-Egger / weighted-median sensitivity analyses.
 profilePerSnp <- fitOutcomeModel(
   cohortData = cohortData,
   covariateData = covariateData,
@@ -164,12 +178,13 @@ profilePerSnp <- fitOutcomeModel(
   siteId = siteId,
   analysisType = "perSNP"
 )
+utils::write.csv(
+  profilePerSnp$perSnpEstimates,
+  sprintf("medusa_per_snp_%s.csv", siteId),
+  row.names = FALSE
+)
 
-# ----- Step 5: Export and share -----
-# ONLY these CSV files leave the site:
-exportSiteProfile(profile, outputDir = ".", prefix = "medusa")
-
-message("Analysis complete. Share the CSV files with the coordinator.")
+message("Analysis complete. Share the required profile CSVs and, if requested, the per-SNP summary CSV.")
 ```
 
 ## Coordinator Pooling Script
@@ -195,12 +210,49 @@ combined <- poolLikelihoodProfiles(siteProfiles)
 # Estimate
 estimate <- computeMREstimate(combined, instrumentTable)
 
-# Sensitivity analyses (if per-SNP profiles available)
-# ... construct perSnpEstimates from per-SNP profiles ...
+# Optional: set this to NULL unless per-SNP CSVs were collected.
+sensitivity <- NULL
+
+# Optional: fixed-effect pool the per-SNP summaries before sensitivity analyses.
+# Each site's per-SNP CSV should contain one row per SNP with beta_ZY and se_ZY.
+perSnpBySite <- list(
+  site_A = read.csv("medusa_per_snp_site_A.csv", stringsAsFactors = FALSE),
+  site_B = read.csv("medusa_per_snp_site_B.csv", stringsAsFactors = FALSE),
+  site_C = read.csv("medusa_per_snp_site_C.csv", stringsAsFactors = FALSE)
+)
+
+stackedPerSnp <- do.call(rbind, perSnpBySite)
+splitPerSnp <- split(stackedPerSnp, stackedPerSnp$snp_id)
+
+perSnpPooled <- do.call(
+  rbind,
+  lapply(splitPerSnp, function(df) {
+    weights <- 1 / (df$se_ZY^2)
+    data.frame(
+      snp_id = df$snp_id[1],
+      effect_allele = df$effect_allele[1],
+      other_allele = df$other_allele[1],
+      eaf = df$eaf[1],
+      beta_ZY = sum(weights * df$beta_ZY) / sum(weights),
+      se_ZY = sqrt(1 / sum(weights)),
+      beta_ZX = df$beta_ZX[1],
+      se_ZX = df$se_ZX[1],
+      pval_ZX = df$pval_ZX[1],
+      stringsAsFactors = FALSE
+    )
+  })
+)
+
+sensitivity <- runSensitivityAnalyses(
+  perSnpPooled,
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+  engine = "internal"
+)
 
 # Report
 generateMRReport(
   mrEstimate = estimate,
+  sensitivityResults = sensitivity,
   combinedProfile = combined,
   siteProfileList = siteProfiles,
   instrumentTable = instrumentTable,
@@ -218,9 +270,19 @@ Options include:
 - Institutional secure file sharing (e.g., Box, SharePoint with encryption)
 - OHDSI network file transfer protocols (if available)
 
-The CSV files are human-readable and typically very small (< 100 KB) as they
-contain only numeric grid values and summary statistics. Using CSV ensures that
-every value leaving a site can be inspected and audited before transfer.
+The required profile CSV files are human-readable and typically very small
+(< 100 KB) because they contain only numeric grid values and summary
+statistics. Optional per-SNP summary CSVs are also compact. Using CSV ensures
+that every value leaving a site can be inspected and audited before transfer.
+
+## Coordinator Pre-flight Checklist
+
+Before pooling, verify:
+
+- Every site used the same `instruments.csv` file.
+- Every site used the same `betaGrid` values.
+- Every imported profile has the expected site identifier and non-zero case count.
+- If per-SNP summaries were requested, each file uses the same SNP IDs and allele coding.
 
 ## Handling Different OMOP Versions
 
