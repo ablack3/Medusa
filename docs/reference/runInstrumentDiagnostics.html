@@ -79,7 +79,9 @@ missingness summaries.</p>
 
 
 <dt id="arg-covariatedata">covariateData<a class="anchor" aria-label="anchor" href="#arg-covariatedata"></a></dt>
-<dd><p>List. Output of <code><a href="buildMRCovariates.html">buildMRCovariates</a></code>.</p></dd>
+<dd><p>Either the list output of
+<code><a href="buildMRCovariates.html">buildMRCovariates</a></code> or a plain data frame with person-level
+covariates.</p></dd>
 
 
 <dt id="arg-instrumenttable">instrumentTable<a class="anchor" aria-label="anchor" href="#arg-instrumenttable"></a></dt>
@@ -114,7 +116,9 @@ Default is Bonferroni-corrected (0.05 / number of covariates tested).</p></dd>
 
     <dt>negativeControlResults</dt>
 <dd><p>Data frame with snp_id, outcome_id, beta,
-      se, pval, or NULL if no negative controls provided.</p></dd>
+      se, pval, or NULL if no negative controls provided. Note: negative
+      control testing is not yet implemented; this slot currently returns
+      an empty data frame when negative control IDs are supplied.</p></dd>
 
     <dt>afComparison</dt>
 <dd><p>Data frame with snp_id, eaf_gwas, eaf_cohort,

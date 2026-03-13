@@ -29,7 +29,9 @@
 #' \code{\link{generateMRReport}}.
 #'
 #' @param cohortData Data frame. Output of \code{\link{buildMRCohort}}.
-#' @param covariateData List. Output of \code{\link{buildMRCovariates}}.
+#' @param covariateData Either the list output of
+#'   \code{\link{buildMRCovariates}} or a plain data frame with person-level
+#'   covariates.
 #' @param instrumentTable Data frame. Output of \code{\link{getMRInstruments}}.
 #' @param exposureProxyConceptIds Optional integer vector of OMOP concept IDs
 #'   for an exposure measurement proxy (e.g., IL-6 lab measurement). Used

@@ -28,9 +28,11 @@ The analysis pipeline consists of nine modules:
   \item \strong{Covariate Assembly} (\code{\link{buildMRCovariates}}):
     Assemble covariates via FeatureExtraction for adjustment and diagnostics.
   \item \strong{Instrument Diagnostics} (\code{\link{runInstrumentDiagnostics}}):
-    Validate instruments via F-statistics, PheWAS, and negative controls.
+    Validate instruments via F-statistics, PheWAS, allele-frequency checks,
+    missingness summaries, and a placeholder negative-control interface.
   \item \strong{Outcome Model} (\code{\link{fitOutcomeModel}}):
-    Fit regularized outcome model and evaluate profile log-likelihood on a grid.
+    Fit the binary outcome model and evaluate an exact or penalized profile
+    log-likelihood on a grid.
   \item \strong{Likelihood Pooling} (\code{\link{poolLikelihoodProfiles}}):
     Aggregate site-level log-likelihood profiles via pointwise summation.
   \item \strong{MR Estimation} (\code{\link{computeMREstimate}}):

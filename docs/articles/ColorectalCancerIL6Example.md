@@ -134,8 +134,9 @@ cat(sprintf("F-statistics range: %.0f to %.0f\n",
 
 ## Step 2: Outcome Cohort Definition
 
-In OMOP CDM, incident colorectal cancer would typically be defined
-using:
+In OMOP CDM (with the [OMOP Genomic
+CDM](https://github.com/OHDSI/Genomic-CDM) extension), incident
+colorectal cancer would typically be defined using:
 
 -   **SNOMED concepts**: Malignant neoplasm of colon (concept ID
     4089661), Malignant neoplasm of rectum (concept ID 4180790)
@@ -156,8 +157,7 @@ cohort <- buildMRCohort(
   cohortTable = "cohort",
   outcomeCohortId = 1234,  # Your colorectal cancer cohort ID
   instrumentTable = instruments,
-  genomicLinkageSchema = "genomics",
-  genomicLinkageTable = "genotype_data",
+  genomicDatabaseSchema = "genomics",  # Schema with VARIANT_OCCURRENCE
   washoutPeriod = 365,
   excludePriorOutcome = TRUE
 )
@@ -286,6 +286,7 @@ diagnostics <- suppressWarnings(
 #> Running instrument diagnostics for 7 SNPs...
 #>   Computing F-statistics...
 #>   Running instrument PheWAS...
+#>   PheWAS: tested 63 of 63 SNP-covariate pairs (0 skipped due to low N or no variation).
 #>   Comparing allele frequencies...
 #>   Summarizing genotype missingness...
 #> Instrument diagnostics complete.
@@ -307,8 +308,8 @@ subset(
   significant,
   select = c("snp_id", "covariate_name", "pval")
 )
-#>      snp_id           covariate_name pval
-#> 9 rs2228145 proxy_inflammation_trait    0
+#>                   snp_id           covariate_name pval
+#> snp_rs22281458 rs2228145 proxy_inflammation_trait    0
 
 # Data integrity checks that support harmonisation review
 subset(
@@ -449,10 +450,12 @@ cat(sprintf("P-value: %.2e\n", estimate$pValue))
 
 Because the one-shot pooled likelihood is defined on the shared allele
 score, pleiotropy-robust summarized-data methods are a secondary
-analysis. Here we use per-SNP estimates from the same synthetic site. We
-omit Steiger filtering because `runSensitivityAnalyses()` currently does
-not implement it for binary outcomes. We also force Medusa’s internal
-engine here so the vignette remains fully reproducible without requiring
+analysis. Here we use per-SNP estimates from the same synthetic site.
+Medusa’s internal Steiger implementation does not support binary
+outcomes; for binary-outcome Steiger filtering, use
+`engine = "TwoSampleMR"`, which delegates to
+`TwoSampleMR::steiger_filtering()`. We force Medusa’s internal engine
+here so the vignette remains fully reproducible without requiring
 `TwoSampleMR`.
 
 <div id="cb8" class="sourceCode">

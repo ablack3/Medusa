@@ -29,11 +29,11 @@ or a data frame with person_id and covariate columns.}
 the profile log-likelihood. Default is \code{seq(-3, 3, by = 0.01)} (601
 grid points).}
 
-\item{regularizationVariance}{Numeric. Deprecated placeholder for a future
-regularized fitter. When \code{modelBackend = "cyclops"}, this is the
-variance of the normal prior applied to nuisance coefficients. Smaller
-values imply stronger shrinkage. Ignored by the \code{"glm"} backend.
-Default is 0.1.}
+\item{regularizationVariance}{Numeric. When
+\code{modelBackend = "cyclops"}, this is the variance of the normal prior
+applied to nuisance coefficients. Smaller values imply stronger shrinkage;
+use \code{Inf} for an unpenalized Cyclops fit. Ignored by the
+\code{"glm"} backend. Default is 0.1.}
 
 \item{instrumentRegularization}{Logical. When
 \code{modelBackend = "cyclops"}, whether the exposure coefficient is

@@ -16,7 +16,9 @@ runInstrumentDiagnostics(
 \arguments{
 \item{cohortData}{Data frame. Output of \code{\link{buildMRCohort}}.}
 
-\item{covariateData}{List. Output of \code{\link{buildMRCovariates}}.}
+\item{covariateData}{Either the list output of
+\code{\link{buildMRCovariates}} or a plain data frame with person-level
+covariates.}
 
 \item{instrumentTable}{Data frame. Output of \code{\link{getMRInstruments}}.}
 

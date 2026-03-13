@@ -141,7 +141,7 @@
 <div class="section level2">
 <h2 id="step-2-outcome-cohort-definition">Step 2: Outcome Cohort Definition<a class="anchor" aria-label="anchor" href="#step-2-outcome-cohort-definition"></a>
 </h2>
-<p>In OMOP CDM, incident colorectal cancer would typically be defined using:</p>
+<p>In OMOP CDM (with the <a href="https://github.com/OHDSI/Genomic-CDM" class="external-link">OMOP Genomic CDM</a> extension), incident colorectal cancer would typically be defined using:</p>
 <ul>
 <li>
 <strong>SNOMED concepts</strong>: Malignant neoplasm of colon (concept ID 4089661), Malignant neoplasm of rectum (concept ID 4180790)</li>
@@ -161,8 +161,7 @@
 <span>  cohortTable <span class="op">=</span> <span class="st">"cohort"</span>,</span>
 <span>  outcomeCohortId <span class="op">=</span> <span class="fl">1234</span>,  <span class="co"># Your colorectal cancer cohort ID</span></span>
 <span>  instrumentTable <span class="op">=</span> <span class="va">instruments</span>,</span>
-<span>  genomicLinkageSchema <span class="op">=</span> <span class="st">"genomics"</span>,</span>
-<span>  genomicLinkageTable <span class="op">=</span> <span class="st">"genotype_data"</span>,</span>
+<span>  genomicDatabaseSchema <span class="op">=</span> <span class="st">"genomics"</span>,  <span class="co"># Schema with VARIANT_OCCURRENCE</span></span>
 <span>  washoutPeriod <span class="op">=</span> <span class="fl">365</span>,</span>
 <span>  excludePriorOutcome <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -261,6 +260,7 @@
 <span><span class="co">#&gt; Running instrument diagnostics for 7 SNPs...</span></span>
 <span><span class="co">#&gt;   Computing F-statistics...</span></span>
 <span><span class="co">#&gt;   Running instrument PheWAS...</span></span>
+<span><span class="co">#&gt;   PheWAS: tested 63 of 63 SNP-covariate pairs (0 skipped due to low N or no variation).</span></span>
 <span><span class="co">#&gt;   Comparing allele frequencies...</span></span>
 <span><span class="co">#&gt;   Summarizing genotype missingness...</span></span>
 <span><span class="co">#&gt; Instrument diagnostics complete.</span></span>
@@ -282,8 +282,8 @@
 <span>  <span class="va">significant</span>,</span>
 <span>  select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snp_id"</span>, <span class="st">"covariate_name"</span>, <span class="st">"pval"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt;      snp_id           covariate_name pval</span></span>
-<span><span class="co">#&gt; 9 rs2228145 proxy_inflammation_trait    0</span></span>
+<span><span class="co">#&gt;                   snp_id           covariate_name pval</span></span>
+<span><span class="co">#&gt; snp_rs22281458 rs2228145 proxy_inflammation_trait    0</span></span>
 <span></span>
 <span><span class="co"># Data integrity checks that support harmonisation review</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span></span>
@@ -391,7 +391,7 @@
 <div class="section level2">
 <h2 id="step-6-sensitivity-analyses">Step 6: Sensitivity Analyses<a class="anchor" aria-label="anchor" href="#step-6-sensitivity-analyses"></a>
 </h2>
-<p>Because the one-shot pooled likelihood is defined on the shared allele score, pleiotropy-robust summarized-data methods are a secondary analysis. Here we use per-SNP estimates from the same synthetic site. We omit Steiger filtering because <code><a href="../reference/runSensitivityAnalyses.html">runSensitivityAnalyses()</a></code> currently does not implement it for binary outcomes. We also force Medusa’s internal engine here so the vignette remains fully reproducible without requiring <code>TwoSampleMR</code>.</p>
+<p>Because the one-shot pooled likelihood is defined on the shared allele score, pleiotropy-robust summarized-data methods are a secondary analysis. Here we use per-SNP estimates from the same synthetic site. Medusa’s internal Steiger implementation does not support binary outcomes; for binary-outcome Steiger filtering, use <code>engine = "TwoSampleMR"</code>, which delegates to <code><a href="https://mrcieu.github.io/TwoSampleMR/reference/steiger_filtering.html" class="external-link">TwoSampleMR::steiger_filtering()</a></code>. We force Medusa’s internal engine here so the vignette remains fully reproducible without requiring <code>TwoSampleMR</code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fit the same site in per-SNP mode for summarized-data sensitivity methods</span></span>
 <span><span class="va">profilePerSnp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>

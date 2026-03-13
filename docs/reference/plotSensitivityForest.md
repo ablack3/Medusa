@@ -60,15 +60,27 @@ set.seed(42)
 nSnps <- 10
 perSnp <- data.frame(
   snp_id = paste0("rs", 1:nSnps),
+  effect_allele = rep(c("A", "C", "G", "T", "A"), length.out = nSnps),
+  other_allele = rep(c("C", "G", "T", "A", "C"), length.out = nSnps),
+  eaf = seq(0.1, 0.7, length.out = nSnps),
   beta_ZY = rnorm(nSnps, 0.15, 0.02),
   se_ZY = rep(0.02, nSnps),
   beta_ZX = rnorm(nSnps, 0.3, 0.05),
   se_ZX = rep(0.05, nSnps)
 )
-results <- runSensitivityAnalyses(perSnp)
-#> Error in validatePerSnpSummaryData(perSnpEstimates): Assertion on 'requiredCols' failed: Must be a subset of {'snp_id','beta_ZY','se_ZY','beta_ZX','se_ZX'}, but has additional elements {'effect_allele','other_allele','eaf'}.
+results <- runSensitivityAnalyses(perSnp, engine = "internal")
+#> Running sensitivity analyses with 10 SNPs...
+#>   Engine: internal
+#>   IVW...
+#>   MR-Egger...
+#>   Weighted Median...
+#>   Steiger filtering...
+#> Warning: Steiger filtering is not implemented for binary outcomes because logistic-regression coefficients cannot be converted to correlations without additional scale assumptions. Returning NA result.
+#>   Leave-One-Out...
+#> Sensitivity analyses complete.
 plotSensitivityForest(results)
-#> Error: object 'results' not found
+#> `height` was translated to `width`.
+
 ```
 
 </div>

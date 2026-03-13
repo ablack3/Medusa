@@ -104,11 +104,11 @@ grid points).</p></dd>
 
 
 <dt id="arg-regularizationvariance">regularizationVariance<a class="anchor" aria-label="anchor" href="#arg-regularizationvariance"></a></dt>
-<dd><p>Numeric. Deprecated placeholder for a future
-regularized fitter. When <code>modelBackend = "cyclops"</code>, this is the
-variance of the normal prior applied to nuisance coefficients. Smaller
-values imply stronger shrinkage. Ignored by the <code>"glm"</code> backend.
-Default is 0.1.</p></dd>
+<dd><p>Numeric. When
+<code>modelBackend = "cyclops"</code>, this is the variance of the normal prior
+applied to nuisance coefficients. Smaller values imply stronger shrinkage;
+use <code>Inf</code> for an unpenalized Cyclops fit. Ignored by the
+<code>"glm"</code> backend. Default is 0.1.</p></dd>
 
 
 <dt id="arg-instrumentregularization">instrumentRegularization<a class="anchor" aria-label="anchor" href="#arg-instrumentregularization"></a></dt>
@@ -197,6 +197,10 @@ returned objective is a penalized profile, not an unpenalized MLE profile.</p>
 \(w_j = \gamma_j / \mathrm{SE}(\gamma_j)^2\), normalized by
 \(\sum_j |w_j|\). The same weights are reused downstream so that the
 MR denominator matches the exact score fitted at each site.</p>
+<p>Missing SNP dosages in the allele-score model are imputed to the expected
+dosage \(2 \times \mathrm{EAF}_j\) from the instrument table, rather than
+being treated as homozygous reference. This avoids a systematic downward
+bias in the score when genotype missingness is present.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

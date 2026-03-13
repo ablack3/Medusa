@@ -118,6 +118,21 @@ test_that("fitOutcomeModel validates inputs", {
   )
 })
 
+test_that("fitOutcomeModel accepts Inf regularizationVariance for unpenalized fits", {
+  simData <- simulateMRData(n = 400, nSnps = 3, trueEffect = 0.2, seed = 334)
+
+  expect_no_error(
+    fitOutcomeModel(
+      cohortData = simData$data,
+      covariateData = NULL,
+      instrumentTable = simData$instrumentTable,
+      betaGrid = seq(-1, 1, by = 0.1),
+      modelBackend = "glm",
+      regularizationVariance = Inf
+    )
+  )
+})
+
 test_that("fitOutcomeModel aligns SNP columns by SNP ID instead of column order", {
   simData <- simulateMRData(n = 1500, nSnps = 4, trueEffect = 0.25, seed = 444)
   snpCols <- grep("^snp_", names(simData$data), value = TRUE)

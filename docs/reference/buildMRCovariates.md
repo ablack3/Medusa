@@ -5,9 +5,9 @@
 <div class="ref-description section level2">
 
 Leverages the OHDSI FeatureExtraction package to assemble a rich
-covariate matrix from OMOP CDM data. This covariate matrix serves two
-purposes: (1) adjustment covariates in the Cyclops outcome model to
-control for confounders and population stratification, and (2) the full
+covariate object from OMOP CDM data. This object serves two purposes:
+(1) providing covariates for the outcome model to control for
+confounders and population stratification, and (2) exposing the full
 phenome for the instrument PheWAS diagnostic that checks for pleiotropic
 associations.
 
@@ -93,13 +93,11 @@ buildMRCovariates(
 
 A list with class "medusaCovariateData" containing:
 
--   covariates:
+-   covariateData:
 
-    Data frame with person\_id and covariate columns.
-
--   covariateRef:
-
-    Data frame mapping covariate IDs to names and domains.
+    The FeatureExtraction covariate object returned by
+    `getDbCovariateData()`. Its main tables are
+    `covariateData$covariates` and `covariateData$covariateRef`.
 
 -   ancestryPCs:
 

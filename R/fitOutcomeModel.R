@@ -37,11 +37,11 @@
 #' @param betaGrid Numeric vector. Grid of beta_ZY values at which to evaluate
 #'   the profile log-likelihood. Default is \code{seq(-3, 3, by = 0.01)} (601
 #'   grid points).
-#' @param regularizationVariance Numeric. Deprecated placeholder for a future
-#'   regularized fitter. When \code{modelBackend = "cyclops"}, this is the
-#'   variance of the normal prior applied to nuisance coefficients. Smaller
-#'   values imply stronger shrinkage. Ignored by the \code{"glm"} backend.
-#'   Default is 0.1.
+#' @param regularizationVariance Numeric. When
+#'   \code{modelBackend = "cyclops"}, this is the variance of the normal prior
+#'   applied to nuisance coefficients. Smaller values imply stronger shrinkage;
+#'   use \code{Inf} for an unpenalized Cyclops fit. Ignored by the
+#'   \code{"glm"} backend. Default is 0.1.
 #' @param instrumentRegularization Logical. When
 #'   \code{modelBackend = "cyclops"}, whether the exposure coefficient is
 #'   included in the Cyclops prior. Default is FALSE so the profiled exposure
@@ -136,7 +136,7 @@ fitOutcomeModel <- function(cohortData,
   checkmate::assertDataFrame(cohortData, min.rows = 1)
   validateInstrumentTable(instrumentTable)
   validateBetaGrid(betaGrid)
-  checkmate::assertNumber(regularizationVariance, lower = 0)
+  checkmate::assertNumber(regularizationVariance, lower = 0, finite = FALSE)
   checkmate::assertLogical(instrumentRegularization, len = 1)
   checkmate::assertChoice(outcomeType, c("binary"))
   checkmate::assertChoice(analysisType, c("alleleScore", "perSNP"))

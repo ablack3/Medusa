@@ -15,7 +15,7 @@ Federated two-sample Mendelian Randomization on the OMOP Common Data Model.
 
 Medusa implements two-sample Mendelian Randomization (MR) natively within the OHDSI ecosystem. It enables causal inference across distributed health networks without requiring individual-level data to leave any site.
 
-The core innovation is **one-shot federated pooling** via profile likelihood aggregation: each site computes a log-likelihood profile and shares only that numeric vector. The coordinator sums profiles across sites to obtain a pooled estimate — no iterative communication protocol needed.
+The core innovation is **one-shot federated pooling** via profile likelihood aggregation: each site computes a log-likelihood profile and shares only site-level summary files centered on that numeric vector. The coordinator sums profiles across sites to obtain a pooled estimate with no iterative communication protocol.
 
 ## Architecture
 
@@ -114,8 +114,8 @@ generateMRReport(
 | `createInstrumentTable()` | Instrument Assembly | Build instruments from local data |
 | `buildMRCohort()` | Cohort Extraction | Extract cohort + genotypes from OMOP CDM |
 | `buildMRCovariates()` | Covariate Assembly | Assemble covariates via FeatureExtraction |
-| `runInstrumentDiagnostics()` | Diagnostics | F-stats, PheWAS, negative controls |
-| `fitOutcomeModel()` | Outcome Model | Fit model, evaluate profile likelihood |
+| `runInstrumentDiagnostics()` | Diagnostics | F-stats, PheWAS, allele-frequency and missingness checks |
+| `fitOutcomeModel()` | Outcome Model | Fit outcome model, evaluate profile likelihood |
 | `poolLikelihoodProfiles()` | Pooling | Sum log-likelihood profiles across sites |
 | `computeMREstimate()` | Estimation | Wald ratio with delta method SE |
 | `runSensitivityAnalyses()` | Sensitivity | IVW, MR-Egger, weighted median, etc. |

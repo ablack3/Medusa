@@ -19,6 +19,8 @@
     GWAS Summary Statistics
 -   `computeMREstimate()` : Wald ratio MR estimate from pooled profile
     likelihood
+-   `convertGenotypeString()` : Convert VCF-Style Genotype Strings to
+    Integer Allele Dosage
 -   `createDefaultMRCovariateSettings()` : Default FeatureExtraction
     settings for Medusa
 -   `createInstrumentTable()` : Build instrument table from

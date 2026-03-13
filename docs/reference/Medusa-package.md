@@ -21,7 +21,7 @@ estimate without any iterative communication protocol.
 
 ## Details
 
-The analysis pipeline consists of eight modules:
+The analysis pipeline consists of nine modules:
 
 1.  **Instrument Assembly** (`getMRInstruments`): Query OpenGWAS for
     GWAS summary statistics and apply LD clumping.
@@ -33,10 +33,11 @@ The analysis pipeline consists of eight modules:
     via FeatureExtraction for adjustment and diagnostics.
 
 4.  **Instrument Diagnostics** (`runInstrumentDiagnostics`): Validate
-    instruments via F-statistics, PheWAS, and negative controls.
+    instruments via F-statistics, PheWAS, allele-frequency checks,
+    missingness summaries, and a placeholder negative-control interface.
 
-5.  **Outcome Model** (`fitOutcomeModel`): Fit regularized outcome model
-    and evaluate profile log-likelihood on a grid.
+5.  **Outcome Model** (`fitOutcomeModel`): Fit the binary outcome model
+    and evaluate an exact or penalized profile log-likelihood on a grid.
 
 6.  **Likelihood Pooling** (`poolLikelihoodProfiles`): Aggregate
     site-level log-likelihood profiles via pointwise summation.

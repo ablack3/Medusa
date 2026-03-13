@@ -74,7 +74,7 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>This guide walks OHDSI network coordinators through setting up and running a federated Medusa analysis across multiple sites. The key principle: <strong>only profile log-likelihood vectors leave each site</strong> — no individual-level data is shared.</p>
+<p>This guide walks OHDSI network coordinators through setting up and running a federated Medusa analysis across multiple sites. The key principle: <strong>only site-level summary artifacts leave each site</strong> — no individual-level data is shared. The primary artifact is the profile log-likelihood vector, accompanied by site metadata and the allele-score definition needed to verify that every site fit the same score.</p>
 <p>The code chunks in this vignette are templates, not executable examples. They are shown with <code>eval = FALSE</code> because every network needs to substitute its own connection details, cohort IDs, file paths, and governance controls.</p>
 </div>
 <div class="section level2">
@@ -112,7 +112,7 @@
 </tr>
 </tbody>
 </table>
-<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals. The required export already includes model-level flags such as low case count or an MLE at the grid boundary. If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each site can also share one row per SNP containing <code>beta_ZY</code> and <code>se_ZY</code>. Those are still aggregate summaries, but they are optional and separate from the main pooled likelihood workflow.</p>
+<p>The profile vector is a smooth curve that represents the aggregate statistical evidence at a site. It cannot be reverse-engineered to identify individuals. The required export already includes model-level flags such as low case count or an MLE at the grid boundary, plus the fixed allele-score definition so the coordinator can verify consistency across sites. If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each site can also share one row per SNP containing <code>beta_ZY</code> and <code>se_ZY</code>. Those are still aggregate summaries, but they are optional and separate from the main pooled likelihood workflow.</p>
 </div>
 <div class="section level2">
 <h2 id="site-setup-requirements">Site Setup Requirements<a class="anchor" aria-label="anchor" href="#site-setup-requirements"></a>
@@ -127,20 +127,69 @@
 </ul>
 </div>
 <div class="section level3">
-<h3 id="genomic-linkage-table">Genomic Linkage Table<a class="anchor" aria-label="anchor" href="#genomic-linkage-table"></a>
+<h3 id="omop-genomic-extension-variant_occurrence">OMOP Genomic Extension (VARIANT_OCCURRENCE)<a class="anchor" aria-label="anchor" href="#omop-genomic-extension-variant_occurrence"></a>
 </h3>
-<p>Each site needs a table linking person_id to SNP genotypes:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.genotype_data (</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  snp_id <span class="dt">VARCHAR</span>(<span class="dv">50</span>) <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  genotype <span class="dt">INTEGER</span> <span class="kw">NOT</span> <span class="kw">NULL</span>  <span class="co">-- 0, 1, or 2 (count of effect alleles)</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
-<p>If the person identifier column has a different name (e.g., <code>subject_id</code>), specify it via the <code>genomicPersonIdColumn</code> parameter.</p>
+<p>Each site needs the <strong>VARIANT_OCCURRENCE</strong> table from the <a href="https://github.com/OHDSI/Genomic-CDM" class="external-link">OMOP Genomic CDM</a>. This table stores per-person variant calls. The minimal required columns are:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr class="header">
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>person_id</code></td>
+<td>BIGINT</td>
+<td>Links to the PERSON table</td>
+</tr>
+<tr class="even">
+<td><code>rs_id</code></td>
+<td>VARCHAR(50)</td>
+<td>dbSNP rs identifier (e.g., “rs2228145”)</td>
+</tr>
+<tr class="odd">
+<td><code>genotype</code></td>
+<td>VARCHAR(50)</td>
+<td>Genotype call: VCF-style (“0/0”, “0/1”, “1/1”) or integer (“0”, “1”, “2”)</td>
+</tr>
+</tbody>
+</table>
+<p>Additional columns used when available:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr class="header">
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>reference_allele</code></td>
+<td>VARCHAR(255)</td>
+<td>Reference allele (used for allele harmonization)</td>
+</tr>
+<tr class="even">
+<td><code>alternate_allele</code></td>
+<td>VARCHAR(255)</td>
+<td>Alternate allele (used for allele harmonization)</td>
+</tr>
+</tbody>
+</table>
+<p>If the genomic extension tables are in a different schema from the main CDM, specify it via the <code>genomicDatabaseSchema</code> parameter (defaults to <code>cdmDatabaseSchema</code>).</p>
 </div>
 <div class="section level3">
 <h3 id="r-package-dependencies">R Package Dependencies<a class="anchor" aria-label="anchor" href="#r-package-dependencies"></a>
 </h3>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Required at each site</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"OHDSI/Medusa"</span><span class="op">)</span></span>
 <span></span>
@@ -150,18 +199,18 @@
 <h3 id="ancestry-principal-components-optional-but-recommended">Ancestry Principal Components (Optional but Recommended)<a class="anchor" aria-label="anchor" href="#ancestry-principal-components-optional-but-recommended"></a>
 </h3>
 <p>A table with ancestry PCs controls for population stratification:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.ancestry_pcs (</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  pc1 <span class="dt">FLOAT</span>, pc2 <span class="dt">FLOAT</span>, pc3 <span class="dt">FLOAT</span>, pc4 <span class="dt">FLOAT</span>, pc5 <span class="dt">FLOAT</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  pc6 <span class="dt">FLOAT</span>, pc7 <span class="dt">FLOAT</span>, pc8 <span class="dt">FLOAT</span>, pc9 <span class="dt">FLOAT</span>, pc10 <span class="dt">FLOAT</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> genomics.ancestry_pcs (</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  person_id BIGINT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  pc1 <span class="dt">FLOAT</span>, pc2 <span class="dt">FLOAT</span>, pc3 <span class="dt">FLOAT</span>, pc4 <span class="dt">FLOAT</span>, pc5 <span class="dt">FLOAT</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  pc6 <span class="dt">FLOAT</span>, pc7 <span class="dt">FLOAT</span>, pc8 <span class="dt">FLOAT</span>, pc9 <span class="dt">FLOAT</span>, pc10 <span class="dt">FLOAT</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
 <h2 id="template-site-analysis-script">Template Site Analysis Script<a class="anchor" aria-label="anchor" href="#template-site-analysis-script"></a>
 </h2>
 <p>Send this script to each participating site, customized with their local connection details:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ============================================================</span></span>
 <span><span class="co"># Medusa Site Analysis Script</span></span>
 <span><span class="co"># Study: [YOUR STUDY NAME]</span></span>
@@ -183,8 +232,7 @@
 <span><span class="va">cohortDatabaseSchema</span> <span class="op">&lt;-</span> <span class="st">"results"</span>     <span class="co"># Change to your results schema</span></span>
 <span><span class="va">cohortTable</span> <span class="op">&lt;-</span> <span class="st">"cohort"</span>               <span class="co"># Change if different</span></span>
 <span><span class="va">outcomeCohortId</span> <span class="op">&lt;-</span> <span class="fl">1234</span>               <span class="co"># Provided by coordinator</span></span>
-<span><span class="va">genomicLinkageSchema</span> <span class="op">&lt;-</span> <span class="st">"genomics"</span>    <span class="co"># Change to your genomics schema</span></span>
-<span><span class="va">genomicLinkageTable</span> <span class="op">&lt;-</span> <span class="st">"genotype_data"</span></span>
+<span><span class="va">genomicDatabaseSchema</span> <span class="op">&lt;-</span> <span class="st">"genomics"</span>   <span class="co"># Schema with VARIANT_OCCURRENCE (default: cdmDatabaseSchema)</span></span>
 <span><span class="va">siteId</span> <span class="op">&lt;-</span> <span class="st">"site_A"</span>                    <span class="co"># Unique identifier for this site</span></span>
 <span></span>
 <span><span class="co"># ----- Load instrument table (provided by coordinator) -----</span></span>
@@ -198,8 +246,7 @@
 <span>  cohortTable <span class="op">=</span> <span class="va">cohortTable</span>,</span>
 <span>  outcomeCohortId <span class="op">=</span> <span class="va">outcomeCohortId</span>,</span>
 <span>  instrumentTable <span class="op">=</span> <span class="va">instrumentTable</span>,</span>
-<span>  genomicLinkageSchema <span class="op">=</span> <span class="va">genomicLinkageSchema</span>,</span>
-<span>  genomicLinkageTable <span class="op">=</span> <span class="va">genomicLinkageTable</span>,</span>
+<span>  genomicDatabaseSchema <span class="op">=</span> <span class="va">genomicDatabaseSchema</span>,</span>
 <span>  washoutPeriod <span class="op">=</span> <span class="fl">365</span>,</span>
 <span>  excludePriorOutcome <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
@@ -270,7 +317,7 @@
 <h2 id="coordinator-pooling-script">Coordinator Pooling Script<a class="anchor" aria-label="anchor" href="#coordinator-pooling-script"></a>
 </h2>
 <p>After collecting profile CSV files from all sites:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">Medusa</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Load instrument table</span></span>
@@ -386,9 +433,9 @@
 <h3 id="no-persons-have-genotype-data">“No persons have genotype data”<a class="anchor" aria-label="anchor" href="#no-persons-have-genotype-data"></a>
 </h3>
 <ul>
-<li>Verify the genomic linkage table exists and has data</li>
-<li>Check that <code>person_id</code> column names match (use <code>genomicPersonIdColumn</code> parameter)</li>
-<li>Ensure the cohort and genotype table share person_id values</li>
+<li>Verify the VARIANT_OCCURRENCE table exists and has data in the specified schema</li>
+<li>Check that <code>person_id</code> values in VARIANT_OCCURRENCE overlap with the cohort</li>
+<li>Ensure <code>rs_id</code> values match the instrument table’s <code>snp_id</code> values</li>
 </ul>
 </div>
 <div class="section level3">

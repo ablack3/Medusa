@@ -285,14 +285,17 @@ with:
 
 ## FAQ
 
-**What genomic data linkage is required?** Your OMOP CDM site needs a
-genomic linkage table mapping person\_id to SNP genotypes (coded as
-0/1/2 for allele count). This is increasingly common in biobank-linked
-health systems.
+**What genomic data is required?** Your OMOP CDM site needs the
+**VARIANT\_OCCURRENCE** table from the [OMOP Genomic
+CDM](https://github.com/OHDSI/Genomic-CDM). The minimal required columns
+are `person_id`, `rs_id`, and `genotype`. Genotypes can be stored as
+VCF-style strings (“0/0”, “0/1”, “1/1”) or plain integers (“0”, “1”,
+“2”). The `reference_allele` and `alternate_allele` columns are also
+used for allele harmonization when available.
 
 **What if my site has no genomic data?** Medusa requires at least one
-site with genomic data linked to OMOP CDM. Sites without genomic data
-cannot participate in the federated analysis.
+site with the OMOP Genomic Extension tables populated. Sites without
+genomic data cannot participate in the federated analysis.
 
 **How many sites are needed?** A single site is sufficient. More sites
 increase statistical power and allow for cross-site validation. The

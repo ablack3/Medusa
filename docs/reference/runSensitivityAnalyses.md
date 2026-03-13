@@ -27,7 +27,8 @@ runSensitivityAnalyses(
   outcomeSampleSize = NULL,
   exposureSampleSize = NULL,
   outcomeType = "binary",
-  engine = "auto"
+  engine = "auto",
+  bootstrapSeed = 42
 )
 ```
 
@@ -77,6 +78,12 @@ runSensitivityAnalyses(
     falls back to Medusa's internal implementations. Use `"TwoSampleMR"`
     to require delegation, or `"internal"` to force Medusa's built-in
     implementations. Default is `"auto"`.
+
+-   bootstrapSeed:
+
+    Integer or NULL. Seed for the parametric bootstrap used by the
+    internal Weighted Median SE estimator. Default is 42, which gives
+    reproducible results. Set to NULL to use the ambient RNG state.
 
 </div>
 

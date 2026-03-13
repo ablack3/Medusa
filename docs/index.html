@@ -68,11 +68,12 @@
 <!-- badges: start -->
 <p><strong>Mendelian Estimation in Distributed Standardized Analytics</strong></p>
 <p>Federated two-sample Mendelian Randomization on the OMOP Common Data Model.</p>
+<p><strong>PACKAGE UNDER CONSTRUCTION: DO NOT USE</strong></p>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>Medusa implements two-sample Mendelian Randomization (MR) natively within the OHDSI ecosystem. It enables causal inference across distributed health networks without requiring individual-level data to leave any site.</p>
-<p>The core innovation is <strong>one-shot federated pooling</strong> via profile likelihood aggregation: each site computes a log-likelihood profile and shares only that numeric vector. The coordinator sums profiles across sites to obtain a pooled estimate — no iterative communication protocol needed.</p>
+<p>The core innovation is <strong>one-shot federated pooling</strong> via profile likelihood aggregation: each site computes a log-likelihood profile and shares only site-level summary files centered on that numeric vector. The coordinator sums profiles across sites to obtain a pooled estimate with no iterative communication protocol.</p>
 </div>
 <div class="section level2">
 <h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a>
@@ -141,8 +142,7 @@
 <span>  cohortTable <span class="op">=</span> <span class="st">"cohort"</span>,</span>
 <span>  outcomeCohortId <span class="op">=</span> <span class="fl">1234</span>,</span>
 <span>  instrumentTable <span class="op">=</span> <span class="va">instruments</span>,</span>
-<span>  genomicLinkageSchema <span class="op">=</span> <span class="st">"genomics"</span>,</span>
-<span>  genomicLinkageTable <span class="op">=</span> <span class="st">"genotype_data"</span></span>
+<span>  genomicDatabaseSchema <span class="op">=</span> <span class="st">"genomics"</span>  <span class="co"># Schema with VARIANT_OCCURRENCE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span>
@@ -201,12 +201,12 @@
 <tr class="odd">
 <td><code><a href="reference/runInstrumentDiagnostics.html">runInstrumentDiagnostics()</a></code></td>
 <td>Diagnostics</td>
-<td>F-stats, PheWAS, negative controls</td>
+<td>F-stats, PheWAS, allele-frequency and missingness checks</td>
 </tr>
 <tr class="even">
 <td><code><a href="reference/fitOutcomeModel.html">fitOutcomeModel()</a></code></td>
 <td>Outcome Model</td>
-<td>Fit model, evaluate profile likelihood</td>
+<td>Fit outcome model, evaluate profile likelihood</td>
 </tr>
 <tr class="odd">
 <td><code><a href="reference/poolLikelihoodProfiles.html">poolLikelihoodProfiles()</a></code></td>
@@ -249,7 +249,7 @@
 <ul>
 <li>R &gt;= 4.1.0</li>
 <li>OHDSI packages: DatabaseConnector, SqlRender, Cyclops, FeatureExtraction</li>
-<li>OMOP CDM database with genomic linkage table</li>
+<li>OMOP CDM database with <a href="https://github.com/OHDSI/Genomic-CDM" class="external-link">OMOP Genomic CDM</a> (VARIANT_OCCURRENCE table)</li>
 <li>For instrument retrieval: internet access to OpenGWAS API</li>
 </ul>
 </div>

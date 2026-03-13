@@ -176,13 +176,13 @@ Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC4377079/
 profiles <- simulateSiteProfiles(nSites = 3, trueBeta = 0.5)
 combined <- poolLikelihoodProfiles(profiles)
 #> Pooling profile likelihoods from 3 site(s)...
-#> Pooling complete: 3 sites, 637 total cases, 5363 total controls.
+#> Pooling complete: 3 sites, 402 total cases, 5598 total controls.
 instruments <- simulateInstrumentTable(nSnps = 5)
 estimate <- computeMREstimate(combined, instruments)
-#> MR estimate: beta = 2.1397 (95% CI: 1.2012, 3.0781), p = 4.32e-05
-#> Odds ratio: 8.497 (95% CI: 3.324, 21.718)
+#> MR estimate: beta = 1.3561 (95% CI: 0.7195, 1.9926), p = 6.42e-05
+#> Odds ratio: 3.881 (95% CI: 2.054, 7.335)
 print(estimate$betaMR)
-#> [1] 2.13967
+#> [1] 1.356072
 ```
 
 </div>

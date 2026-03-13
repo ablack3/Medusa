@@ -185,13 +185,13 @@ causal inference across the human phenome. *eLife*, 7, e34408.
 # Using simulated data (no API call)
 instruments <- simulateInstrumentTable(nSnps = 10)
 head(instruments)
-#>      snp_id effect_allele other_allele     beta_ZX      se_ZX      pval_ZX
-#> 1 rs3781070             T            G  0.41128753 0.07424188 3.027626e-08
-#> 2 rs2440057             A            G -0.16940945 0.02832261 2.211995e-09
-#> 3 rs1521507             T            G  0.10893852 0.07933350 1.696990e-01
-#> 4 rs5432853             G            T  0.18985878 0.07680009 1.343157e-02
-#> 5 rs2154668             T            C  0.12128050 0.02494625 1.163985e-06
-#> 6 rs6986500             A            G -0.03183735 0.05085271 5.312690e-01
+#>      snp_id effect_allele other_allele    beta_ZX      se_ZX      pval_ZX
+#> 1 rs3781070             T            G -0.4659224 0.07424188 3.479855e-10
+#> 2 rs2440057             A            G  0.4748302 0.02832261 4.395942e-63
+#> 3 rs1521507             T            G -0.2144558 0.07933350 6.867154e-03
+#> 4 rs5432853             G            T  0.4321791 0.07680009 1.830262e-08
+#> 5 rs2154668             T            C -0.3566982 0.02494625 2.230363e-46
+#> 6 rs6986500             A            G -0.3076384 0.05085271 1.452087e-09
 #>         eaf gene_region
 #> 1 0.6580465       GENE1
 #> 2 0.9345355       GENE2

@@ -19,8 +19,10 @@ knitr::opts_chunk$set(
 
 This guide walks OHDSI network coordinators through setting up and running a
 federated Medusa analysis across multiple sites. The key principle: **only
-profile log-likelihood vectors leave each site** — no individual-level data
-is shared.
+site-level summary artifacts leave each site** — no individual-level data is
+shared. The primary artifact is the profile log-likelihood vector, accompanied
+by site metadata and the allele-score definition needed to verify that every
+site fit the same score.
 
 The code chunks in this vignette are templates, not executable examples. They
 are shown with `eval = FALSE` because every network needs to substitute its own
@@ -39,7 +41,8 @@ connection details, cohort IDs, file paths, and governance controls.
 The profile vector is a smooth curve that represents the aggregate statistical
 evidence at a site. It cannot be reverse-engineered to identify individuals.
 The required export already includes model-level flags such as low case count or
-an MLE at the grid boundary.
+an MLE at the grid boundary, plus the fixed allele-score definition so the
+coordinator can verify consistency across sites.
 If a network wants IVW, MR-Egger, or weighted-median sensitivity analyses, each
 site can also share one row per SNP containing `beta_ZY` and `se_ZY`. Those are
 still aggregate summaries, but they are optional and separate from the main

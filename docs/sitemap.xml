@@ -12,12 +12,15 @@
 <url><loc>/reference/buildMRCovariates.html</loc></url>
 <url><loc>/reference/complementAllele.html</loc></url>
 <url><loc>/reference/computeApproxFStatistic.html</loc></url>
+<url><loc>/reference/computeCohortAlleleFrequencies.html</loc></url>
 <url><loc>/reference/computeMREstimate.html</loc></url>
+<url><loc>/reference/convertGenotypeString.html</loc></url>
 <url><loc>/reference/createDefaultMRCovariateSettings.html</loc></url>
 <url><loc>/reference/createInstrumentTable.html</loc></url>
 <url><loc>/reference/estimateSEFromProfile.html</loc></url>
 <url><loc>/reference/exportSiteProfile.html</loc></url>
 <url><loc>/reference/fitOutcomeModel.html</loc></url>
+<url><loc>/reference/fitPheWASModel.html</loc></url>
 <url><loc>/reference/generateMRReport.html</loc></url>
 <url><loc>/reference/getMRInstruments.html</loc></url>
 <url><loc>/reference/harmonizeAlleles.html</loc></url>

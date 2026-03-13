@@ -67,7 +67,7 @@ communication protocol.</p>
 
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The analysis pipeline consists of eight modules:</p>
+    <p>The analysis pipeline consists of nine modules:</p>
 <ol><li><p><strong>Instrument Assembly</strong> (<code><a href="getMRInstruments.html">getMRInstruments</a></code>):
     Query OpenGWAS for GWAS summary statistics and apply LD clumping.</p></li>
 <li><p><strong>Cohort Extraction</strong> (<code><a href="buildMRCohort.html">buildMRCohort</a></code>):
@@ -75,9 +75,11 @@ communication protocol.</p>
 <li><p><strong>Covariate Assembly</strong> (<code><a href="buildMRCovariates.html">buildMRCovariates</a></code>):
     Assemble covariates via FeatureExtraction for adjustment and diagnostics.</p></li>
 <li><p><strong>Instrument Diagnostics</strong> (<code><a href="runInstrumentDiagnostics.html">runInstrumentDiagnostics</a></code>):
-    Validate instruments via F-statistics, PheWAS, and negative controls.</p></li>
+    Validate instruments via F-statistics, PheWAS, allele-frequency checks,
+    missingness summaries, and a placeholder negative-control interface.</p></li>
 <li><p><strong>Outcome Model</strong> (<code><a href="fitOutcomeModel.html">fitOutcomeModel</a></code>):
-    Fit regularized outcome model and evaluate profile log-likelihood on a grid.</p></li>
+    Fit the binary outcome model and evaluate an exact or penalized profile
+    log-likelihood on a grid.</p></li>
 <li><p><strong>Likelihood Pooling</strong> (<code><a href="poolLikelihoodProfiles.html">poolLikelihoodProfiles</a></code>):
     Aggregate site-level log-likelihood profiles via pointwise summation.</p></li>
 <li><p><strong>MR Estimation</strong> (<code><a href="computeMREstimate.html">computeMREstimate</a></code>):

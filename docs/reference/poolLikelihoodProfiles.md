@@ -12,7 +12,8 @@ sites.
 
 Before summing, the function validates that all sites used identical
 beta grid vectors. If grids differ, linear interpolation to a common
-grid is applied with a warning.
+grid over the overlapping beta range is applied with a warning. Pooling
+never extrapolates beyond a site's evaluated range.
 
 </div>
 
@@ -93,8 +94,9 @@ $$\\ell\_{combined}(b\_k) = \\sum\_{s=1}^{S} \\ell\_s(b\_k)$$ where
 This pooling is exact under the assumption that observations are
 independent across sites and every site uses the same beta grid. If
 interpolation is needed, pooling remains a close numerical approximation
-on the common grid. No iterative communication protocol is needed: each
-site computes its profile once and shares only the numeric vector.
+on the common grid, but only over the beta range evaluated by every
+site. No iterative communication protocol is needed: each site computes
+its profile once and shares only the numeric vector.
 
 </div>
 
@@ -131,7 +133,7 @@ Association*, 29(8), 1366-1373.
 profiles <- simulateSiteProfiles(nSites = 3, trueBeta = 0.5)
 combined <- poolLikelihoodProfiles(profiles)
 #> Pooling profile likelihoods from 3 site(s)...
-#> Pooling complete: 3 sites, 637 total cases, 5363 total controls.
+#> Pooling complete: 3 sites, 402 total cases, 5598 total controls.
 plot(combined$betaGrid, combined$logLikProfile, type = "l",
      xlab = "beta_ZY", ylab = "Pooled profile log-likelihood")
 

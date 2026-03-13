@@ -8,8 +8,10 @@
 
 This guide walks OHDSI network coordinators through setting up and
 running a federated Medusa analysis across multiple sites. The key
-principle: **only profile log-likelihood vectors leave each site** — no
-individual-level data is shared.
+principle: **only site-level summary artifacts leave each site** — no
+individual-level data is shared. The primary artifact is the profile
+log-likelihood vector, accompanied by site metadata and the allele-score
+definition needed to verify that every site fit the same score.
 
 The code chunks in this vignette are templates, not executable examples.
 They are shown with `eval = FALSE` because every network needs to
@@ -33,11 +35,13 @@ governance controls.
 The profile vector is a smooth curve that represents the aggregate
 statistical evidence at a site. It cannot be reverse-engineered to
 identify individuals. The required export already includes model-level
-flags such as low case count or an MLE at the grid boundary. If a
-network wants IVW, MR-Egger, or weighted-median sensitivity analyses,
-each site can also share one row per SNP containing `beta_ZY` and
-`se_ZY`. Those are still aggregate summaries, but they are optional and
-separate from the main pooled likelihood workflow.
+flags such as low case count or an MLE at the grid boundary, plus the
+fixed allele-score definition so the coordinator can verify consistency
+across sites. If a network wants IVW, MR-Egger, or weighted-median
+sensitivity analyses, each site can also share one row per SNP
+containing `beta_ZY` and `se_ZY`. Those are still aggregate summaries,
+but they are optional and separate from the main pooled likelihood
+workflow.
 
 </div>
 
@@ -57,24 +61,28 @@ separate from the main pooled likelihood workflow.
 
 <div class="section level3">
 
-### Genomic Linkage Table
+### OMOP Genomic Extension (VARIANT\_OCCURRENCE)
 
-Each site needs a table linking person\_id to SNP genotypes:
+Each site needs the **VARIANT\_OCCURRENCE** table from the [OMOP Genomic
+CDM](https://github.com/OHDSI/Genomic-CDM). This table stores per-person
+variant calls. The minimal required columns are:
 
-<div id="cb1" class="sourceCode">
+| Column      | Type        | Description                                                               |
+|-------------|-------------|---------------------------------------------------------------------------|
+| `person_id` | BIGINT      | Links to the PERSON table                                                 |
+| `rs_id`     | VARCHAR(50) | dbSNP rs identifier (e.g., “rs2228145”)                                   |
+| `genotype`  | VARCHAR(50) | Genotype call: VCF-style (“0/0”, “0/1”, “1/1”) or integer (“0”, “1”, “2”) |
 
-``` sql
-CREATE TABLE genomics.genotype_data (
-  person_id BIGINT NOT NULL,
-  snp_id VARCHAR(50) NOT NULL,
-  genotype INTEGER NOT NULL  -- 0, 1, or 2 (count of effect alleles)
-);
-```
+Additional columns used when available:
 
-</div>
+| Column             | Type         | Description                                      |
+|--------------------|--------------|--------------------------------------------------|
+| `reference_allele` | VARCHAR(255) | Reference allele (used for allele harmonization) |
+| `alternate_allele` | VARCHAR(255) | Alternate allele (used for allele harmonization) |
 
-If the person identifier column has a different name (e.g.,
-`subject_id`), specify it via the `genomicPersonIdColumn` parameter.
+If the genomic extension tables are in a different schema from the main
+CDM, specify it via the `genomicDatabaseSchema` parameter (defaults to
+`cdmDatabaseSchema`).
 
 </div>
 
@@ -82,7 +90,7 @@ If the person identifier column has a different name (e.g.,
 
 ### R Package Dependencies
 
-<div id="cb2" class="sourceCode">
+<div id="cb1" class="sourceCode">
 
 ``` r
 # Required at each site
@@ -101,7 +109,7 @@ remotes::install_github("OHDSI/Medusa")
 
 A table with ancestry PCs controls for population stratification:
 
-<div id="cb3" class="sourceCode">
+<div id="cb2" class="sourceCode">
 
 ``` sql
 CREATE TABLE genomics.ancestry_pcs (
@@ -124,7 +132,7 @@ CREATE TABLE genomics.ancestry_pcs (
 Send this script to each participating site, customized with their local
 connection details:
 
-<div id="cb4" class="sourceCode">
+<div id="cb3" class="sourceCode">
 
 ``` r
 # ============================================================
@@ -148,8 +156,7 @@ cdmDatabaseSchema <- "cdm"           # Change to your CDM schema
 cohortDatabaseSchema <- "results"     # Change to your results schema
 cohortTable <- "cohort"               # Change if different
 outcomeCohortId <- 1234               # Provided by coordinator
-genomicLinkageSchema <- "genomics"    # Change to your genomics schema
-genomicLinkageTable <- "genotype_data"
+genomicDatabaseSchema <- "genomics"   # Schema with VARIANT_OCCURRENCE (default: cdmDatabaseSchema)
 siteId <- "site_A"                    # Unique identifier for this site
 
 # ----- Load instrument table (provided by coordinator) -----
@@ -163,8 +170,7 @@ cohortData <- buildMRCohort(
   cohortTable = cohortTable,
   outcomeCohortId = outcomeCohortId,
   instrumentTable = instrumentTable,
-  genomicLinkageSchema = genomicLinkageSchema,
-  genomicLinkageTable = genomicLinkageTable,
+  genomicDatabaseSchema = genomicDatabaseSchema,
   washoutPeriod = 365,
   excludePriorOutcome = TRUE
 )
@@ -242,7 +248,7 @@ message("Analysis complete. Share the required profile CSVs and, if requested, t
 
 After collecting profile CSV files from all sites:
 
-<div id="cb5" class="sourceCode">
+<div id="cb4" class="sourceCode">
 
 ``` r
 library(Medusa)
@@ -385,10 +391,11 @@ configured via function parameters.
 
 ### “No persons have genotype data”
 
--   Verify the genomic linkage table exists and has data
--   Check that `person_id` column names match (use
-    `genomicPersonIdColumn` parameter)
--   Ensure the cohort and genotype table share person\_id values
+-   Verify the VARIANT\_OCCURRENCE table exists and has data in the
+    specified schema
+-   Check that `person_id` values in VARIANT\_OCCURRENCE overlap with
+    the cohort
+-   Ensure `rs_id` values match the instrument table’s `snp_id` values
 
 </div>
 

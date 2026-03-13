@@ -17,11 +17,15 @@ containing beta and log_likelihood columns).}
 \value{
 A list with the same structure as \code{\link{fitOutcomeModel}}
   output, suitable for passing to \code{\link{poolLikelihoodProfiles}}.
+  If the companion \code{*_per_snp_*.csv} file exists, the returned object
+  also includes \code{perSnpEstimates}.
 }
 \description{
 Reads a site profile from CSV files previously written by
 \code{\link{exportSiteProfile}}. Reconstructs the profile list object
-that can be passed to \code{\link{poolLikelihoodProfiles}}.
+that can be passed to \code{\link{poolLikelihoodProfiles}}, restoring the
+optional allele-score definition and per-SNP summary sidecar files when
+they are present.
 }
 \examples{
 \dontrun{

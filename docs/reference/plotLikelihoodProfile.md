@@ -78,7 +78,7 @@ Plot Profile Likelihood
 profiles <- simulateSiteProfiles(nSites = 3, trueBeta = 0.5)
 combined <- poolLikelihoodProfiles(profiles)
 #> Pooling profile likelihoods from 3 site(s)...
-#> Pooling complete: 3 sites, 637 total cases, 5363 total controls.
+#> Pooling complete: 3 sites, 402 total cases, 5598 total controls.
 plotLikelihoodProfile(combined, profiles)
 
 ```

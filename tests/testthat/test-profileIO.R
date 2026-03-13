@@ -66,6 +66,7 @@ test_that("importSiteProfile round-trips correctly", {
   expect_equal(imported$nCases, original$nCases)
   expect_equal(imported$nControls, original$nControls)
   expect_equal(imported$snpIds, original$snpIds)
+  expect_equal(imported$scoreDefinition, original$scoreDefinition)
 })
 
 test_that("importSiteProfile works with poolLikelihoodProfiles", {
@@ -210,4 +211,53 @@ test_that("export/import round-trip works when scoreDefinition is NULL", {
   expect_equal(imported$betaGrid, profile$betaGrid)
   expect_equal(imported$logLikProfile, profile$logLikProfile)
   expect_null(imported$scoreDefinition)
+})
+
+test_that("importSiteProfile restores per-SNP sidecar estimates when present", {
+  profile <- list(
+    siteId = "per_snp_site",
+    betaGrid = seq(-1, 1, by = 0.5),
+    logLikProfile = c(-2, -0.5, 0, -0.5, -2),
+    nCases = 120L,
+    nControls = 880L,
+    snpIds = c("rs1", "rs2"),
+    diagnosticFlags = list(
+      weakInstruments = FALSE,
+      lowCaseCount = FALSE,
+      gridBoundaryMLE = FALSE
+    ),
+    betaHat = 0,
+    seHat = 0.5,
+    scoreDefinition = list(
+      snpIds = c("rs1", "rs2"),
+      scoreWeights = c(0.4, 0.6),
+      betaZX = 0.25,
+      seZX = 0.05
+    ),
+    perSnpEstimates = data.frame(
+      snp_id = c("rs1", "rs2"),
+      effect_allele = c("A", "C"),
+      other_allele = c("G", "T"),
+      eaf = c(0.2, 0.4),
+      beta_ZY = c(0.10, 0.15),
+      se_ZY = c(0.03, 0.04),
+      beta_ZX = c(0.20, 0.30),
+      se_ZX = c(0.05, 0.06),
+      pval_ZX = c(1e-4, 2e-5),
+      pval_ZY = c(0.01, 0.001),
+      stringsAsFactors = FALSE
+    )
+  )
+  class(profile) <- "medusaSiteProfile"
+
+  tmpDir <- tempfile("medusa_export_")
+  dir.create(tmpDir)
+  on.exit(unlink(tmpDir, recursive = TRUE))
+
+  paths <- exportSiteProfile(profile, outputDir = tmpDir)
+  expect_true(file.exists(paths[["per_snp"]]))
+
+  imported <- importSiteProfile(paths[["profile"]])
+  expect_true("perSnpEstimates" %in% names(imported))
+  expect_equal(imported$perSnpEstimates, profile$perSnpEstimates)
 })

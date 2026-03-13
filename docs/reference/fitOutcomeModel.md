@@ -67,10 +67,10 @@ fitOutcomeModel(
 
 -   regularizationVariance:
 
-    Numeric. Deprecated placeholder for a future regularized fitter.
-    When `modelBackend = "cyclops"`, this is the variance of the normal
-    prior applied to nuisance coefficients. Smaller values imply
-    stronger shrinkage. Ignored by the `"glm"` backend. Default is 0.1.
+    Numeric. When `modelBackend = "cyclops"`, this is the variance of
+    the normal prior applied to nuisance coefficients. Smaller values
+    imply stronger shrinkage; use `Inf` for an unpenalized Cyclops fit.
+    Ignored by the `"glm"` backend. Default is 0.1.
 
 -   instrumentRegularization:
 
@@ -183,6 +183,12 @@ When using the allele score, weights are \\(w\_j = \\gamma\_j /
 \\mathrm{SE}(\\gamma\_j)^2\\), normalized by \\(\\sum\_j \|w\_j\|\\).
 The same weights are reused downstream so that the MR denominator
 matches the exact score fitted at each site.
+
+Missing SNP dosages in the allele-score model are imputed to the
+expected dosage \\(2 \\times \\mathrm{EAF}\_j\\) from the instrument
+table, rather than being treated as homozygous reference. This avoids a
+systematic downward bias in the score when genotype missingness is
+present.
 
 </div>
 

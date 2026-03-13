@@ -179,13 +179,13 @@ inference across the human phenome. <em>eLife</em>, 7, e34408.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Using simulated data (no API call)</span></span></span>
 <span class="r-in"><span><span class="va">instruments</span> <span class="op">&lt;-</span> <span class="fu"><a href="simulateInstrumentTable.html">simulateInstrumentTable</a></span><span class="op">(</span>nSnps <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">instruments</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      snp_id effect_allele other_allele     beta_ZX      se_ZX      pval_ZX</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 rs3781070             T            G  0.41128753 0.07424188 3.027626e-08</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 rs2440057             A            G -0.16940945 0.02832261 2.211995e-09</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 rs1521507             T            G  0.10893852 0.07933350 1.696990e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 rs5432853             G            T  0.18985878 0.07680009 1.343157e-02</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 rs2154668             T            C  0.12128050 0.02494625 1.163985e-06</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 rs6986500             A            G -0.03183735 0.05085271 5.312690e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      snp_id effect_allele other_allele    beta_ZX      se_ZX      pval_ZX</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 rs3781070             T            G -0.4659224 0.07424188 3.479855e-10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 rs2440057             A            G  0.4748302 0.02832261 4.395942e-63</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 rs1521507             T            G -0.2144558 0.07933350 6.867154e-03</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 rs5432853             G            T  0.4321791 0.07680009 1.830262e-08</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 rs2154668             T            C -0.3566982 0.02494625 2.230363e-46</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 rs6986500             A            G -0.3076384 0.05085271 1.452087e-09</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         eaf gene_region</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.6580465       GENE1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 0.9345355       GENE2</span>

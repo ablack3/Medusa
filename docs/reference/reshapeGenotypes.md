@@ -4,9 +4,8 @@
 
 <div class="ref-description section level2">
 
-Converts genotype data from long format (person\_id, snp\_id, genotype)
-to wide format with one column per SNP. Missing genotypes are coded as
-NA.
+Converts genotype data from long format (personId, snpId, genotype) to
+wide format with one column per SNP. Missing genotypes are coded as NA.
 
 </div>
 

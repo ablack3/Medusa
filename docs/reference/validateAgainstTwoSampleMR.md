@@ -8,7 +8,8 @@ Runs Medusa's single-site profile-likelihood estimate and compares it
 with TwoSampleMR estimates computed from the same site's per-SNP summary
 statistics. This is a calibration check: agreement is expected when the
 profile is close to quadratic and the allele-score approximation aligns
-with standard summarized-data MR assumptions.
+with standard summarized-data MR assumptions. This helper requires the
+optional TwoSampleMR package.
 
 </div>
 
@@ -111,16 +112,19 @@ Validate a Single-Site Medusa Estimate Against TwoSampleMR
 <div class="sourceCode">
 
 ``` r
-simData <- simulateMRData(n = 3000, nSnps = 5, trueEffect = 0.3)
-siteProfile <- fitOutcomeModel(
-  cohortData = simData$data,
-  instrumentTable = simData$instrumentTable,
-  analysisType = "perSNP",
-  betaGrid = seq(-2, 2, by = 0.05)
-)
+if (requireNamespace("TwoSampleMR", quietly = TRUE)) {
+  simData <- simulateMRData(n = 3000, nSnps = 5, trueEffect = 0.3)
+  siteProfile <- fitOutcomeModel(
+    cohortData = simData$data,
+    instrumentTable = simData$instrumentTable,
+    analysisType = "perSNP",
+    betaGrid = seq(-2, 2, by = 0.05)
+  )
+  comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
+  comparison
+}
 #> Fitting outcome model at site 'site_1' (1725 cases, 1275 controls)...
 #> Site 'site_1': beta_ZY_hat = 0.0426 (SE = 0.1182).
-comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
 #> Pooling profile likelihoods from 1 site(s)...
 #> Pooling complete: 1 sites, 1725 total cases, 1275 total controls.
 #> MR estimate: beta = 0.2369 (95% CI: -0.7107, 1.1845), p = 6.72e-01
@@ -135,17 +139,16 @@ comparison <- validateAgainstTwoSampleMR(siteProfile, simData$instrumentTable)
 #>   Weighted Median...
 #> Analysing 'medusa_exposure' on 'medusa_outcome'
 #> Sensitivity analyses complete.
-comparison
 #>        source             method   beta_MR     se_MR     ci_lower  ci_upper
-#> 1      Medusa Profile likelihood 0.2369024 0.5603015 -0.710707109 1.1845118
+#> 1      Medusa Profile likelihood 0.2369024 0.5603280 -0.710707109 1.1845118
 #> 2 TwoSampleMR                IVW 0.2194567 0.1167514 -0.009376005 0.4482894
 #> 3 TwoSampleMR           MR-Egger 0.6304650 0.2779381  0.085706258 1.1752237
-#> 4 TwoSampleMR    Weighted Median 0.2426033 0.1391244 -0.030080435 0.5152870
+#> 4 TwoSampleMR    Weighted Median 0.2426033 0.1416569 -0.035044165 0.5202508
 #>         pval delta_vs_medusa
-#> 1 0.67243220     0.000000000
+#> 1 0.67244679     0.000000000
 #> 2 0.06014999    -0.017445678
 #> 3 0.10808801     0.393562607
-#> 4 0.08119616     0.005700936
+#> 4 0.08678389     0.005700936
 ```
 
 </div>

@@ -3,11 +3,13 @@
 TwoSampleMR estimates computed from the same site's per-SNP summary
 statistics. This is a calibration check: agreement is expected when the
 profile is close to quadratic and the allele-score approximation aligns with
-standard summarized-data MR assumptions."><meta property="og:description" content="Runs Medusa's single-site profile-likelihood estimate and compares it with
+standard summarized-data MR assumptions. This helper requires the optional
+TwoSampleMR package."><meta property="og:description" content="Runs Medusa's single-site profile-likelihood estimate and compares it with
 TwoSampleMR estimates computed from the same site's per-SNP summary
 statistics. This is a calibration check: agreement is expected when the
 profile is close to quadratic and the allele-score approximation aligns with
-standard summarized-data MR assumptions."><meta property="og:image" content="/logo.png"></head><body>
+standard summarized-data MR assumptions. This helper requires the optional
+TwoSampleMR package."><meta property="og:image" content="/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -49,7 +51,8 @@ standard summarized-data MR assumptions."><meta property="og:image" content="/lo
 <span class="pkg">TwoSampleMR</span> estimates computed from the same site's per-SNP summary
 statistics. This is a calibration check: agreement is expected when the
 profile is close to quadratic and the allele-score approximation aligns with
-standard summarized-data MR assumptions.</p>
+standard summarized-data MR assumptions. This helper requires the optional
+<span class="pkg">TwoSampleMR</span> package.</p>
     </div>
 
     <div class="section level2">
@@ -124,16 +127,19 @@ Default is 0.95.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">simData</span> <span class="op">&lt;-</span> <span class="fu"><a href="simulateMRData.html">simulateMRData</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">3000</span>, nSnps <span class="op">=</span> <span class="fl">5</span>, trueEffect <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">siteProfile</span> <span class="op">&lt;-</span> <span class="fu"><a href="fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  cohortData <span class="op">=</span> <span class="va">simData</span><span class="op">$</span><span class="va">data</span>,</span></span>
-<span class="r-in"><span>  instrumentTable <span class="op">=</span> <span class="va">simData</span><span class="op">$</span><span class="va">instrumentTable</span>,</span></span>
-<span class="r-in"><span>  analysisType <span class="op">=</span> <span class="st">"perSNP"</span>,</span></span>
-<span class="r-in"><span>  betaGrid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"TwoSampleMR"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">simData</span> <span class="op">&lt;-</span> <span class="fu"><a href="simulateMRData.html">simulateMRData</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">3000</span>, nSnps <span class="op">=</span> <span class="fl">5</span>, trueEffect <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">siteProfile</span> <span class="op">&lt;-</span> <span class="fu"><a href="fitOutcomeModel.html">fitOutcomeModel</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    cohortData <span class="op">=</span> <span class="va">simData</span><span class="op">$</span><span class="va">data</span>,</span></span>
+<span class="r-in"><span>    instrumentTable <span class="op">=</span> <span class="va">simData</span><span class="op">$</span><span class="va">instrumentTable</span>,</span></span>
+<span class="r-in"><span>    analysisType <span class="op">=</span> <span class="st">"perSNP"</span>,</span></span>
+<span class="r-in"><span>    betaGrid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu">validateAgainstTwoSampleMR</span><span class="op">(</span><span class="va">siteProfile</span>, <span class="va">simData</span><span class="op">$</span><span class="va">instrumentTable</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">comparison</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Fitting outcome model at site 'site_1' (1725 cases, 1275 controls)...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Site 'site_1': beta_ZY_hat = 0.0426 (SE = 0.1182).</span>
-<span class="r-in"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu">validateAgainstTwoSampleMR</span><span class="op">(</span><span class="va">siteProfile</span>, <span class="va">simData</span><span class="op">$</span><span class="va">instrumentTable</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Pooling profile likelihoods from 1 site(s)...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Pooling complete: 1 sites, 1725 total cases, 1275 total controls.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> MR estimate: beta = 0.2369 (95% CI: -0.7107, 1.1845), p = 6.72e-01</span>
@@ -148,17 +154,16 @@ Default is 0.95.</p></dd>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   Weighted Median...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Analysing 'medusa_exposure' on 'medusa_outcome'</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Sensitivity analyses complete.</span>
-<span class="r-in"><span><span class="va">comparison</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        source             method   beta_MR     se_MR     ci_lower  ci_upper</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1      Medusa Profile likelihood 0.2369024 0.5603015 -0.710707109 1.1845118</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      Medusa Profile likelihood 0.2369024 0.5603280 -0.710707109 1.1845118</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 TwoSampleMR                IVW 0.2194567 0.1167514 -0.009376005 0.4482894</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 TwoSampleMR           MR-Egger 0.6304650 0.2779381  0.085706258 1.1752237</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 TwoSampleMR    Weighted Median 0.2426033 0.1391244 -0.030080435 0.5152870</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 TwoSampleMR    Weighted Median 0.2426033 0.1416569 -0.035044165 0.5202508</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         pval delta_vs_medusa</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.67243220     0.000000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.67244679     0.000000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 0.06014999    -0.017445678</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 0.10808801     0.393562607</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 0.08119616     0.005700936</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 0.08678389     0.005700936</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

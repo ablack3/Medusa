@@ -6,7 +6,8 @@
 
 Reads a site profile from CSV files previously written by
 `exportSiteProfile`. Reconstructs the profile list object that can be
-passed to `poolLikelihoodProfiles`.
+passed to `poolLikelihoodProfiles`, restoring the optional allele-score
+definition and per-SNP summary sidecar files when they are present.
 
 </div>
 
@@ -46,7 +47,8 @@ importSiteProfile(profilePath, metadataPath = NULL)
 ## Value
 
 A list with the same structure as `fitOutcomeModel` output, suitable for
-passing to `poolLikelihoodProfiles`.
+passing to `poolLikelihoodProfiles`. If the companion `*_per_snp_*.csv`
+file exists, the returned object also includes `perSnpEstimates`.
 
 </div>
 

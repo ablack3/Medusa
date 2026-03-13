@@ -10,10 +10,23 @@ harmonization to ensure genotype coding matches the instrument table,
 and returns a local R data frame suitable for downstream analysis. The
 returned data never leaves the site.
 
-The function queries: PERSON (age, sex), CONDITION\_OCCURRENCE
-(outcome), OBSERVATION\_PERIOD (eligibility), and the genomic linkage
-table (genotypes). All SQL is rendered and translated via SqlRender for
-cross-dialect compatibility.
+Genotype data is extracted from the **VARIANT\_OCCURRENCE** table
+defined by the OMOP CDM Genomic Extension. The minimal required columns
+from that table are:
+
+-   `person_id` — links variants to persons
+
+-   `rs_id` — dbSNP rs identifier for the variant
+
+-   `genotype` — genotype call (VCF-style "0/0", "0/1", "1/1" or plain
+    integer "0", "1", "2")
+
+Additionally, `reference_allele` and `alternate_allele` are used for
+allele harmonization when available.
+
+The function also queries: PERSON (age, sex), CONDITION\_OCCURRENCE
+(outcome), and OBSERVATION\_PERIOD (eligibility). All SQL is rendered
+and translated via SqlRender for cross-dialect compatibility.
 
 </div>
 
@@ -31,12 +44,10 @@ buildMRCohort(
   cohortTable,
   outcomeCohortId,
   instrumentTable,
-  genomicLinkageSchema,
-  genomicLinkageTable,
+  genomicDatabaseSchema = cdmDatabaseSchema,
   indexDateOffset = 0,
   washoutPeriod = 365,
-  excludePriorOutcome = TRUE,
-  genomicPersonIdColumn = "person_id"
+  excludePriorOutcome = TRUE
 )
 ```
 
@@ -75,15 +86,10 @@ buildMRCohort(
     Data frame. Output of `getMRInstruments` or `createInstrumentTable`
     containing the instrument SNPs.
 
--   genomicLinkageSchema:
+-   genomicDatabaseSchema:
 
-    Character. Schema containing the genomic linkage table.
-
--   genomicLinkageTable:
-
-    Character. Name of the table linking person\_id to SNP genotypes.
-    Must contain columns for person identifier, snp\_id, and genotype
-    (coded as 0/1/2 count of effect alleles).
+    Character. Schema containing the VARIANT\_OCCURRENCE table from the
+    OMOP Genomic Extension. Defaults to `cdmDatabaseSchema`.
 
 -   indexDateOffset:
 
@@ -99,12 +105,6 @@ buildMRCohort(
 
     Logical. If TRUE, persons with the outcome before their index date
     are excluded. Default is TRUE.
-
--   genomicPersonIdColumn:
-
-    Character. Name of the person identifier column in the genomic
-    linkage table if it differs from "person\_id". Default is
-    "person\_id".
 
 </div>
 
@@ -151,14 +151,17 @@ Build Study Cohort for Mendelian Randomization at a Single Site
 Genotype coding: genotypes are coded as 0, 1, 2 representing the count
 of effect alleles. The function performs allele harmonization by
 comparing the effect allele in the instrument table to the allele coding
-in the genotype data. If alleles are swapped, genotypes are flipped (2 -
-genotype).
+in the genotype data (alternate allele from VARIANT\_OCCURRENCE). If
+alleles are swapped, genotypes are flipped (2 - genotype) and instrument
+beta\_ZX is negated.
 
 </div>
 
 <div class="section level2">
 
 ## References
+
+OHDSI Genomic CDM: <https://github.com/OHDSI/Genomic-CDM>
 
 Hripcsak, G., et al. (2015). Observational Health Data Sciences and
 Informatics (OHDSI): Opportunities for Observational Researchers.
@@ -200,8 +203,7 @@ cohort <- buildMRCohort(
   cohortTable = "cohort",
   outcomeCohortId = 1234,
   instrumentTable = instruments,
-  genomicLinkageSchema = "genomics",
-  genomicLinkageTable = "genotype_data"
+  genomicDatabaseSchema = "genomics"
 )
 } # }
 ```

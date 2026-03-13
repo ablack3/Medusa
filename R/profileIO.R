@@ -19,9 +19,10 @@
 #' @description
 #' Writes a site profile (output of \code{\link{fitOutcomeModel}}) to
 #' human-readable CSV files: one for the profile log-likelihood grid, one for
-#' site metadata, one for the allele-score definition, and optionally one for
-#' per-SNP estimates. These CSV files are the artifacts shared between sites
-#' and the coordinator in a federated Medusa analysis.
+#' site metadata, a pair of allele-score definition files (weights plus the
+#' aggregate score association), and optionally one for per-SNP estimates.
+#' These CSV files are the artifacts shared between sites and the coordinator
+#' in a federated Medusa analysis.
 #'
 #' CSV is used instead of binary formats so that every value leaving a site is
 #' human-readable and auditable.
@@ -150,7 +151,9 @@ exportSiteProfile <- function(profile,
 #' @description
 #' Reads a site profile from CSV files previously written by
 #' \code{\link{exportSiteProfile}}. Reconstructs the profile list object
-#' that can be passed to \code{\link{poolLikelihoodProfiles}}.
+#' that can be passed to \code{\link{poolLikelihoodProfiles}}, restoring the
+#' optional allele-score definition and per-SNP summary sidecar files when
+#' they are present.
 #'
 #' @param profilePath Character. Path to the profile CSV file (the file
 #'   containing beta and log_likelihood columns).
@@ -160,6 +163,8 @@ exportSiteProfile <- function(profile,
 #'
 #' @return A list with the same structure as \code{\link{fitOutcomeModel}}
 #'   output, suitable for passing to \code{\link{poolLikelihoodProfiles}}.
+#'   If the companion \code{*_per_snp_*.csv} file exists, the returned object
+#'   also includes \code{perSnpEstimates}.
 #'
 #' @examples
 #' \dontrun{
@@ -182,6 +187,7 @@ importSiteProfile <- function(profilePath,
   }
   scorePath <- sub("_profile_", "_score_", profilePath)
   scoreSummaryPath <- sub("_profile_", "_score_summary_", profilePath)
+  perSnpPath <- sub("_profile_", "_per_snp_", profilePath)
 
   # Read profile grid
   profileDf <- utils::read.csv(profilePath, stringsAsFactors = FALSE)
@@ -262,6 +268,12 @@ importSiteProfile <- function(profilePath,
     seHat = seHat,
     scoreDefinition = scoreDefinition
   )
+  if (file.exists(perSnpPath)) {
+    profile$perSnpEstimates <- utils::read.csv(
+      perSnpPath,
+      stringsAsFactors = FALSE
+    )
+  }
   class(profile) <- "medusaSiteProfile"
 
   message(sprintf("Imported site profile '%s' (%d grid points).",

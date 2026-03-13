@@ -46,7 +46,8 @@ runInstrumentDiagnostics(
 
 -   covariateData:
 
-    List. Output of `buildMRCovariates`.
+    Either the list output of `buildMRCovariates` or a plain data frame
+    with person-level covariates.
 
 -   instrumentTable:
 
@@ -89,7 +90,9 @@ A named list with class "medusaDiagnostics" containing:
 -   negativeControlResults:
 
     Data frame with snp\_id, outcome\_id, beta, se, pval, or NULL if no
-    negative controls provided.
+    negative controls provided. Note: negative control testing is not
+    yet implemented; this slot currently returns an empty data frame
+    when negative control IDs are supplied.
 
 -   afComparison:
 

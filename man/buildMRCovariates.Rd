@@ -43,18 +43,19 @@ this value). Default is 10.}
 \value{
 A list with class "medusaCovariateData" containing:
   \describe{
-    \item{covariates}{Data frame with person_id and covariate columns.}
-    \item{covariateRef}{Data frame mapping covariate IDs to names and domains.}
+    \item{covariateData}{The \pkg{FeatureExtraction} covariate object
+      returned by \code{getDbCovariateData()}. Its main tables are
+      \code{covariateData$covariates} and \code{covariateData$covariateRef}.}
     \item{ancestryPCs}{Data frame of ancestry PCs if provided, NULL otherwise.}
     \item{settings}{The covariate settings object used.}
   }
 }
 \description{
 Leverages the OHDSI FeatureExtraction package to assemble a rich covariate
-matrix from OMOP CDM data. This covariate matrix serves two purposes:
-(1) adjustment covariates in the Cyclops outcome model to control for
-confounders and population stratification, and (2) the full phenome for
-the instrument PheWAS diagnostic that checks for pleiotropic associations.
+object from OMOP CDM data. This object serves two purposes: (1) providing
+covariates for the outcome model to control for confounders and population
+stratification, and (2) exposing the full phenome for the instrument PheWAS
+diagnostic that checks for pleiotropic associations.
 
 If ancestry principal components (PCs) are available, they are merged into
 the covariate matrix. Ancestry PCs are critical for controlling population

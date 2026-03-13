@@ -66,7 +66,8 @@ be reliably inferred from allele frequency.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">harmonizeAlleles</span><span class="op">(</span></span>
 <span>  <span class="va">instrumentTable</span>,</span>
 <span>  <span class="va">genotypeAlleles</span>,</span>
-<span>  eafPalindromicThreshold <span class="op">=</span> <span class="fl">0.08</span></span>
+<span>  eafPalindromicThreshold <span class="op">=</span> <span class="fl">0.08</span>,</span>
+<span>  cohortAlleleFrequencies <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -91,6 +92,13 @@ at a particular site.</p></dd>
 SNPs. Palindromic SNPs with EAF between (0.5 - threshold) and
 (0.5 + threshold) are removed. Default is 0.08 (i.e., EAF between
 0.42 and 0.58).</p></dd>
+
+
+<dt id="arg-cohortallelefrequencies">cohortAlleleFrequencies<a class="anchor" aria-label="anchor" href="#arg-cohortallelefrequencies"></a></dt>
+<dd><p>Optional named numeric vector of cohort
+allele frequencies, keyed by SNP ID. The frequency should be for the
+coded allele in the genotype data (i.e., mean(genotype)/2). Used to
+resolve palindromic SNPs when EAF is far enough from 0.5.</p></dd>
 
 </dl></div>
     <div class="section level2">

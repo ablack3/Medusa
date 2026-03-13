@@ -9,6 +9,8 @@
 Federated two-sample Mendelian Randomization on the OMOP Common Data
 Model.
 
+**PACKAGE UNDER CONSTRUCTION: DO NOT USE**
+
 <div class="section level2">
 
 ## Overview
@@ -20,9 +22,9 @@ leave any site.
 
 The core innovation is **one-shot federated pooling** via profile
 likelihood aggregation: each site computes a log-likelihood profile and
-shares only that numeric vector. The coordinator sums profiles across
-sites to obtain a pooled estimate — no iterative communication protocol
-needed.
+shares only site-level summary files centered on that numeric vector.
+The coordinator sums profiles across sites to obtain a pooled estimate
+with no iterative communication protocol.
 
 </div>
 
@@ -107,8 +109,7 @@ cohort <- buildMRCohort(
   cohortTable = "cohort",
   outcomeCohortId = 1234,
   instrumentTable = instruments,
-  genomicLinkageSchema = "genomics",
-  genomicLinkageTable = "genotype_data"
+  genomicDatabaseSchema = "genomics"  # Schema with VARIANT_OCCURRENCE
 )
 
 profile <- fitOutcomeModel(
@@ -138,18 +139,18 @@ generateMRReport(
 
 ## Main Functions
 
-| Function                     | Module              | Description                               |
-|------------------------------|---------------------|-------------------------------------------|
-| `getMRInstruments()`         | Instrument Assembly | Query OpenGWAS for instruments, LD clump  |
-| `createInstrumentTable()`    | Instrument Assembly | Build instruments from local data         |
-| `buildMRCohort()`            | Cohort Extraction   | Extract cohort + genotypes from OMOP CDM  |
-| `buildMRCovariates()`        | Covariate Assembly  | Assemble covariates via FeatureExtraction |
-| `runInstrumentDiagnostics()` | Diagnostics         | F-stats, PheWAS, negative controls        |
-| `fitOutcomeModel()`          | Outcome Model       | Fit model, evaluate profile likelihood    |
-| `poolLikelihoodProfiles()`   | Pooling             | Sum log-likelihood profiles across sites  |
-| `computeMREstimate()`        | Estimation          | Wald ratio with delta method SE           |
-| `runSensitivityAnalyses()`   | Sensitivity         | IVW, MR-Egger, weighted median, etc.      |
-| `generateMRReport()`         | Reporting           | Self-contained HTML report                |
+| Function                     | Module              | Description                                              |
+|------------------------------|---------------------|----------------------------------------------------------|
+| `getMRInstruments()`         | Instrument Assembly | Query OpenGWAS for instruments, LD clump                 |
+| `createInstrumentTable()`    | Instrument Assembly | Build instruments from local data                        |
+| `buildMRCohort()`            | Cohort Extraction   | Extract cohort + genotypes from OMOP CDM                 |
+| `buildMRCovariates()`        | Covariate Assembly  | Assemble covariates via FeatureExtraction                |
+| `runInstrumentDiagnostics()` | Diagnostics         | F-stats, PheWAS, allele-frequency and missingness checks |
+| `fitOutcomeModel()`          | Outcome Model       | Fit outcome model, evaluate profile likelihood           |
+| `poolLikelihoodProfiles()`   | Pooling             | Sum log-likelihood profiles across sites                 |
+| `computeMREstimate()`        | Estimation          | Wald ratio with delta method SE                          |
+| `runSensitivityAnalyses()`   | Sensitivity         | IVW, MR-Egger, weighted median, etc.                     |
+| `generateMRReport()`         | Reporting           | Self-contained HTML report                               |
 
 </div>
 
@@ -171,7 +172,9 @@ generateMRReport(
 -   R &gt;= 4.1.0
 -   OHDSI packages: DatabaseConnector, SqlRender, Cyclops,
     FeatureExtraction
--   OMOP CDM database with genomic linkage table
+-   OMOP CDM database with [OMOP Genomic
+    CDM](https://github.com/OHDSI/Genomic-CDM) (VARIANT\_OCCURRENCE
+    table)
 -   For instrument retrieval: internet access to OpenGWAS API
 
 </div>

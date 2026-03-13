@@ -174,13 +174,13 @@ Open access: https://pmc.ncbi.nlm.nih.gov/articles/PMC4377079/</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">profiles</span> <span class="op">&lt;-</span> <span class="fu"><a href="simulateSiteProfiles.html">simulateSiteProfiles</a></span><span class="op">(</span>nSites <span class="op">=</span> <span class="fl">3</span>, trueBeta <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="poolLikelihoodProfiles.html">poolLikelihoodProfiles</a></span><span class="op">(</span><span class="va">profiles</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Pooling profile likelihoods from 3 site(s)...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Pooling complete: 3 sites, 637 total cases, 5363 total controls.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Pooling complete: 3 sites, 402 total cases, 5598 total controls.</span>
 <span class="r-in"><span><span class="va">instruments</span> <span class="op">&lt;-</span> <span class="fu"><a href="simulateInstrumentTable.html">simulateInstrumentTable</a></span><span class="op">(</span>nSnps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu">computeMREstimate</span><span class="op">(</span><span class="va">combined</span>, <span class="va">instruments</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> MR estimate: beta = 2.1397 (95% CI: 1.2012, 3.0781), p = 4.32e-05</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Odds ratio: 8.497 (95% CI: 3.324, 21.718)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> MR estimate: beta = 1.3561 (95% CI: 0.7195, 1.9926), p = 6.42e-05</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Odds ratio: 3.881 (95% CI: 2.054, 7.335)</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">$</span><span class="va">betaMR</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.13967</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.356072</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
