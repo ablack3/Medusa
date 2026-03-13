@@ -233,6 +233,20 @@ cause problems.
 - Pleiotropy most often threatens exclusion restriction.
 - Population stratification and selection can threaten independence.
 
+## References
+
+- Angrist, J.D., Imbens, G.W., & Rubin, D.B. (1996). Identification of causal
+  effects using instrumental variables. *Journal of the American Statistical
+  Association*, 91(434), 444--455.
+- Staiger, D. & Stock, J.H. (1997). Instrumental variables regression with weak
+  instruments. *Econometrica*, 65(3), 557--586.
+- Davey Smith, G. & Hemani, G. (2014). Mendelian randomization: genetic anchors
+  for causal inference in epidemiological studies. *Human Molecular Genetics*,
+  23(R1), R89--R98.
+- Bowden, J., Davey Smith, G., & Burgess, S. (2015). Mendelian randomization
+  with invalid instruments: effect estimation and bias detection through Egger
+  regression. *International Journal of Epidemiology*, 44(2), 512--525.
+
 ## Next chapter
 
 Next: [Course 3: How two-sample MR works in practice](Course03-TwoSampleMRMechanics.html)

@@ -914,6 +914,24 @@ sparseCovariatesToDataFrame <- function(covariates, covariateRef, cohortData) {
     stringsAsFactors = FALSE
   )
 
+  # xtabs() sums values for duplicate rowId-covariate pairs. For binary
+
+  # covariates this silently inflates values. Warn if duplicates exist.
+  dupKeys <- duplicated(sparseLong[, c("rowId", "covariate")])
+  if (any(dupKeys)) {
+    nDups <- sum(dupKeys)
+    warning(
+      sprintf(
+        paste0(
+          "%d duplicate rowId-covariate entries detected in sparse covariate data. ",
+          "xtabs() will sum these values, which may produce incorrect results ",
+          "for binary covariates. Consider deduplicating upstream."
+        ),
+        nDups
+      )
+    )
+  }
+
   sparseMatrix <- xtabs(
     covariateValue ~ rowId + covariate,
     data = sparseLong

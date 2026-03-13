@@ -7,33 +7,47 @@
 --   @washout_days: Required days of prior observation (default 365)
 --   @exclude_prior_outcome: Whether to exclude persons with prior outcome (1=yes, 0=no)
 
+-- Use ROW_NUMBER to keep exactly one row per person (earliest cohort entry)
+-- to avoid duplicates from multiple observation periods or cohort records.
 SELECT
-  c.subject_id AS person_id,
-  c.cohort_start_date AS index_date,
-  1 AS outcome,
-  YEAR(c.cohort_start_date) - p.year_of_birth AS age_at_index,
-  p.gender_concept_id,
-  op.observation_period_start_date,
-  op.observation_period_end_date
+  person_id,
+  index_date,
+  outcome,
+  age_at_index,
+  gender_concept_id,
+  observation_period_start_date,
+  observation_period_end_date
 INTO #outcome_persons
-FROM @cohort_database_schema.@cohort_table c
-INNER JOIN @cdm_database_schema.person p
-  ON c.subject_id = p.person_id
-INNER JOIN @cdm_database_schema.observation_period op
-  ON c.subject_id = op.person_id
-  AND c.cohort_start_date >= op.observation_period_start_date
-  AND c.cohort_start_date <= op.observation_period_end_date
-WHERE c.cohort_definition_id = @outcome_cohort_id
-  AND DATEDIFF(DAY, op.observation_period_start_date, c.cohort_start_date) >= @washout_days
+FROM (
+  SELECT
+    c.subject_id AS person_id,
+    c.cohort_start_date AS index_date,
+    1 AS outcome,
+    YEAR(c.cohort_start_date) - p.year_of_birth AS age_at_index,
+    p.gender_concept_id,
+    op.observation_period_start_date,
+    op.observation_period_end_date,
+    ROW_NUMBER() OVER (PARTITION BY c.subject_id ORDER BY c.cohort_start_date) AS rn
+  FROM @cohort_database_schema.@cohort_table c
+  INNER JOIN @cdm_database_schema.person p
+    ON c.subject_id = p.person_id
+  INNER JOIN @cdm_database_schema.observation_period op
+    ON c.subject_id = op.person_id
+    AND c.cohort_start_date >= op.observation_period_start_date
+    AND c.cohort_start_date <= op.observation_period_end_date
+  WHERE c.cohort_definition_id = @outcome_cohort_id
+    AND DATEDIFF(DAY, op.observation_period_start_date, c.cohort_start_date) >= @washout_days
 {@exclude_prior_outcome == 1} ? {
-  AND NOT EXISTS (
-    SELECT 1
-    FROM @cohort_database_schema.@cohort_table c2
-    WHERE c2.subject_id = c.subject_id
-      AND c2.cohort_definition_id = @outcome_cohort_id
-      AND c2.cohort_start_date < c.cohort_start_date
-  )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM @cohort_database_schema.@cohort_table c2
+      WHERE c2.subject_id = c.subject_id
+        AND c2.cohort_definition_id = @outcome_cohort_id
+        AND c2.cohort_start_date < c.cohort_start_date
+    )
 }
+) ranked
+WHERE rn = 1
 ;
 
 -- Also get non-outcome controls from the observation period table.
@@ -41,22 +55,39 @@ WHERE c.cohort_definition_id = @outcome_cohort_id
 -- Assign observation_period_end_date as the index date so downstream covariate
 -- extraction (FeatureExtraction lookback windows) has a valid anchor date.
 -- Age is computed at this same reference date for consistency with cases.
+-- Use ROW_NUMBER to keep one row per person (longest observation period)
+-- to avoid duplicates when a person has multiple qualifying periods.
 SELECT
-  p.person_id,
-  op.observation_period_end_date AS index_date,
-  0 AS outcome,
-  YEAR(op.observation_period_end_date) - p.year_of_birth AS age_at_index,
-  p.gender_concept_id,
-  op.observation_period_start_date,
-  op.observation_period_end_date
+  person_id,
+  index_date,
+  outcome,
+  age_at_index,
+  gender_concept_id,
+  observation_period_start_date,
+  observation_period_end_date
 INTO #control_persons
-FROM @cdm_database_schema.person p
-INNER JOIN @cdm_database_schema.observation_period op
-  ON p.person_id = op.person_id
-WHERE DATEDIFF(DAY, op.observation_period_start_date, op.observation_period_end_date) >= @washout_days
-  AND p.person_id NOT IN (
-    SELECT person_id FROM #outcome_persons
-  )
+FROM (
+  SELECT
+    p.person_id,
+    op.observation_period_end_date AS index_date,
+    0 AS outcome,
+    YEAR(op.observation_period_end_date) - p.year_of_birth AS age_at_index,
+    p.gender_concept_id,
+    op.observation_period_start_date,
+    op.observation_period_end_date,
+    ROW_NUMBER() OVER (
+      PARTITION BY p.person_id
+      ORDER BY DATEDIFF(DAY, op.observation_period_start_date, op.observation_period_end_date) DESC
+    ) AS rn
+  FROM @cdm_database_schema.person p
+  INNER JOIN @cdm_database_schema.observation_period op
+    ON p.person_id = op.person_id
+  WHERE DATEDIFF(DAY, op.observation_period_start_date, op.observation_period_end_date) >= @washout_days
+    AND p.person_id NOT IN (
+      SELECT person_id FROM #outcome_persons
+    )
+) ranked
+WHERE rn = 1
 ;
 
 -- Combine cases and controls

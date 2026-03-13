@@ -107,8 +107,8 @@ beta_zy <- true_effect * beta_zx + rnorm(n_snps, sd = 0.015)
 
 per_snp <- data.frame(
   snp_id = paste0("rs", seq_len(n_snps)),
-  effect_allele = c("A", "C", "G", "T", "A", "C", "G", "T"),
-  other_allele = c("G", "T", "A", "C", "C", "G", "T", "A"),
+  effect_allele = c("A", "C", "G", "T", "A", "C", "G", "A"),
+  other_allele = c("G", "T", "A", "C", "C", "T", "T", "G"),
   eaf = seq(0.15, 0.50, length.out = n_snps),
   beta_ZY = beta_zy,
   se_ZY = rep(0.03, n_snps),
@@ -223,6 +223,21 @@ than IVW because it estimates both an intercept and a slope.
 - Leave-one-out identifies influential SNPs.
 - Steiger filtering checks whether the proposed causal direction looks
   plausible.
+
+## References
+
+- Burgess, S., Butterworth, A., & Thompson, S.G. (2013). Mendelian
+  randomization analysis with multiple genetic variants using summarized data.
+  *Genetic Epidemiology*, 37(7), 658--665.
+- Bowden, J., Davey Smith, G., & Burgess, S. (2015). Mendelian randomization
+  with invalid instruments: effect estimation and bias detection through Egger
+  regression. *International Journal of Epidemiology*, 44(2), 512--525.
+- Bowden, J., Davey Smith, G., Haycock, P.C., & Burgess, S. (2016). Consistent
+  estimation in Mendelian randomization with some invalid instruments using a
+  weighted median estimator. *Genetic Epidemiology*, 40(4), 304--314.
+- Hemani, G., Tilling, K., & Davey Smith, G. (2017). Orienting the causal
+  relationship between imprecisely measured traits using GWAS summary data.
+  *PLOS Genetics*, 13(11), e1007081.
 
 ## Next chapter
 
