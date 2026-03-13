@@ -675,17 +675,12 @@ evaluateBinaryProfilePoint <- function(modelData,
     return(-Inf)
   }
 
-  # Cyclops predict() may return linear predictors or probabilities depending
-  # on the version. Explicitly request response-scale (probabilities) if the
-  # API supports it, otherwise transform from the linear predictor.
+  # Cyclops predict() returns linear predictors (log-odds) for logistic
+  # regression. Always apply the logistic transformation to obtain
+  # probabilities, rather than guessing from the value range.
   fittedProb <- tryCatch({
     pred <- stats::predict(fit)
-    # If any value is outside [0,1], assume linear predictor (log-odds)
-    if (any(pred < 0 | pred > 1, na.rm = TRUE)) {
-      1 / (1 + exp(-pred))
-    } else {
-      pred
-    }
+    1 / (1 + exp(-pred))
   }, error = function(e) NULL)
   if (is.null(fittedProb)) {
     return(-Inf)

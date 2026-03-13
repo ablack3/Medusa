@@ -36,11 +36,14 @@ WHERE c.cohort_definition_id = @outcome_cohort_id
 }
 ;
 
--- Also get non-outcome controls from the observation period table
--- Controls are persons with sufficient observation who are NOT in the outcome cohort
+-- Also get non-outcome controls from the observation period table.
+-- Controls are persons with sufficient observation who are NOT in the outcome cohort.
+-- Assign observation_period_end_date as the index date so downstream covariate
+-- extraction (FeatureExtraction lookback windows) has a valid anchor date.
+-- Age is computed at this same reference date for consistency with cases.
 SELECT
   p.person_id,
-  CAST(NULL AS DATE) AS index_date,
+  op.observation_period_end_date AS index_date,
   0 AS outcome,
   YEAR(op.observation_period_end_date) - p.year_of_birth AS age_at_index,
   p.gender_concept_id,

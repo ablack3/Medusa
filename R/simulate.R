@@ -95,12 +95,19 @@ simulateMRData <- function(n = 5000,
     stringsAsFactors = FALSE
   )
 
-  # Build instrument table
-  alleles <- c("A", "C", "G", "T")
+  # Build instrument table using non-ambiguous allele pairs to avoid
+
+  # palindromic SNPs (A/T and G/C) that complicate harmonization.
+  nonAmbiguousPairs <- list(
+    c("A", "C"), c("A", "G"), c("T", "C"), c("T", "G"),
+    c("C", "A"), c("G", "A"), c("C", "T"), c("G", "T")
+  )
+  allelePairs <- nonAmbiguousPairs[sample(length(nonAmbiguousPairs),
+                                          nSnps, replace = TRUE)]
   instrumentTable <- data.frame(
     snp_id = snpIds,
-    effect_allele = sample(alleles, nSnps, replace = TRUE),
-    other_allele = sample(alleles, nSnps, replace = TRUE),
+    effect_allele = vapply(allelePairs, `[`, character(1), 1),
+    other_allele = vapply(allelePairs, `[`, character(1), 2),
     beta_ZX = betaZX,
     se_ZX = seZX,
     pval_ZX = 2 * pnorm(-abs(betaZX / seZX)),
@@ -108,14 +115,6 @@ simulateMRData <- function(n = 5000,
     gene_region = paste0("GENE", seq_len(nSnps)),
     stringsAsFactors = FALSE
   )
-  # Ensure effect and other alleles differ
-  for (i in seq_len(nSnps)) {
-    if (instrumentTable$effect_allele[i] == instrumentTable$other_allele[i]) {
-      instrumentTable$other_allele[i] <- sample(
-        setdiff(alleles, instrumentTable$effect_allele[i]), 1
-      )
-    }
-  }
 
   instrumentTable$fStatistic <- computeApproxFStatistic(betaZX, seZX)
   instrumentTable$strandAmbiguous <- isStrandAmbiguous(
