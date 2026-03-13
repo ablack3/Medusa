@@ -59,6 +59,26 @@ test_that("computeFStatistics falls back to GWAS approximations when cohort fits
   expect_equal(fStats$source[2], "gwas_approximation")
 })
 
+test_that("computeFStatistics matches SNPs by SNP ID rather than cohort column order", {
+  simData <- simulateMRData(n = 200, nSnps = 2, seed = 516)
+  snpCols <- grep("^snp_", names(simData$data), value = TRUE)
+  reordered <- simData$data[, c(setdiff(names(simData$data), snpCols), rev(snpCols))]
+
+  original <- computeFStatistics(
+    cohortData = simData$data,
+    instrumentTable = simData$instrumentTable,
+    exposureProxyConceptIds = 1L
+  )
+  reorderedStats <- computeFStatistics(
+    cohortData = reordered,
+    instrumentTable = simData$instrumentTable,
+    exposureProxyConceptIds = 1L
+  )
+
+  expect_equal(original$fStatistic, reorderedStats$fStatistic, tolerance = 1e-10)
+  expect_equal(original$source, reorderedStats$source)
+})
+
 test_that("runInstrumentDiagnostics flags allele frequency and missingness problems", {
   simData <- simulateMRData(n = 120, nSnps = 2, seed = 606)
   cohortData <- simData$data

@@ -819,10 +819,22 @@ extractCovariateDataFrame <- function(medusaCovData, cohortData) {
     covObj <- medusaCovData$covariateData
     # FeatureExtraction returns Andromeda-backed objects; collect to data frame
     if ("covariates" %in% names(covObj)) {
-      covDf <- tryCatch(
+      rawCovDf <- tryCatch(
         as.data.frame(covObj$covariates),
         error = function(e) NULL
       )
+      covRef <- if ("covariateRef" %in% names(covObj)) {
+        tryCatch(as.data.frame(covObj$covariateRef), error = function(e) NULL)
+      } else {
+        NULL
+      }
+
+      if (!is.null(rawCovDf) &&
+          all(c("covariateId", "covariateValue") %in% names(rawCovDf))) {
+        covDf <- sparseCovariatesToDataFrame(rawCovDf, covRef, cohortData)
+      } else {
+        covDf <- rawCovDf
+      }
     }
   }
 
@@ -842,4 +854,95 @@ extractCovariateDataFrame <- function(medusaCovData, cohortData) {
   }
 
   covDf
+}
+
+
+#' @keywords internal
+sparseCovariatesToDataFrame <- function(covariates, covariateRef, cohortData) {
+  checkmate::assertDataFrame(covariates, min.rows = 1)
+  checkmate::assertSubset(c("covariateId", "covariateValue"), names(covariates))
+
+  rowIdCol <- if ("rowId" %in% names(covariates)) {
+    "rowId"
+  } else if ("person_id" %in% names(covariates)) {
+    "person_id"
+  } else if ("personId" %in% names(covariates)) {
+    "personId"
+  } else {
+    stop(
+      "Sparse covariate data must contain one of: rowId, person_id, or personId."
+    )
+  }
+
+  targetKey <- if ("personId" %in% names(cohortData)) {
+    "personId"
+  } else if ("person_id" %in% names(cohortData)) {
+    "person_id"
+  } else if ("rowId" %in% names(cohortData)) {
+    "rowId"
+  } else {
+    rowIdCol
+  }
+
+  covariates[[rowIdCol]] <- as.character(covariates[[rowIdCol]])
+  cohortIds <- unique(as.character(cohortData[[targetKey]]))
+
+  nameMap <- NULL
+  if (!is.null(covariateRef) &&
+      all(c("covariateId", "covariateName") %in% names(covariateRef))) {
+    nameMap <- setNames(
+      object = as.character(covariateRef$covariateName),
+      nm = as.character(covariateRef$covariateId)
+    )
+  }
+
+  covariateIds <- unique(as.character(covariates$covariateId))
+  covariateLabels <- if (!is.null(nameMap)) {
+    unname(nameMap[covariateIds])
+  } else {
+    rep(NA_character_, length(covariateIds))
+  }
+  missingLabels <- is.na(covariateLabels) | covariateLabels == ""
+  covariateLabels[missingLabels] <- paste0("covariate_", covariateIds[missingLabels])
+  safeNames <- make.names(covariateLabels, unique = TRUE)
+  safeMap <- setNames(safeNames, covariateIds)
+
+  sparseLong <- data.frame(
+    rowId = covariates[[rowIdCol]],
+    covariate = unname(safeMap[as.character(covariates$covariateId)]),
+    covariateValue = covariates$covariateValue,
+    stringsAsFactors = FALSE
+  )
+
+  sparseMatrix <- xtabs(
+    covariateValue ~ rowId + covariate,
+    data = sparseLong
+  )
+  wideCov <- data.frame(
+    rowId = rownames(sparseMatrix),
+    as.data.frame.matrix(sparseMatrix),
+    row.names = NULL,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  cohortIndex <- data.frame(
+    rowId = cohortIds,
+    stringsAsFactors = FALSE
+  )
+  wideCov <- dplyr::left_join(cohortIndex, wideCov, by = "rowId")
+  covCols <- setdiff(names(wideCov), "rowId")
+  for (col in covCols) {
+    wideCov[[col]][is.na(wideCov[[col]])] <- 0
+  }
+
+  names(wideCov)[names(wideCov) == "rowId"] <- targetKey
+  if (is.integer(cohortData[[targetKey]])) {
+    wideCov[[targetKey]] <- as.integer(wideCov[[targetKey]])
+  } else if (is.numeric(cohortData[[targetKey]])) {
+    wideCov[[targetKey]] <- as.numeric(wideCov[[targetKey]])
+  } else {
+    wideCov[[targetKey]] <- as.character(wideCov[[targetKey]])
+  }
+  wideCov
 }

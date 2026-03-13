@@ -259,6 +259,54 @@ test_that("appendCovariatesToModelData aligns plain covariate data by person_id"
   expect_equal(modelParts$modelData$covariate_1, expected)
 })
 
+test_that("extractCovariateDataFrame expands sparse medusaCovariateData for fitOutcomeModel", {
+  simData <- Medusa::simulateMRData(n = 80, nSnps = 2, trueEffect = 0.2, seed = 562)
+  cohortData <- simData$data
+  cohortData$personId <- cohortData$person_id
+
+  medusaCovariates <- list(
+    covariateData = list(
+      covariates = data.frame(
+        rowId = c(cohortData$personId[1], cohortData$personId[1], cohortData$personId[2]),
+        covariateId = c(101L, 102L, 101L),
+        covariateValue = c(1, 1, 1),
+        stringsAsFactors = FALSE
+      ),
+      covariateRef = data.frame(
+        covariateId = c(101L, 102L),
+        covariateName = c("condition diabetes", "drug aspirin"),
+        stringsAsFactors = FALSE
+      )
+    )
+  )
+  class(medusaCovariates) <- "medusaCovariateData"
+
+  extracted <- extractCovariateDataFrame(medusaCovariates, cohortData)
+  expect_true("personId" %in% names(extracted))
+  expect_true(all(c("condition.diabetes", "drug.aspirin") %in% names(extracted)))
+  expect_equal(extracted$condition.diabetes[match(cohortData$personId[1], extracted$personId)], 1)
+  expect_equal(extracted$drug.aspirin[match(cohortData$personId[2], extracted$personId)], 0)
+
+  baseModel <- data.frame(
+    outcome = cohortData$outcome,
+    alleleScore = seq_len(nrow(cohortData)),
+    stringsAsFactors = FALSE
+  )
+  modelParts <- appendCovariatesToModelData(baseModel, cohortData, medusaCovariates)
+  expect_true(all(c("condition.diabetes", "drug.aspirin") %in% modelParts$covariateColumns))
+  expect_equal(modelParts$modelData$condition.diabetes[1], 1)
+  expect_equal(modelParts$modelData$drug.aspirin[2], 0)
+
+  expect_no_error(
+    fitOutcomeModel(
+      cohortData = cohortData,
+      covariateData = medusaCovariates,
+      instrumentTable = simData$instrumentTable,
+      betaGrid = seq(-1, 1, by = 0.1)
+    )
+  )
+})
+
 test_that("fitOutcomeModel imputes missing genotypes to expected dosage instead of zero", {
   simData <- Medusa::simulateMRData(n = 300, nSnps = 3, trueEffect = 0.2, seed = 561)
   snpCols <- grep("^snp_", names(simData$data), value = TRUE)

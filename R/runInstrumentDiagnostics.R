@@ -169,7 +169,6 @@ runInstrumentDiagnostics <- function(cohortData,
 #' @keywords internal
 computeFStatistics <- function(cohortData, instrumentTable,
                                exposureProxyConceptIds = NULL) {
-  snpCols <- grep("^snp_", names(cohortData), value = TRUE)
   fStats <- data.frame(
     snp_id = instrumentTable$snp_id,
     fStatistic = NA_real_,
@@ -181,7 +180,7 @@ computeFStatistics <- function(cohortData, instrumentTable,
   if (!is.null(exposureProxyConceptIds) && "exposure" %in% names(cohortData)) {
     # Compute from actual data
     for (i in seq_len(nrow(instrumentTable))) {
-      snpCol <- snpCols[i]
+      snpCol <- makeSnpColumnName(instrumentTable$snp_id[i])
       if (snpCol %in% names(cohortData)) {
         validIdx <- !is.na(cohortData[[snpCol]]) & !is.na(cohortData$exposure)
         if (sum(validIdx) > 10) {
