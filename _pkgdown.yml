@@ -17,3 +17,19 @@ navbar:
     right: [search, github]
   bg: primary
   type: dark
+
+articles:
+  - title: "Learn Two-Sample MR"
+    navbar: "Short Course"
+    contents:
+      - Course01-WhyMR
+      - Course02-InstrumentalVariablesAndMRAssumptions
+      - Course03-TwoSampleMRMechanics
+      - Course04-EstimationAndSensitivityAnalysis
+      - Course05-FromTheoryToMedusaWorkflow
+      - Course06-DoingAndCritiquingATwoSampleMRStudy
+  - title: "Practical Guides"
+    contents:
+      - GettingStarted
+      - ColorectalCancerIL6Example
+      - FederatedAnalysisGuide

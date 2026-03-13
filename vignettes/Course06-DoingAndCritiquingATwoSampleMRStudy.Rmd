@@ -1,0 +1,242 @@
+---
+title: "Course 6: Doing and Critiquing a Two-Sample MR Study"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Course 6: Doing and Critiquing a Two-Sample MR Study}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = TRUE
+)
+```
+
+## What you'll learn
+
+By the end of this chapter, you should be able to:
+
+- describe an end-to-end two-sample MR study workflow,
+- identify major design and interpretation checkpoints,
+- use Medusa outputs to critique an analysis,
+- explain when an MR estimate should be treated cautiously.
+
+## Why this matters
+
+By this point, you know the logic of MR and the mechanics of estimation. The
+last step is judgment: can you design a credible study, read one critically,
+and know when the output supports a cautious causal interpretation?
+
+## A practical study checklist
+
+Before running an MR study, ask:
+
+1. Is the exposure well defined and biologically coherent?
+2. Are the instruments strong enough?
+3. Are the outcome data appropriate for the question?
+4. Is allele harmonization trustworthy?
+5. Are the sensitivity analyses informative?
+6. Are the limitations stated honestly?
+
+This checklist is often more important than the final p-value.
+
+## A small end-to-end synthetic analysis
+
+```{r setup-analysis}
+library(Medusa)
+
+set.seed(1006)
+beta_grid <- seq(-1.5, 1.5, by = 0.05)
+
+sim_data <- simulateMRData(
+  n = 5000,
+  nSnps = 6,
+  trueEffect = 0.30,
+  seed = 1006
+)
+
+profile <- fitOutcomeModel(
+  cohortData = sim_data$data,
+  covariateData = NULL,
+  instrumentTable = sim_data$instrumentTable,
+  betaGrid = beta_grid,
+  siteId = "site_A",
+  analysisType = "perSNP"
+)
+
+combined <- poolLikelihoodProfiles(list(site_A = profile))
+estimate <- computeMREstimate(combined, sim_data$instrumentTable)
+sensitivity <- runSensitivityAnalyses(
+  profile$perSnpEstimates,
+  methods = c("IVW", "MREgger", "WeightedMedian", "LeaveOneOut"),
+  engine = "internal"
+)
+```
+
+### Main estimate
+
+```{r main-estimate}
+estimate$betaMR
+estimate$ciLower
+estimate$ciUpper
+estimate$oddsRatio
+```
+
+### Sensitivity summary
+
+```{r sensitivity-summary}
+sensitivity$summary
+```
+
+## How to critique the analysis
+
+### 1. Instrument quality
+
+Check:
+
+- approximate F-statistics,
+- whether instruments come from a biologically sensible region,
+- whether the number of SNPs is enough to support meaningful sensitivity
+  analyses.
+
+### 2. Harmonization and data integrity
+
+Check:
+
+- allele labels,
+- palindromic SNP handling,
+- allele-frequency consistency,
+- genotype missingness.
+
+### 3. Estimator agreement
+
+Check:
+
+- whether IVW, weighted median, and MR-Egger point in the same general
+  direction,
+- whether one SNP dominates leave-one-out results,
+- whether uncertainty is very large.
+
+### 4. Interpretation discipline
+
+Even a well-conducted MR result should be described carefully.
+
+Good language:
+
+- "consistent with a causal effect,"
+- "supports a likely causal role,"
+- "evidence is compatible with..."
+
+Overstated language:
+
+- "proves causation,"
+- "settles the question,"
+- "guarantees a drug will work."
+
+**Key takeaway:** the output of MR is evidence, not certainty.
+
+## Common reasons not to trust an MR estimate
+
+- weak instruments,
+- obvious horizontal pleiotropy,
+- severe disagreement across methods,
+- poor harmonization,
+- implausible biology,
+- strong chance of sample selection artifacts,
+- outcome definitions that do not match the scientific question.
+
+## Exercise set 1
+
+### Exercise 1
+
+If IVW is positive, weighted median is near zero, and leave-one-out changes sign
+when one SNP is removed, what should you conclude?
+
+<details class="solution">
+<summary>Show solution</summary>
+
+You should conclude that the result is unstable and should not be treated as
+robust causal evidence without deeper investigation. One SNP may be overly
+influential, or the methods may be reacting to invalid instruments.
+
+</details>
+
+### Exercise 2
+
+Why is "MR proves causation" usually too strong?
+
+<details class="solution">
+<summary>Show solution</summary>
+
+Because MR depends on assumptions that can fail, especially exclusion
+restriction and independence. It can strengthen causal inference substantially,
+but it does not remove uncertainty completely.
+
+</details>
+
+### Exercise 3
+
+Name two things you would inspect before trusting a surprising MR result.
+
+<details class="solution">
+<summary>Show solution</summary>
+
+Reasonable answers include instrument strength, allele harmonization,
+population-structure concerns, sensitivity-analysis agreement, leave-one-out
+results, and biological plausibility.
+
+</details>
+
+## Exercise set 2: critique a mock abstract
+
+Mock claim:
+
+> We found a statistically significant MR estimate linking biomarker X to
+> disease Y, therefore biomarker X is definitively causal and should be
+> targeted therapeutically.
+
+What is missing from this claim?
+
+<details class="solution">
+<summary>Show solution</summary>
+
+The claim ignores instrument validity, pleiotropy, sensitivity analyses,
+harmonization quality, uncertainty, and the difference between causal evidence
+and therapeutic success. A responsible abstract would discuss the assumptions
+and supporting diagnostics rather than making a definitive statement.
+
+</details>
+
+## Where to go next
+
+You now have the conceptual foundation to:
+
+- read ordinary two-sample MR papers critically,
+- understand why sensitivity analyses matter,
+- understand how Medusa's federated workflow connects to textbook MR logic.
+
+For next steps inside the package:
+
+- [Getting Started with Medusa](GettingStarted.html) for a runnable workflow,
+- [IL-6 Signaling and Colorectal Cancer](ColorectalCancerIL6Example.html) for a
+  scientific walkthrough,
+- [Federated Analysis Guide](FederatedAnalysisGuide.html) for network-level
+  deployment.
+
+## Chapter summary
+
+- A good MR study is judged by design quality and robustness, not only by the
+  headline estimate.
+- You should inspect instrument strength, harmonization, diagnostics, and
+  sensitivity analyses together.
+- Medusa provides tools that support this critical workflow, but the final
+  judgment remains scientific and epidemiologic.
+
+## End of course
+
+You have now moved from observational causal problems, to instrumental
+variables, to two-sample MR mechanics, to sensitivity analyses, and finally to
+Medusa's federated implementation and critical interpretation.

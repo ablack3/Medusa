@@ -143,12 +143,12 @@ if (requireNamespace("TwoSampleMR", quietly = TRUE)) {
 #> 1      Medusa Profile likelihood 0.2369024 0.5603280 -0.710707109 1.1845118
 #> 2 TwoSampleMR                IVW 0.2194567 0.1167514 -0.009376005 0.4482894
 #> 3 TwoSampleMR           MR-Egger 0.6304650 0.2779381  0.085706258 1.1752237
-#> 4 TwoSampleMR    Weighted Median 0.2426033 0.1416569 -0.035044165 0.5202508
+#> 4 TwoSampleMR    Weighted Median 0.2426033 0.1419169 -0.035553826 0.5207604
 #>         pval delta_vs_medusa
 #> 1 0.67244679     0.000000000
 #> 2 0.06014999    -0.017445678
 #> 3 0.10808801     0.393562607
-#> 4 0.08678389     0.005700936
+#> 4 0.08736312     0.005700936
 ```
 
 </div>

@@ -3,6 +3,12 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   ColorectalCancerIL6Example: ColorectalCancerIL6Example.html
+  Course01-WhyMR: Course01-WhyMR.html
+  Course02-InstrumentalVariablesAndMRAssumptions: Course02-InstrumentalVariablesAndMRAssumptions.html
+  Course03-TwoSampleMRMechanics: Course03-TwoSampleMRMechanics.html
+  Course04-EstimationAndSensitivityAnalysis: Course04-EstimationAndSensitivityAnalysis.html
+  Course05-FromTheoryToMedusaWorkflow: Course05-FromTheoryToMedusaWorkflow.html
+  Course06-DoingAndCritiquingATwoSampleMRStudy: Course06-DoingAndCritiquingATwoSampleMRStudy.html
   FederatedAnalysisGuide: FederatedAnalysisGuide.html
   GettingStarted: GettingStarted.html
-last_built: 2026-03-13T01:46Z
+last_built: 2026-03-13T17:48Z

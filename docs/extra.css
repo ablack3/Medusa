@@ -166,3 +166,36 @@ nav#toc,
 .label-primary {
   background-color: var(--ohdsi-blue);
 }
+
+/* ----- Collapsible exercise solutions ----- */
+.contents details.solution {
+  margin: 1rem 0 1.25rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d9e2e8;
+  border-radius: 8px;
+  background-color: #fafcfd;
+}
+
+.contents details.solution summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ohdsi-blue);
+  list-style: none;
+}
+
+.contents details.solution summary::-webkit-details-marker {
+  display: none;
+}
+
+.contents details.solution summary::before {
+  content: "▸ ";
+  color: var(--ohdsi-orange);
+}
+
+.contents details.solution[open] summary::before {
+  content: "▾ ";
+}
+
+.contents details.solution > *:not(summary) {
+  margin-top: 0.75rem;
+}
