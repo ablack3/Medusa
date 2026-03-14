@@ -133,8 +133,8 @@ beta_zy <- true_effect * beta_zx + rnorm(n_snps, sd = 0.015)
 
 per_snp <- data.frame(
   snp_id = paste0("rs", seq_len(n_snps)),
-  effect_allele = c("A", "C", "G", "T", "A", "C", "G", "T"),
-  other_allele = c("G", "T", "A", "C", "C", "G", "T", "A"),
+  effect_allele = c("A", "C", "G", "T", "A", "C", "G", "A"),
+  other_allele = c("G", "T", "A", "C", "C", "T", "T", "G"),
   eaf = seq(0.15, 0.50, length.out = n_snps),
   beta_ZY = beta_zy,
   se_ZY = rep(0.03, n_snps),
@@ -150,9 +150,9 @@ per_snp
 #> 3    rs3             G            A 0.25 0.11003592  0.03    0.25  0.04
 #> 4    rs4             T            C 0.30 0.08956835  0.03    0.20  0.04
 #> 5    rs5             A            C 0.35 0.07220337  0.03    0.16  0.04
-#> 6    rs6             C            G 0.40 0.09726425  0.03    0.24  0.04
+#> 6    rs6             C            T 0.40 0.09726425  0.03    0.24  0.04
 #> 7    rs7             G            T 0.45 0.06333035  0.03    0.19  0.04
-#> 8    rs8             T            A 0.50 0.10692022  0.03    0.21  0.04
+#> 8    rs8             A            G 0.50 0.10692022  0.03    0.21  0.04
 ```
 
 </div>
@@ -311,6 +311,27 @@ slope.
 -   Leave-one-out identifies influential SNPs.
 -   Steiger filtering checks whether the proposed causal direction looks
     plausible.
+
+</div>
+
+<div class="section level2">
+
+## References
+
+-   Burgess, S., Butterworth, A., & Thompson, S.G. (2013). Mendelian
+    randomization analysis with multiple genetic variants using
+    summarized data. *Genetic Epidemiology*, 37(7), 658–665.
+-   Bowden, J., Davey Smith, G., & Burgess, S. (2015). Mendelian
+    randomization with invalid instruments: effect estimation and bias
+    detection through Egger regression. *International Journal of
+    Epidemiology*, 44(2), 512–525.
+-   Bowden, J., Davey Smith, G., Haycock, P.C., & Burgess, S. (2016).
+    Consistent estimation in Mendelian randomization with some invalid
+    instruments using a weighted median estimator. *Genetic
+    Epidemiology*, 40(4), 304–314.
+-   Hemani, G., Tilling, K., & Davey Smith, G. (2017). Orienting the
+    causal relationship between imprecisely measured traits using GWAS
+    summary data. *PLOS Genetics*, 13(11), e1007081.
 
 </div>
 

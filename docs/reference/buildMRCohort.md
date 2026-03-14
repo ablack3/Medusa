@@ -47,7 +47,8 @@ buildMRCohort(
   genomicDatabaseSchema = cdmDatabaseSchema,
   indexDateOffset = 0,
   washoutPeriod = 365,
-  excludePriorOutcome = TRUE
+  excludePriorOutcome = TRUE,
+  negativeControlCohortIds = NULL
 )
 ```
 
@@ -105,6 +106,16 @@ buildMRCohort(
 
     Logical. If TRUE, persons with the outcome before their index date
     are excluded. Default is TRUE.
+
+-   negativeControlCohortIds:
+
+    Optional integer vector of cohort definition IDs for negative
+    control outcomes. When provided, the function extracts negative
+    control outcome flags and adds `nc_outcome_<id>` columns (binary
+    0/1) to the returned data frame. These flags are evaluated from each
+    person's index date onward so they align with the outcome risk
+    window used in the main analysis. These columns are used by
+    `runNegativeControlAnalysis` for empirical calibration.
 
 </div>
 

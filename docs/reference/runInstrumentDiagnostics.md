@@ -62,8 +62,9 @@ runInstrumentDiagnostics(
 
 -   negativeControlOutcomeIds:
 
-    Optional integer vector of cohort IDs for negative control outcomes.
-    If NULL, uses package default set.
+    Optional integer vector of cohort IDs for negative control outcomes
+    to analyze from the `nc_outcome_<id>` columns present in
+    `cohortData`. If NULL, all such columns are used.
 
 -   pValueThreshold:
 
@@ -89,10 +90,12 @@ A named list with class "medusaDiagnostics" containing:
 
 -   negativeControlResults:
 
-    Data frame with snp\_id, outcome\_id, beta, se, pval, or NULL if no
-    negative controls provided. Note: negative control testing is not
-    yet implemented; this slot currently returns an empty data frame
-    when negative control IDs are supplied.
+    NULL when negative controls were not requested and no
+    `nc_outcome_<id>` columns are present. Otherwise a data frame with
+    one row per analyzed negative control outcome and columns
+    `outcome_id`, `beta_ZY`, `se_ZY`, `beta_MR`, `se_MR`, and `pval`.
+    Returns an empty data frame when requested negative control columns
+    are unavailable in `cohortData`.
 
 -   afComparison:
 
@@ -129,6 +132,12 @@ may indicate pleiotropy.
 **Allele frequency check**: Compares the effect allele frequency in the
 cohort to the GWAS reference. A discrepancy &gt; 0.1 may indicate strand
 flip or population mismatch.
+
+**Negative controls**: When `nc_outcome_<id>` columns are present,
+Medusa runs `runNegativeControlAnalysis` on the requested subset of
+outcomes. The `negativeControlFailure` diagnostic flag reflects the
+aggregate systematic-bias signal from that analysis rather than whether
+any single negative control reaches nominal p &lt; 0.05.
 
 </div>
 

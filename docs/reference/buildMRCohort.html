@@ -103,7 +103,8 @@ SqlRender for cross-dialect compatibility.</p>
 <span>  genomicDatabaseSchema <span class="op">=</span> <span class="va">cdmDatabaseSchema</span>,</span>
 <span>  indexDateOffset <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  washoutPeriod <span class="op">=</span> <span class="fl">365</span>,</span>
-<span>  excludePriorOutcome <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  excludePriorOutcome <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  negativeControlCohortIds <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -156,6 +157,16 @@ before index date. Default is 365.</p></dd>
 <dt id="arg-excludeprioroutcome">excludePriorOutcome<a class="anchor" aria-label="anchor" href="#arg-excludeprioroutcome"></a></dt>
 <dd><p>Logical. If TRUE, persons with the outcome before
 their index date are excluded. Default is TRUE.</p></dd>
+
+
+<dt id="arg-negativecontrolcohortids">negativeControlCohortIds<a class="anchor" aria-label="anchor" href="#arg-negativecontrolcohortids"></a></dt>
+<dd><p>Optional integer vector of cohort definition
+IDs for negative control outcomes. When provided, the function extracts
+negative control outcome flags and adds <code>nc_outcome_&lt;id&gt;</code> columns
+(binary 0/1) to the returned data frame. These flags are evaluated from
+each person's index date onward so they align with the outcome risk window
+used in the main analysis. These columns are used by
+<code><a href="runNegativeControlAnalysis.html">runNegativeControlAnalysis</a></code> for empirical calibration.</p></dd>
 
 </dl></div>
     <div class="section level2">

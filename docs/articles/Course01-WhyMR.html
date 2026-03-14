@@ -179,29 +179,29 @@
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1001</span><span class="op">)</span></span>
 <span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">2000</span></span>
 <span></span>
-<span><span class="va">exercise</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
+<span><span class="va">confounder</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
 <span><span class="va">genetic_score</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">2</span>, <span class="fl">0.35</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">ldl</span> <span class="op">&lt;-</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="va">exercise</span> <span class="op">+</span> <span class="fl">0.4</span> <span class="op">*</span> <span class="va">genetic_score</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, sd <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span></span>
-<span><span class="va">cad_linear_predictor</span> <span class="op">&lt;-</span> <span class="fl">0.6</span> <span class="op">*</span> <span class="va">ldl</span> <span class="op">+</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="va">exercise</span></span>
+<span><span class="va">ldl</span> <span class="op">&lt;-</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="va">confounder</span> <span class="op">+</span> <span class="fl">0.4</span> <span class="op">*</span> <span class="va">genetic_score</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, sd <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span></span>
+<span><span class="va">cad_linear_predictor</span> <span class="op">&lt;-</span> <span class="fl">0.6</span> <span class="op">*</span> <span class="va">ldl</span> <span class="op">+</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="va">confounder</span></span>
 <span><span class="va">cad</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span> <span class="op">+</span> <span class="va">cad_linear_predictor</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">sim_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  exercise <span class="op">=</span> <span class="va">exercise</span>,</span>
+<span>  confounder <span class="op">=</span> <span class="va">confounder</span>,</span>
 <span>  genetic_score <span class="op">=</span> <span class="va">genetic_score</span>,</span>
 <span>  ldl <span class="op">=</span> <span class="va">ldl</span>,</span>
 <span>  cad <span class="op">=</span> <span class="va">cad</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">sim_df</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"exercise"</span>, <span class="st">"genetic_score"</span>, <span class="st">"ldl"</span>, <span class="st">"cad"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="co">#&gt;               exercise genetic_score  ldl  cad</span></span>
-<span><span class="co">#&gt; exercise          1.00          0.01 0.70 0.45</span></span>
-<span><span class="co">#&gt; genetic_score     0.01          1.00 0.25 0.09</span></span>
-<span><span class="co">#&gt; ldl               0.70          0.25 1.00 0.46</span></span>
-<span><span class="co">#&gt; cad               0.45          0.09 0.46 1.00</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">sim_df</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"confounder"</span>, <span class="st">"genetic_score"</span>, <span class="st">"ldl"</span>, <span class="st">"cad"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="co">#&gt;               confounder genetic_score  ldl  cad</span></span>
+<span><span class="co">#&gt; confounder          1.00          0.01 0.70 0.45</span></span>
+<span><span class="co">#&gt; genetic_score       0.01          1.00 0.25 0.09</span></span>
+<span><span class="co">#&gt; ldl                 0.70          0.25 1.00 0.46</span></span>
+<span><span class="co">#&gt; cad                 0.45          0.09 0.46 1.00</span></span></code></pre></div>
 <p>You should see:</p>
 <ul>
-<li>exercise correlated with both LDL-C and CAD,</li>
+<li>the confounder correlated with both LDL-C and CAD,</li>
 <li>the genetic score correlated with LDL-C,</li>
 <li>the genetic score also related to CAD because it moves LDL-C.</li>
 </ul>
@@ -252,6 +252,15 @@ Show solution
 <li>Confounding and reverse causation can both create misleading associations.</li>
 <li>Randomization is powerful because it changes exposure independently of many other determinants of the outcome.</li>
 <li>MR uses genetic variants as instrumental variables to approximate that kind of leverage.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<ul>
+<li>Davey Smith, G. &amp; Ebrahim, S. (2003). ‘Mendelian randomization’: can genetic epidemiology contribute to understanding environmental determinants of disease? <em>International Journal of Epidemiology</em>, 32(1), 1–22.</li>
+<li>Lawlor, D.A., Harbord, R.M., Sterne, J.A.C., Timpson, N., &amp; Davey Smith, G. (2008). Mendelian randomization: using genes as instruments for making causal inferences in epidemiology. <em>Statistics in Medicine</em>, 27(8), 1133–1163.</li>
+<li>Davey Smith, G. &amp; Hemani, G. (2014). Mendelian randomization: genetic anchors for causal inference in epidemiological studies. <em>Human Molecular Genetics</em>, 23(R1), R89–R98.</li>
 </ul>
 </div>
 <div class="section level2">

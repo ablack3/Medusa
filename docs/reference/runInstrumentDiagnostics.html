@@ -104,7 +104,8 @@ approximation.</p></dd>
 
 <dt id="arg-negativecontroloutcomeids">negativeControlOutcomeIds<a class="anchor" aria-label="anchor" href="#arg-negativecontroloutcomeids"></a></dt>
 <dd><p>Optional integer vector of cohort IDs for
-negative control outcomes. If NULL, uses package default set.</p></dd>
+negative control outcomes to analyze from the <code>nc_outcome_&lt;id&gt;</code>
+columns present in <code>cohortData</code>. If NULL, all such columns are used.</p></dd>
 
 
 <dt id="arg-pvaluethreshold">pValueThreshold<a class="anchor" aria-label="anchor" href="#arg-pvaluethreshold"></a></dt>
@@ -122,10 +123,13 @@ Default is Bonferroni-corrected (0.05 / number of covariates tested).</p></dd>
       beta, se, pval, domain_id, significant.</p></dd>
 
     <dt>negativeControlResults</dt>
-<dd><p>Data frame with snp_id, outcome_id, beta,
-      se, pval, or NULL if no negative controls provided. Note: negative
-      control testing is not yet implemented; this slot currently returns
-      an empty data frame when negative control IDs are supplied.</p></dd>
+<dd><p>NULL when negative controls were not
+      requested and no <code>nc_outcome_&lt;id&gt;</code> columns are present. Otherwise
+      a data frame with one row per analyzed negative control outcome and
+      columns <code>outcome_id</code>, <code>beta_ZY</code>, <code>se_ZY</code>,
+      <code>beta_MR</code>, <code>se_MR</code>, and <code>pval</code>. Returns an empty data
+      frame when requested negative control columns are unavailable in
+      <code>cohortData</code>.</p></dd>
 
     <dt>afComparison</dt>
 <dd><p>Data frame with snp_id, eaf_gwas, eaf_cohort,
@@ -156,6 +160,11 @@ pleiotropy.</p>
 <p><strong>Allele frequency check</strong>: Compares the effect allele frequency in
 the cohort to the GWAS reference. A discrepancy &gt; 0.1 may indicate strand
 flip or population mismatch.</p>
+<p><strong>Negative controls</strong>: When <code>nc_outcome_&lt;id&gt;</code> columns are present,
+Medusa runs <code><a href="runNegativeControlAnalysis.html">runNegativeControlAnalysis</a></code> on the requested subset
+of outcomes. The <code>negativeControlFailure</code> diagnostic flag reflects the
+aggregate systematic-bias signal from that analysis rather than whether any
+single negative control reaches nominal p &lt; 0.05.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

@@ -10,6 +10,7 @@
 <url><loc>/articles/Course06-DoingAndCritiquingATwoSampleMRStudy.html</loc></url>
 <url><loc>/articles/FederatedAnalysisGuide.html</loc></url>
 <url><loc>/articles/GettingStarted.html</loc></url>
+<url><loc>/articles/NegativeControlCalibration.html</loc></url>
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
@@ -32,7 +33,9 @@
 <url><loc>/reference/harmonizeAlleles.html</loc></url>
 <url><loc>/reference/importSiteProfile.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/isBiasDetected.html</loc></url>
 <url><loc>/reference/isStrandAmbiguous.html</loc></url>
+<url><loc>/reference/launchResultsExplorer.html</loc></url>
 <url><loc>/reference/loadRenderTranslateSql.html</loc></url>
 <url><loc>/reference/makeSnpColumnName.html</loc></url>
 <url><loc>/reference/mrTheme.html</loc></url>
@@ -41,10 +44,12 @@
 <url><loc>/reference/poolLikelihoodProfiles.html</loc></url>
 <url><loc>/reference/reshapeGenotypes.html</loc></url>
 <url><loc>/reference/runInstrumentDiagnostics.html</loc></url>
+<url><loc>/reference/runNegativeControlAnalysis.html</loc></url>
 <url><loc>/reference/runSensitivityAnalyses.html</loc></url>
 <url><loc>/reference/simulateCovariateData.html</loc></url>
 <url><loc>/reference/simulateInstrumentTable.html</loc></url>
 <url><loc>/reference/simulateMRData.html</loc></url>
+<url><loc>/reference/simulateNegativeControlOutcomes.html</loc></url>
 <url><loc>/reference/simulateSiteProfiles.html</loc></url>
 <url><loc>/reference/validateAgainstTwoSampleMR.html</loc></url>
 <url><loc>/reference/validateBetaGrid.html</loc></url>

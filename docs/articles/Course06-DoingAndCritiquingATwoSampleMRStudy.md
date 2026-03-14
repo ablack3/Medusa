@@ -327,6 +327,23 @@ For next steps inside the package:
 
 <div class="section level2">
 
+## References
+
+-   Davies, N.M., Holmes, M.V., & Davey Smith, G. (2018). Reading
+    Mendelian randomisation studies: a guide for clinicians. *BMJ*, 362,
+    k601.
+-   Burgess, S., Davey Smith, G., Davies, N.M., et al. (2019).
+    Guidelines for performing Mendelian randomization investigations.
+    *Wellcome Open Research*, 4, 186.
+-   Skrivankova, V.W., Richmond, R.C., Woolf, B.A.R., et al. (2021).
+    Strengthening the reporting of observational studies in epidemiology
+    using Mendelian randomization: the STROBE-MR statement. *JAMA*,
+    326(16), 1614–1621.
+
+</div>
+
+<div class="section level2">
+
 ## End of course
 
 You have now moved from observational causal problems, to instrumental

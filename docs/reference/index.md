@@ -34,17 +34,23 @@
     Randomization
 -   `importSiteProfile()` : Import a Site Profile from CSV
 -   `isStrandAmbiguous()` : Check for Strand-Ambiguous SNPs
+-   `launchResultsExplorer()` : Shiny dashboard for MR diagnostics and
+    results
 -   `mrTheme()` : Consistent plotting theme for Medusa package
 -   `plotLikelihoodProfile()` : Likelihood profile visualization
 -   `plotSensitivityForest()` : Forest plot comparing MR methods
 -   `poolLikelihoodProfiles()` : Federated one-shot likelihood pooling
 -   `runInstrumentDiagnostics()` : Instrument diagnostics for MR
     analysis
+-   `runNegativeControlAnalysis()` : Empirical method validation using
+    negative control outcomes
 -   `runSensitivityAnalyses()` : Standard Mendelian Randomization
     sensitivity analyses
 -   `simulateCovariateData()` : Simulate Covariate Data
 -   `simulateInstrumentTable()` : Simulate an Instrument Table
 -   `simulateMRData()` : Simulate MR Data with Known Causal Effect
+-   `simulateNegativeControlOutcomes()` : Simulate Negative Control
+    Outcome Columns
 -   `simulateSiteProfiles()` : Simulate Site Profile Likelihood Objects
 -   `validateAgainstTwoSampleMR()` : Single-site cross-check against
     standard summary-data MR

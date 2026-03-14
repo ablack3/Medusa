@@ -165,33 +165,33 @@ also shifts LDL-C.
 set.seed(1001)
 n <- 2000
 
-exercise <- rnorm(n)
+confounder <- rnorm(n)
 genetic_score <- rbinom(n, 2, 0.35)
 
-ldl <- 0.8 * exercise + 0.4 * genetic_score + rnorm(n, sd = 0.8)
-cad_linear_predictor <- 0.6 * ldl + 0.8 * exercise
+ldl <- 0.8 * confounder + 0.4 * genetic_score + rnorm(n, sd = 0.8)
+cad_linear_predictor <- 0.6 * ldl + 0.8 * confounder
 cad <- rbinom(n, 1, plogis(-1 + cad_linear_predictor))
 
 sim_df <- data.frame(
-  exercise = exercise,
+  confounder = confounder,
   genetic_score = genetic_score,
   ldl = ldl,
   cad = cad
 )
 
-round(cor(sim_df[, c("exercise", "genetic_score", "ldl", "cad")]), 2)
-#>               exercise genetic_score  ldl  cad
-#> exercise          1.00          0.01 0.70 0.45
-#> genetic_score     0.01          1.00 0.25 0.09
-#> ldl               0.70          0.25 1.00 0.46
-#> cad               0.45          0.09 0.46 1.00
+round(cor(sim_df[, c("confounder", "genetic_score", "ldl", "cad")]), 2)
+#>               confounder genetic_score  ldl  cad
+#> confounder          1.00          0.01 0.70 0.45
+#> genetic_score       0.01          1.00 0.25 0.09
+#> ldl                 0.70          0.25 1.00 0.46
+#> cad                 0.45          0.09 0.46 1.00
 ```
 
 </div>
 
 You should see:
 
--   exercise correlated with both LDL-C and CAD,
+-   the confounder correlated with both LDL-C and CAD,
 -   the genetic score correlated with LDL-C,
 -   the genetic score also related to CAD because it moves LDL-C.
 
@@ -276,6 +276,24 @@ core assumptions behind any valid MR analysis.
     of many other determinants of the outcome.
 -   MR uses genetic variants as instrumental variables to approximate
     that kind of leverage.
+
+</div>
+
+<div class="section level2">
+
+## References
+
+-   Davey Smith, G. & Ebrahim, S. (2003). ‘Mendelian randomization’: can
+    genetic epidemiology contribute to understanding environmental
+    determinants of disease? *International Journal of Epidemiology*,
+    32(1), 1–22.
+-   Lawlor, D.A., Harbord, R.M., Sterne, J.A.C., Timpson, N., & Davey
+    Smith, G. (2008). Mendelian randomization: using genes as
+    instruments for making causal inferences in epidemiology.
+    *Statistics in Medicine*, 27(8), 1133–1163.
+-   Davey Smith, G. & Hemani, G. (2014). Mendelian randomization:
+    genetic anchors for causal inference in epidemiological studies.
+    *Human Molecular Genetics*, 23(R1), R89–R98.
 
 </div>
 

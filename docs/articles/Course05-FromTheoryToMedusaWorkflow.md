@@ -404,6 +404,25 @@ Show solution
 
 <div class="section level2">
 
+## References
+
+-   Suchard, M.A., Simpson, S.E., Zorych, I., Ryan, P., & Madigan, D.
+    (2013). Massive parallelization of serial inference algorithms for a
+    complex generalized linear model. *ACM Transactions on Modeling and
+    Computer Simulation*, 23(1), 1–17.
+-   Duan, R., Boland, M.R., Liu, Z., et al. (2020). Learning from
+    electronic health records across multiple sites: a
+    communication-efficient and privacy-preserving distributed
+    algorithm. *Journal of the American Medical Informatics
+    Association*, 27(3), 376–385.
+-   Hemani, G., Zheng, J., Elsworth, B., et al. (2018). The MR-Base
+    platform supports systematic causal inference across the human
+    phenome. *eLife*, 7, e34408.
+
+</div>
+
+<div class="section level2">
+
 ## Next chapter
 
 Next: [Course 6: Doing and critiquing a two-sample MR

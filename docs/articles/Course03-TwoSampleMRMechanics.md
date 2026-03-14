@@ -322,6 +322,23 @@ by different biases.
 
 <div class="section level2">
 
+## References
+
+-   Pierce, B.L. & Burgess, S. (2013). Efficient design for Mendelian
+    randomization studies: subsample and 2-sample instrumental variable
+    estimators. *American Journal of Epidemiology*, 178(7), 1177–1184.
+-   Hartwig, F.P., Davies, N.M., Hemani, G., & Davey Smith, G. (2016).
+    Two-sample Mendelian randomization: avoiding the downsides of a
+    powerful, widely applicable but potentially fallible technique.
+    *International Journal of Epidemiology*, 45(6), 1717–1726.
+-   Hemani, G., Zheng, J., Elsworth, B., et al. (2018). The MR-Base
+    platform supports systematic causal inference across the human
+    phenome. *eLife*, 7, e34408.
+
+</div>
+
+<div class="section level2">
+
 ## Next chapter
 
 Next: [Course 4: Estimation and sensitivity

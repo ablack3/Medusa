@@ -155,8 +155,8 @@
 <span></span>
 <span><span class="va">per_snp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  snp_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"rs"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n_snps</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  effect_allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span><span class="op">)</span>,</span>
-<span>  other_allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span><span class="op">)</span>,</span>
+<span>  effect_allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"G"</span>, <span class="st">"A"</span><span class="op">)</span>,</span>
+<span>  other_allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"G"</span>, <span class="st">"T"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"C"</span>, <span class="st">"T"</span>, <span class="st">"T"</span>, <span class="st">"G"</span><span class="op">)</span>,</span>
 <span>  eaf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.15</span>, <span class="fl">0.50</span>, length.out <span class="op">=</span> <span class="va">n_snps</span><span class="op">)</span>,</span>
 <span>  beta_ZY <span class="op">=</span> <span class="va">beta_zy</span>,</span>
 <span>  se_ZY <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.03</span>, <span class="va">n_snps</span><span class="op">)</span>,</span>
@@ -172,9 +172,9 @@
 <span><span class="co">#&gt; 3    rs3             G            A 0.25 0.11003592  0.03    0.25  0.04</span></span>
 <span><span class="co">#&gt; 4    rs4             T            C 0.30 0.08956835  0.03    0.20  0.04</span></span>
 <span><span class="co">#&gt; 5    rs5             A            C 0.35 0.07220337  0.03    0.16  0.04</span></span>
-<span><span class="co">#&gt; 6    rs6             C            G 0.40 0.09726425  0.03    0.24  0.04</span></span>
+<span><span class="co">#&gt; 6    rs6             C            T 0.40 0.09726425  0.03    0.24  0.04</span></span>
 <span><span class="co">#&gt; 7    rs7             G            T 0.45 0.06333035  0.03    0.19  0.04</span></span>
-<span><span class="co">#&gt; 8    rs8             T            A 0.50 0.10692022  0.03    0.21  0.04</span></span></code></pre></div>
+<span><span class="co">#&gt; 8    rs8             A            G 0.50 0.10692022  0.03    0.21  0.04</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="running-medusa-sensitivity-analyses">Running Medusa sensitivity analyses<a class="anchor" aria-label="anchor" href="#running-medusa-sensitivity-analyses"></a>
@@ -278,6 +278,16 @@ Show solution
 <li>Weighted median is robust when less than half of the total weight is invalid.</li>
 <li>Leave-one-out identifies influential SNPs.</li>
 <li>Steiger filtering checks whether the proposed causal direction looks plausible.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<ul>
+<li>Burgess, S., Butterworth, A., &amp; Thompson, S.G. (2013). Mendelian randomization analysis with multiple genetic variants using summarized data. <em>Genetic Epidemiology</em>, 37(7), 658–665.</li>
+<li>Bowden, J., Davey Smith, G., &amp; Burgess, S. (2015). Mendelian randomization with invalid instruments: effect estimation and bias detection through Egger regression. <em>International Journal of Epidemiology</em>, 44(2), 512–525.</li>
+<li>Bowden, J., Davey Smith, G., Haycock, P.C., &amp; Burgess, S. (2016). Consistent estimation in Mendelian randomization with some invalid instruments using a weighted median estimator. <em>Genetic Epidemiology</em>, 40(4), 304–314.</li>
+<li>Hemani, G., Tilling, K., &amp; Davey Smith, G. (2017). Orienting the causal relationship between imprecisely measured traits using GWAS summary data. <em>PLOS Genetics</em>, 13(11), e1007081.</li>
 </ul>
 </div>
 <div class="section level2">
