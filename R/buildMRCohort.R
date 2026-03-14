@@ -60,7 +60,9 @@
 #' @param negativeControlCohortIds Optional integer vector of cohort definition
 #'   IDs for negative control outcomes. When provided, the function extracts
 #'   negative control outcome flags and adds \code{nc_outcome_<id>} columns
-#'   (binary 0/1) to the returned data frame. These columns are used by
+#'   (binary 0/1) to the returned data frame. These flags are evaluated from
+#'   each person's index date onward so they align with the outcome risk window
+#'   used in the main analysis. These columns are used by
 #'   \code{\link{runNegativeControlAnalysis}} for empirical calibration.
 #'
 #' @return A data frame with one row per person and columns:
@@ -232,7 +234,7 @@ buildMRCohort <- function(connectionDetails,
       cohort_database_schema = cohortDatabaseSchema,
       cohort_table = cohortTable,
       negative_control_cohort_ids = paste(negativeControlCohortIds, collapse = ", "),
-      use_index_date = 0
+      use_index_date = 1
     )
     ncData <- DatabaseConnector::querySql(
       connection, ncSql, snakeCaseToCamelCase = TRUE

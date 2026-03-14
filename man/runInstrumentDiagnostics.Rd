@@ -28,7 +28,8 @@ to compute first-stage F-statistic from actual data rather than GWAS
 approximation.}
 
 \item{negativeControlOutcomeIds}{Optional integer vector of cohort IDs for
-negative control outcomes. If NULL, uses package default set.}
+negative control outcomes to analyze from the \code{nc_outcome_<id>}
+columns present in \code{cohortData}. If NULL, all such columns are used.}
 
 \item{pValueThreshold}{Numeric. P-value threshold for PheWAS significance.
 Default is Bonferroni-corrected (0.05 / number of covariates tested).}
@@ -39,10 +40,13 @@ A named list with class "medusaDiagnostics" containing:
     \item{fStatistics}{Data frame with snp_id, fStatistic, and weakFlag.}
     \item{phewasResults}{Data frame with snp_id, covariate_id, covariate_name,
       beta, se, pval, domain_id, significant.}
-    \item{negativeControlResults}{Data frame with snp_id, outcome_id, beta,
-      se, pval, or NULL if no negative controls provided. Note: negative
-      control testing is not yet implemented; this slot currently returns
-      an empty data frame when negative control IDs are supplied.}
+    \item{negativeControlResults}{NULL when negative controls were not
+      requested and no \code{nc_outcome_<id>} columns are present. Otherwise
+      a data frame with one row per analyzed negative control outcome and
+      columns \code{outcome_id}, \code{beta_ZY}, \code{se_ZY},
+      \code{beta_MR}, \code{se_MR}, and \code{pval}. Returns an empty data
+      frame when requested negative control columns are unavailable in
+      \code{cohortData}.}
     \item{afComparison}{Data frame with snp_id, eaf_gwas, eaf_cohort,
       eaf_diff, discrepancyFlag.}
     \item{missingnessReport}{Data frame with snp_id, n_total, n_missing,
@@ -78,6 +82,12 @@ pleiotropy.
 \strong{Allele frequency check}: Compares the effect allele frequency in
 the cohort to the GWAS reference. A discrepancy > 0.1 may indicate strand
 flip or population mismatch.
+
+\strong{Negative controls}: When \code{nc_outcome_<id>} columns are present,
+Medusa runs \code{\link{runNegativeControlAnalysis}} on the requested subset
+of outcomes. The \code{negativeControlFailure} diagnostic flag reflects the
+aggregate systematic-bias signal from that analysis rather than whether any
+single negative control reaches nominal p < 0.05.
 }
 \examples{
 # Using simulated data

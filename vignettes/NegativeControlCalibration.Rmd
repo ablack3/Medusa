@@ -15,6 +15,15 @@ knitr::opts_chunk$set(
   fig.width = 7,
   fig.height = 5
 )
+simulateMRData <- getFromNamespace("simulateMRData", "Medusa")
+simulateNegativeControlOutcomes <- getFromNamespace(
+  "simulateNegativeControlOutcomes",
+  "Medusa"
+)
+runNegativeControlAnalysis <- getFromNamespace(
+  "runNegativeControlAnalysis",
+  "Medusa"
+)
 ```
 
 ## Why Negative Controls?
@@ -90,7 +99,6 @@ cohortData <- buildMRCohort(
   cohortDatabaseSchema = "results",
   cohortTable = "cohort",
   outcomeCohortId = 100,
-  exposureConceptId = 1234,
   instrumentTable = instruments,
   negativeControlCohortIds = c(201, 202, 203, 204, 205,
                                206, 207, 208, 209, 210)
@@ -109,8 +117,6 @@ data. These outcomes are generated independently of genotype, so the true
 effect is exactly zero.
 
 ```{r simulate-nc}
-library(Medusa)
-
 simData <- simulateMRData(n = 2000, nSnps = 5, seed = 42)
 cohortData <- simulateNegativeControlOutcomes(
   simData$data,
@@ -270,11 +276,12 @@ diagnostics$negativeControlResults
 diagnostics$diagnosticFlags$negativeControlFailure
 ```
 
-The `diagnosticFlags$negativeControlFailure` flag is TRUE if any negative
-control outcome has a significant MR estimate (p < 0.05). This flag
-appears alongside other diagnostic checks (weak instruments, allele
-frequency discrepancies, genotype missingness) in the Medusa results
-dashboard.
+The `diagnosticFlags$negativeControlFailure` flag is TRUE when the
+negative-control analysis detects aggregate systematic bias in the null
+distribution, rather than when any single control happens to cross a
+nominal p-value threshold. This flag appears alongside other diagnostic
+checks (weak instruments, allele frequency discrepancies, genotype
+missingness) in the Medusa results dashboard.
 
 
 ## The Shiny Results Explorer
@@ -283,8 +290,8 @@ The interactive results explorer (`launchResultsExplorer()`) includes a
 dedicated Negative Controls tab when negative control results are
 provided. This tab displays:
 
-- **Summary cards** showing the number of NC outcomes, how many are
-  significant, and whether bias was detected
+- **Summary cards** showing the number of NC outcomes tested, whether
+  bias was detected, and the calibrated primary p-value when available
 - **Forest plot** of NC effect estimates with confidence intervals
 - **Calibrated primary estimate** (if available)
 - **Table** of all per-outcome results for detailed inspection
@@ -318,6 +325,19 @@ cohortData <- simulateNegativeControlOutcomes(
 # 3. Run the negative control analysis
 ncResults <- suppressMessages(
   runNegativeControlAnalysis(
+    cohortData = cohortData,
+    instrumentTable = simData$instrumentTable
+  )
+)
+
+# 4. Summarize
+cat("Bias detected:", ncResults$biasDetected, "\n")
+cat("Mean NC beta_MR:", round(mean(ncResults$ncEstimates$beta_MR, na.rm = TRUE), 4), "\n")
+cat("NC outcomes analyzed:", nrow(ncResults$ncEstimates), "\n")
+
+# 5. Look at the estimates
+head(ncResults$ncEstimates[, c("outcome_id", "beta_MR", "se_MR", "pval")], 10)
+```
     cohortData = cohortData,
     instrumentTable = simData$instrumentTable
   )

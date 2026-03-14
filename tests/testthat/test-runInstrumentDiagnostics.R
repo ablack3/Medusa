@@ -270,3 +270,112 @@ test_that("negative controls, allele frequencies, and missingness helpers return
   expect_equal(nrow(missingness), 2)
   expect_true(all(missingness$n_total == nrow(cohortData)))
 })
+
+test_that("testNegativeControls honors requested negative control IDs", {
+  simData <- simulateMRData(n = 300, nSnps = 3, seed = 809)
+  cohortData <- simulateNegativeControlOutcomes(simData$data, nControls = 4, seed = 810)
+
+  selected <- suppressMessages(
+    testNegativeControls(
+      cohortData = cohortData,
+      instrumentTable = simData$instrumentTable,
+      negativeControlOutcomeIds = c(2L, 4L)
+    )
+  )
+
+  expect_equal(sort(selected$outcome_id), c("2", "4"))
+  expect_false("1" %in% selected$outcome_id)
+  expect_false("3" %in% selected$outcome_id)
+})
+
+test_that("runInstrumentDiagnostics uses aggregate negative-control bias flag", {
+  skip_if_not_installed("mockery")
+
+  diagnosticsFn <- runInstrumentDiagnostics
+  simData <- simulateMRData(n = 80, nSnps = 2, seed = 811)
+  cohortData <- simData$data
+  cohortData$personId <- cohortData$person_id
+  covariateData <- data.frame(
+    person_id = cohortData$person_id,
+    binary_cov = rep(c(0, 1), length.out = nrow(cohortData)),
+    stringsAsFactors = FALSE
+  )
+
+  mockery::stub(
+    diagnosticsFn,
+    "computeFStatistics",
+    function(...) data.frame(
+      snp_id = simData$instrumentTable$snp_id,
+      fStatistic = c(20, 25),
+      source = "gwas_approximation",
+      weakFlag = c(FALSE, FALSE),
+      stringsAsFactors = FALSE
+    )
+  )
+  mockery::stub(
+    diagnosticsFn,
+    "runInstrumentPheWAS",
+    function(...) data.frame(
+      snp_id = character(0),
+      covariate_name = character(0),
+      beta = numeric(0),
+      se = numeric(0),
+      pval = numeric(0),
+      significant = logical(0),
+      stringsAsFactors = FALSE
+    )
+  )
+  mockery::stub(
+    diagnosticsFn,
+    "testNegativeControls",
+    function(...) {
+      out <- data.frame(
+        outcome_id = "201",
+        beta_ZY = 0.1,
+        se_ZY = 0.05,
+        beta_MR = 0.2,
+        se_MR = 0.1,
+        pval = 0.01,
+        stringsAsFactors = FALSE
+      )
+      attr(out, "biasDetected") <- FALSE
+      out
+    }
+  )
+  mockery::stub(
+    diagnosticsFn,
+    "compareAlleleFrequencies",
+    function(...) data.frame(
+      snp_id = simData$instrumentTable$snp_id,
+      eaf_gwas = simData$instrumentTable$eaf,
+      eaf_cohort = simData$instrumentTable$eaf,
+      eaf_diff = c(0, 0),
+      discrepancyFlag = c(FALSE, FALSE),
+      stringsAsFactors = FALSE
+    )
+  )
+  mockery::stub(
+    diagnosticsFn,
+    "summarizeGenotypeMissingness",
+    function(...) data.frame(
+      snp_id = simData$instrumentTable$snp_id,
+      n_total = nrow(cohortData),
+      n_missing = c(0L, 0L),
+      pct_missing = c(0, 0),
+      highMissingFlag = c(FALSE, FALSE),
+      stringsAsFactors = FALSE
+    )
+  )
+
+  diagnostics <- suppressMessages(
+    diagnosticsFn(
+      cohortData = cohortData,
+      covariateData = covariateData,
+      instrumentTable = simData$instrumentTable,
+      negativeControlOutcomeIds = 201L
+    )
+  )
+
+  expect_false(isTRUE(diagnostics$diagnosticFlags["negativeControlFailure"]))
+  expect_equal(diagnostics$negativeControlResults$pval, 0.01)
+})

@@ -392,6 +392,87 @@ test_that("buildMRCohort stops when genotype data are unavailable", {
   )
 })
 
+test_that("buildMRCohort requests post-index negative controls", {
+  skip_if_not_installed("mockery")
+
+  buildFn <- buildMRCohort
+  connectionDetails <- structure(list(dbms = "postgresql"), class = "connectionDetails")
+  instrumentTable <- data.frame(
+    snp_id = "rs1",
+    effect_allele = "A",
+    other_allele = "C",
+    beta_ZX = 0.5,
+    se_ZX = 0.05,
+    pval_ZX = 1e-10,
+    eaf = 0.3,
+    stringsAsFactors = FALSE
+  )
+  capturedUseIndexDate <- NULL
+  queryCount <- 0L
+
+  mockery::stub(buildFn, "DatabaseConnector::connect", function(...) structure(list(), class = "fakeConnection"))
+  mockery::stub(buildFn, "DatabaseConnector::disconnect", function(...) invisible(NULL))
+  mockery::stub(
+    buildFn,
+    "loadRenderTranslateSql",
+    function(sqlFileName, ...) {
+      args <- list(...)
+      if (identical(sqlFileName, "extractNegativeControls.sql")) {
+        capturedUseIndexDate <<- args$use_index_date
+      }
+      "SELECT 1"
+    }
+  )
+  mockery::stub(buildFn, "DatabaseConnector::executeSql", function(...) invisible(NULL))
+  mockery::stub(
+    buildFn,
+    "DatabaseConnector::querySql",
+    function(...) {
+      queryCount <<- queryCount + 1L
+      if (queryCount == 1L) {
+        return(data.frame(
+          personId = 1:4,
+          outcome = c(1L, 1L, 0L, 0L),
+          stringsAsFactors = FALSE
+        ))
+      }
+      if (queryCount == 2L) {
+        return(data.frame(
+          personId = 1:4,
+          snpId = "rs1",
+          genotypeRaw = c("0/0", "0/1", "1/1", "0/1"),
+          referenceAllele = "C",
+          alternateAllele = "A",
+          stringsAsFactors = FALSE
+        ))
+      }
+      data.frame(
+        personId = c(1L, 3L),
+        outcomeCohortId = c(201L, 201L),
+        hasOutcome = c(1L, 1L),
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+
+  suppressMessages(
+    suppressWarnings(
+      buildFn(
+        connectionDetails = connectionDetails,
+        cdmDatabaseSchema = "cdm",
+        cohortDatabaseSchema = "results",
+        cohortTable = "cohort",
+        outcomeCohortId = 1L,
+        instrumentTable = instrumentTable,
+        genomicDatabaseSchema = "genomics",
+        negativeControlCohortIds = 201L
+      )
+    )
+  )
+
+  expect_identical(capturedUseIndexDate, 1)
+})
+
 test_that("reshapeGenotypes works after harmonization removes some SNPs", {
   instruments <- data.frame(
     snp_id = c("rs1", "rs2", "rs3"),

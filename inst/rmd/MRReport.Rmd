@@ -253,19 +253,21 @@ Genetic instruments for %s were obtained from published GWAS summary statistics
 at r-squared < 0.001 within 10,000 kb windows using a European reference panel).
 
 The outcome (%s) was ascertained from OMOP Common Data Model electronic health
-record data across %d federated sites. Each site fit a regularized logistic
-regression of the outcome on the genetic instrument(s) adjusted for covariates
-including age, sex, and ancestry principal components, then evaluated the
-profile log-likelihood across a grid of SNP-outcome association values.
+record data across %d federated sites. Each site fit the Medusa outcome model:
+a binary outcome regression with a configurable backend (`glm` or Cyclops)
+and user-supplied covariates, then evaluated the profile log-likelihood across
+a grid of SNP-outcome association values.
 
 Site-level profile log-likelihood vectors were pooled at a central coordinator
 via pointwise summation (equivalent to multiplying likelihoods under inter-site
 independence). No individual-level data left any site.
 
-The causal odds ratio was estimated via the Wald ratio with delta method
-standard errors. Sensitivity analyses included the inverse variance weighted
-method, MR-Egger regression, weighted median estimation, Steiger directional
-filtering, and leave-one-out analysis.
+The causal log-effect was estimated via the Wald ratio with uncertainty from
+the pooled profile and the delta method; for binary outcomes, exponentiating
+this estimate yields an odds ratio. Sensitivity analyses included the inverse
+variance weighted method, MR-Egger regression, weighted median estimation,
+Steiger directional filtering, and leave-one-out analysis when per-SNP
+summaries were available.
 ",
 params$exposureLabel,
 ifelse(is.null(est), 0, est$nInstruments),

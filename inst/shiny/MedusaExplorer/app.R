@@ -77,6 +77,23 @@ ggTheme <- function(baseSize = 13) {
     )
 }
 
+alleleLabelLayer <- function() {
+  if (requireNamespace("ggrepel", quietly = TRUE)) {
+    return(ggrepel::geom_text_repel(
+      aes(label = .data$snp_id),
+      size = 3,
+      max.overlaps = 15
+    ))
+  }
+
+  geom_text(
+    aes(label = .data$snp_id),
+    size = 3,
+    check_overlap = TRUE,
+    nudge_y = 0.02
+  )
+}
+
 # ---------------------------------------------------------------------------
 # Helper: value box card
 # ---------------------------------------------------------------------------
@@ -550,8 +567,7 @@ server <- function(input, output, session) {
       geom_abline(slope = 1, intercept = -0.1, linetype = "dotted",
                   color = MEDUSA_COLORS$orange, alpha = 0.5) +
       geom_point(aes(color = .data$discrepancyFlag), size = 3) +
-      ggrepel::geom_text_repel(aes(label = .data$snp_id), size = 3,
-                                max.overlaps = 15) +
+      alleleLabelLayer() +
       scale_color_manual(values = c("FALSE" = MEDUSA_COLORS$ohdsiBlue,
                                      "TRUE"  = MEDUSA_COLORS$warning),
                          labels = c("OK", "Discrepancy > 0.1"),
