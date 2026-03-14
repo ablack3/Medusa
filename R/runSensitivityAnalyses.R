@@ -664,6 +664,10 @@ computeIVW <- function(perSnpEstimates) {
   cochranQPval <- pchisq(cochranQ, df = nrow(perSnpEstimates) - 1,
                            lower.tail = FALSE)
 
+  # I-squared: percentage of variability due to heterogeneity rather than chance
+  dfQ <- nrow(perSnpEstimates) - 1
+  iSquared <- max(0, (cochranQ - dfQ) / cochranQ) * 100
+
   data.frame(
     method = "IVW",
     beta_MR = betaMR,
@@ -673,6 +677,7 @@ computeIVW <- function(perSnpEstimates) {
     pval = pval,
     cochran_Q = cochranQ,
     cochran_Q_pval = cochranQPval,
+    i_squared = iSquared,
     stringsAsFactors = FALSE
   )
 }

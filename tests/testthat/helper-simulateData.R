@@ -223,3 +223,8 @@ simulateCovariateData <- function(n = 1000,
 
   df
 }
+
+
+# simulateNegativeControlOutcomes() is exported from
+# R/runNegativeControlAnalysis.R and available during tests via
+# devtools::load_all() / library(Medusa).

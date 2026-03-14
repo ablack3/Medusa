@@ -57,6 +57,11 @@
 #'   before index date. Default is 365.
 #' @param excludePriorOutcome Logical. If TRUE, persons with the outcome before
 #'   their index date are excluded. Default is TRUE.
+#' @param negativeControlCohortIds Optional integer vector of cohort definition
+#'   IDs for negative control outcomes. When provided, the function extracts
+#'   negative control outcome flags and adds \code{nc_outcome_<id>} columns
+#'   (binary 0/1) to the returned data frame. These columns are used by
+#'   \code{\link{runNegativeControlAnalysis}} for empirical calibration.
 #'
 #' @return A data frame with one row per person and columns:
 #'   \describe{
@@ -117,7 +122,8 @@ buildMRCohort <- function(connectionDetails,
                           genomicDatabaseSchema = cdmDatabaseSchema,
                           indexDateOffset = 0,
                           washoutPeriod = 365,
-                          excludePriorOutcome = TRUE) {
+                          excludePriorOutcome = TRUE,
+                          negativeControlCohortIds = NULL) {
   # Input validation
   checkmate::assertClass(connectionDetails, "connectionDetails")
   checkmate::assertString(cdmDatabaseSchema)
@@ -213,6 +219,26 @@ buildMRCohort <- function(connectionDetails,
     ))
   }
 
+  # Step 2b: Extract negative control outcomes (optional)
+  ncData <- NULL
+  if (!is.null(negativeControlCohortIds)) {
+    checkmate::assertIntegerish(negativeControlCohortIds, lower = 1,
+                                 any.missing = FALSE, min.len = 1)
+    message(sprintf("Extracting %d negative control outcomes...",
+                    length(negativeControlCohortIds)))
+    ncSql <- loadRenderTranslateSql(
+      sqlFileName = "extractNegativeControls.sql",
+      dbms = connectionDetails$dbms,
+      cohort_database_schema = cohortDatabaseSchema,
+      cohort_table = cohortTable,
+      negative_control_cohort_ids = paste(negativeControlCohortIds, collapse = ", "),
+      use_index_date = 0
+    )
+    ncData <- DatabaseConnector::querySql(
+      connection, ncSql, snakeCaseToCamelCase = TRUE
+    )
+  }
+
   # Clean up temp tables
   DatabaseConnector::executeSql(
     connection,
@@ -271,6 +297,24 @@ buildMRCohort <- function(connectionDetails,
   }
 
   nGenotyped <- sum(complete.cases(result[, snpCols, drop = FALSE]))
+
+  # Step 8: Merge negative control outcomes (optional)
+  if (!is.null(ncData) && nrow(ncData) > 0) {
+    ncOutcomeIds <- unique(ncData$outcomeCohortId)
+    for (ncId in ncOutcomeIds) {
+      ncSubset <- ncData[ncData$outcomeCohortId == ncId, , drop = FALSE]
+      colName <- paste0("nc_outcome_", ncId)
+      result[[colName]] <- 0L
+      matchIdx <- match(result$personId, ncSubset$personId)
+      hasOutcome <- !is.na(matchIdx) &
+        ncSubset$hasOutcome[matchIdx] == 1
+      hasOutcome[is.na(hasOutcome)] <- FALSE
+      result[[colName]][hasOutcome] <- 1L
+    }
+    message(sprintf("  Added %d negative control outcome columns.",
+                    length(ncOutcomeIds)))
+  }
+
   message(sprintf("Cohort build complete: %d persons, %d fully genotyped.",
                   nrow(result), nGenotyped))
 

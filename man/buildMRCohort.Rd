@@ -14,7 +14,8 @@ buildMRCohort(
   genomicDatabaseSchema = cdmDatabaseSchema,
   indexDateOffset = 0,
   washoutPeriod = 365,
-  excludePriorOutcome = TRUE
+  excludePriorOutcome = TRUE,
+  negativeControlCohortIds = NULL
 )
 }
 \arguments{
@@ -44,6 +45,12 @@ before index date. Default is 365.}
 
 \item{excludePriorOutcome}{Logical. If TRUE, persons with the outcome before
 their index date are excluded. Default is TRUE.}
+
+\item{negativeControlCohortIds}{Optional integer vector of cohort definition
+IDs for negative control outcomes. When provided, the function extracts
+negative control outcome flags and adds \code{nc_outcome_<id>} columns
+(binary 0/1) to the returned data frame. These columns are used by
+\code{\link{runNegativeControlAnalysis}} for empirical calibration.}
 }
 \value{
 A data frame with one row per person and columns:

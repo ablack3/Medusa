@@ -36,11 +36,17 @@ Suggests:
     testthat (>= 3.0.0),
     withr,
     mockery,
-    survival
+    survival,
+    shiny,
+    bslib,
+    bsicons,
+    ggrepel,
+    EmpiricalCalibration
 Config/testthat/edition: 3
 Remotes:
     ohdsi/Cyclops,
     ohdsi/FeatureExtraction,
     ohdsi/DatabaseConnector,
     ohdsi/SqlRender,
+    ohdsi/EmpiricalCalibration,
     mrcieu/TwoSampleMR

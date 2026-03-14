@@ -118,7 +118,8 @@ runInstrumentDiagnostics <- function(cohortData,
 
   # --- 3. Negative control outcome test ---
   negativeControlResults <- NULL
-  if (!is.null(negativeControlOutcomeIds)) {
+  ncCols <- grep("^nc_outcome_", names(cohortData), value = TRUE)
+  if (!is.null(negativeControlOutcomeIds) || length(ncCols) > 0) {
     message("  Testing negative control outcomes...")
     negativeControlResults <- testNegativeControls(
       cohortData, instrumentTable, negativeControlOutcomeIds
@@ -419,16 +420,29 @@ fitPheWASModel <- function(modelDf, snpCols, covariateName, pValueThreshold) {
 #' @keywords internal
 testNegativeControls <- function(cohortData, instrumentTable,
                                   negativeControlOutcomeIds) {
-  message("  Negative control outcome testing is not yet implemented. ",
-          "The negativeControlFailure diagnostic flag will be FALSE.")
-  data.frame(
-    snp_id = character(0),
-    outcome_id = integer(0),
-    beta = numeric(0),
-    se = numeric(0),
-    pval = numeric(0),
-    stringsAsFactors = FALSE
-  )
+  # Identify NC outcome columns in cohortData
+  ncCols <- grep("^nc_outcome_", names(cohortData), value = TRUE)
+
+  if (length(ncCols) == 0) {
+    message("  No negative control outcome columns (nc_outcome_*) found in ",
+            "cohortData. Run buildMRCohort() with negativeControlCohortIds ",
+            "or add columns manually. Skipping NC analysis.")
+    return(data.frame(
+      outcome_id = character(0),
+      beta_ZY = numeric(0), se_ZY = numeric(0),
+      beta_MR = numeric(0), se_MR = numeric(0),
+      pval = numeric(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  ncResults <- suppressMessages(runNegativeControlAnalysis(
+    cohortData = cohortData,
+    instrumentTable = instrumentTable,
+    negativeControlColumns = ncCols
+  ))
+
+  ncResults$ncEstimates
 }
 
 
