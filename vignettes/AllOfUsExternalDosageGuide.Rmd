@@ -1,0 +1,120 @@
+---
+title: "Using External Dosage Tables with Medusa"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using External Dosage Tables with Medusa}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Overview
+
+Medusa now supports two genotype ingestion paths:
+
+1. OMOP Genomic CDM via `VARIANT_OCCURRENCE`
+2. External dosage extracts via `formatExternalDosageTable()`
+
+The external-dosage path is intended for resources such as All of Us,
+UK Biobank, PLINK exports, and Hail-derived dosage tables where the EHR
+phenotypes live in OMOP but genotypes are managed outside the OMOP
+Genomic CDM.
+
+# Step 1: Prepare the instrument table
+
+```{r}
+library(Medusa)
+
+instruments <- createInstrumentTable(
+  snpId = c("rs2228145", "rs4129267"),
+  effectAllele = c("C", "T"),
+  otherAllele = c("A", "C"),
+  betaZX = c(0.35, 0.31),
+  seZX = c(0.015, 0.016),
+  pvalZX = c(1e-100, 1e-80),
+  eaf = c(0.39, 0.37),
+  geneRegion = rep("IL6R", 2)
+)
+```
+
+# Step 2: Standardize the external dosage extract
+
+The formatter accepts wide or long data. In practice, this table would come
+from a PLINK/PGEN/VCF/Hail extraction keyed on the same rs IDs as the study
+instrument table.
+
+```{r}
+externalDosage <- data.frame(
+  person_id = c(1, 2, 3),
+  rs2228145 = c(0, 1, 2),
+  rs4129267 = c(2, 1, 0),
+  stringsAsFactors = FALSE
+)
+
+formattedDosage <- formatExternalDosageTable(
+  dosageTable = externalDosage,
+  instrumentTable = instruments
+)
+
+formattedDosage$dosageTable
+```
+
+# Step 3: Build the OMOP cohort while reusing the external dosages
+
+`buildMRCohort()` still uses OMOP CDM for outcomes, demographics, and
+eligibility. The only difference is `genotypeSource = "externalDosageTable"`.
+
+```{r eval = FALSE}
+cohortData <- buildMRCohort(
+  connectionDetails = connectionDetails,
+  cdmDatabaseSchema = "cdm",
+  cohortDatabaseSchema = "results",
+  cohortTable = "cohort",
+  outcomeCohortId = 1234,
+  instrumentTable = instruments,
+  genotypeSource = "externalDosageTable",
+  externalDosageTable = formattedDosage
+)
+```
+
+The returned cohort retains a harmonized instrument table as an attribute so
+downstream modeling uses the same allele coding that was applied during cohort
+construction.
+
+```{r}
+names(attributes(formattedDosage))
+```
+
+# Step 4: Fit the Medusa model as usual
+
+Once the cohort has been built, the rest of the Medusa pipeline is unchanged.
+
+```{r eval = FALSE}
+profile <- fitOutcomeModel(
+  cohortData = cohortData,
+  instrumentTable = instruments,
+  siteId = "all_of_us_replication"
+)
+```
+
+# All of Us workflow notes
+
+For All of Us specifically, the intended workflow is:
+
+1. Define the outcome cohort in the OMOP-based Researcher Workbench.
+2. Extract the instrument SNP dosages from the Controlled Tier genomic assets.
+3. Convert that extract into a Medusa dosage table with
+   `formatExternalDosageTable()`.
+4. Use `buildMRCohort(..., genotypeSource = "externalDosageTable")` to merge
+   the OMOP cohort with the external genotype matrix.
+5. Run the standard Medusa diagnostics, cis-MR, colocalization, and reporting
+   workflow.
+
+This path avoids requiring the OMOP Genomic CDM extension at All of Us sites
+while preserving the same downstream Medusa interfaces.

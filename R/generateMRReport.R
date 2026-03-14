@@ -88,56 +88,88 @@ generateMRReport <- function(mrEstimate,
   }
 
   message("Generating Medusa MR analysis report...")
-
-  # Find RMarkdown template
-  rmdTemplate <- system.file("rmd", "MRReport.Rmd", package = "Medusa")
-  if (rmdTemplate == "") {
-    # Fallback for development
-    rmdTemplate <- file.path(system.file(package = "Medusa"), "rmd", "MRReport.Rmd")
-    if (!file.exists(rmdTemplate)) {
-      stop("Cannot find report template MRReport.Rmd. Ensure the package is properly installed.")
-    }
-  }
-
-  # Create output directory if needed
   outputDir <- dirname(outputPath)
   if (!dir.exists(outputDir)) {
     dir.create(outputDir, recursive = TRUE)
   }
 
-  # Copy template to temp location for rendering
+  tryCatch(
+    renderMedusaHtmlReport(
+      templateName = "MRReport.Rmd",
+      outputPath = outputPath,
+      params = list(
+        mrEstimate = mrEstimate,
+        sensitivityResults = sensitivityResults,
+        diagnosticResults = diagnosticResults,
+        combinedProfile = combinedProfile,
+        siteProfileList = siteProfileList,
+        instrumentTable = instrumentTable,
+        exposureLabel = exposureLabel,
+        outcomeLabel = outcomeLabel
+      ),
+      contextLabel = "Report"
+    ),
+    error = function(e) {
+      stop(sprintf("Report generation failed: %s", conditionMessage(e)))
+    }
+  )
+}
+
+
+#' @keywords internal
+renderMedusaHtmlReport <- function(templateName,
+                                   outputPath,
+                                   params,
+                                   contextLabel = "Report") {
+  if (!requireNamespace("rmarkdown", quietly = TRUE)) {
+    stop(
+      sprintf("Package 'rmarkdown' is required for %s generation. Install it with: install.packages('rmarkdown')",
+              tolower(contextLabel)),
+      call. = FALSE
+    )
+  }
+  if (!requireNamespace("knitr", quietly = TRUE)) {
+    stop(
+      sprintf("Package 'knitr' is required for %s generation. Install it with: install.packages('knitr')",
+              tolower(contextLabel)),
+      call. = FALSE
+    )
+  }
+
+  rmdTemplate <- system.file("rmd", templateName, package = "Medusa")
+  if (rmdTemplate == "") {
+    rmdTemplate <- file.path(system.file(package = "Medusa"), "rmd", templateName)
+    if (!file.exists(rmdTemplate)) {
+      stop(sprintf("Cannot find report template %s. Ensure the package is properly installed.",
+                   templateName))
+    }
+  }
+
+  outputDir <- dirname(outputPath)
+  if (!dir.exists(outputDir)) {
+    dir.create(outputDir, recursive = TRUE)
+  }
+
   tempRmd <- tempfile(fileext = ".Rmd")
   file.copy(rmdTemplate, tempRmd, overwrite = TRUE)
+  on.exit(unlink(tempRmd), add = TRUE)
 
-  # Render with parameters
   tryCatch(
     {
       rmarkdown::render(
         input = tempRmd,
         output_file = basename(outputPath),
         output_dir = outputDir,
-        params = list(
-          mrEstimate = mrEstimate,
-          sensitivityResults = sensitivityResults,
-          diagnosticResults = diagnosticResults,
-          combinedProfile = combinedProfile,
-          siteProfileList = siteProfileList,
-          instrumentTable = instrumentTable,
-          exposureLabel = exposureLabel,
-          outcomeLabel = outcomeLabel
-        ),
+        params = params,
         quiet = TRUE
       )
     },
     error = function(e) {
-      stop(sprintf("Report generation failed: %s", conditionMessage(e)))
+      stop(sprintf("%s generation failed: %s", contextLabel, conditionMessage(e)))
     }
   )
 
-  # Clean up temp file
-  unlink(tempRmd)
-
-  message(sprintf("Report saved to: %s", outputPath))
+  message(sprintf("%s saved to: %s", contextLabel, outputPath))
   invisible(outputPath)
 }
 

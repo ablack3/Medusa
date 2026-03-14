@@ -106,6 +106,7 @@ runInstrumentDiagnostics <- function(cohortData,
                                      pValueThreshold = NULL) {
   # Input validation
   checkmate::assertDataFrame(cohortData, min.rows = 1)
+  instrumentTable <- resolveInstrumentTableForCohort(cohortData, instrumentTable)
   validateInstrumentTable(instrumentTable)
 
   snpCols <- grep("^snp_", names(cohortData), value = TRUE)

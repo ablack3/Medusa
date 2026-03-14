@@ -51,6 +51,14 @@
 #'   \code{\link{createInstrumentTable}} containing the instrument SNPs.
 #' @param genomicDatabaseSchema Character. Schema containing the VARIANT_OCCURRENCE
 #'   table from the OMOP Genomic Extension. Defaults to \code{cdmDatabaseSchema}.
+#' @param genotypeSource Character. One of \code{"omopVariantOccurrence"} for
+#'   genotypes stored in the OMOP Genomic CDM or \code{"externalDosageTable"}
+#'   for pre-extracted dosage data from sources such as All of Us, UK Biobank,
+#'   or Hail/PLINK exports. Default is \code{"omopVariantOccurrence"}.
+#' @param externalDosageTable Optional data frame or
+#'   \code{"medusaExternalDosage"} object produced by
+#'   \code{\link{formatExternalDosageTable}}. Required when
+#'   \code{genotypeSource = "externalDosageTable"}.
 #' @param indexDateOffset Integer. Days offset from cohort start date for
 #'   defining the index date. Default is 0.
 #' @param washoutPeriod Integer. Minimum days of prior observation required
@@ -122,6 +130,8 @@ buildMRCohort <- function(connectionDetails,
                           outcomeCohortId,
                           instrumentTable,
                           genomicDatabaseSchema = cdmDatabaseSchema,
+                          genotypeSource = c("omopVariantOccurrence", "externalDosageTable"),
+                          externalDosageTable = NULL,
                           indexDateOffset = 0,
                           washoutPeriod = 365,
                           excludePriorOutcome = TRUE,
@@ -134,6 +144,7 @@ buildMRCohort <- function(connectionDetails,
   checkmate::assertCount(outcomeCohortId, positive = TRUE)
   validateInstrumentTable(instrumentTable)
   checkmate::assertString(genomicDatabaseSchema)
+  genotypeSource <- match.arg(genotypeSource)
   checkmate::assertInt(indexDateOffset)
   checkmate::assertCount(washoutPeriod)
   checkmate::assertLogical(excludePriorOutcome, len = 1)
@@ -188,37 +199,59 @@ buildMRCohort <- function(connectionDetails,
     ))
   }
 
-  # Step 2: Extract genotypes from VARIANT_OCCURRENCE (OMOP Genomic Extension)
-  message("Extracting genotype data from VARIANT_OCCURRENCE...")
-  invalidSnpIds <- instrumentTable$snp_id[!grepl("^rs[0-9]+$", instrumentTable$snp_id)]
-  if (length(invalidSnpIds) > 0) {
-    stop(sprintf(
-      "Invalid SNP IDs detected (expected rs<number> format): %s",
-      paste(utils::head(invalidSnpIds, 5), collapse = ", ")
-    ))
-  }
-  snpIdList <- paste(paste0("'", instrumentTable$snp_id, "'"), collapse = ", ")
-  sql <- loadRenderTranslateSql(
-    sqlFileName = "extractGenotypes.sql",
-    dbms = connectionDetails$dbms,
-    genomic_schema = genomicDatabaseSchema,
-    cohort_database_schema = cohortDatabaseSchema,
-    cohort_table = cohortTable,
-    outcome_cohort_id = outcomeCohortId,
-    snp_ids = snpIdList
-  )
-  genotypeData <- DatabaseConnector::querySql(
-    connection, sql,
-    snakeCaseToCamelCase = TRUE
-  )
+  genotypeData <- NULL
+  genotypeWide <- NULL
 
-  if (nrow(genotypeData) == 0) {
-    stop(sprintf(
-      paste0("No persons in cohort have genotype data in %s.VARIANT_OCCURRENCE. ",
-             "Verify the OMOP Genomic Extension tables exist and contain data ",
-             "for the requested rs IDs."),
-      genomicDatabaseSchema
-    ))
+  if (identical(genotypeSource, "omopVariantOccurrence")) {
+    # Step 2: Extract genotypes from VARIANT_OCCURRENCE (OMOP Genomic Extension)
+    message("Extracting genotype data from VARIANT_OCCURRENCE...")
+    invalidSnpIds <- instrumentTable$snp_id[!grepl("^rs[0-9]+$", instrumentTable$snp_id)]
+    if (length(invalidSnpIds) > 0) {
+      stop(sprintf(
+        "Invalid SNP IDs detected (expected rs<number> format): %s",
+        paste(utils::head(invalidSnpIds, 5), collapse = ", ")
+      ))
+    }
+    snpIdList <- paste(paste0("'", instrumentTable$snp_id, "'"), collapse = ", ")
+    sql <- loadRenderTranslateSql(
+      sqlFileName = "extractGenotypes.sql",
+      dbms = connectionDetails$dbms,
+      genomic_schema = genomicDatabaseSchema,
+      cohort_database_schema = cohortDatabaseSchema,
+      cohort_table = cohortTable,
+      outcome_cohort_id = outcomeCohortId,
+      snp_ids = snpIdList
+    )
+    genotypeData <- DatabaseConnector::querySql(
+      connection, sql,
+      snakeCaseToCamelCase = TRUE
+    )
+
+    if (nrow(genotypeData) == 0) {
+      stop(sprintf(
+        paste0("No persons in cohort have genotype data in %s.VARIANT_OCCURRENCE. ",
+               "Verify the OMOP Genomic Extension tables exist and contain data ",
+               "for the requested rs IDs."),
+        genomicDatabaseSchema
+      ))
+    }
+  } else {
+    message("Formatting external dosage data...")
+    if (is.null(externalDosageTable)) {
+      stop(
+        "externalDosageTable must be supplied when genotypeSource = 'externalDosageTable'."
+      )
+    }
+    formattedDosage <- if (inherits(externalDosageTable, "medusaExternalDosage")) {
+      externalDosageTable
+    } else {
+      formatExternalDosageTable(
+        dosageTable = externalDosageTable,
+        instrumentTable = instrumentTable
+      )
+    }
+    genotypeWide <- formattedDosage$dosageTable
+    instrumentTable <- formattedDosage$instrumentTable
   }
 
   # Step 2b: Extract negative control outcomes (optional)
@@ -248,38 +281,40 @@ buildMRCohort <- function(connectionDetails,
     progressBar = FALSE, reportOverallTime = FALSE
   )
 
-  # Step 3: Convert genotype strings to integer dosage
-  message("Converting genotype values...")
-  genotypeData$genotype <- convertGenotypeString(genotypeData$genotypeRaw)
+  if (identical(genotypeSource, "omopVariantOccurrence")) {
+    # Step 3: Convert genotype strings to integer dosage
+    message("Converting genotype values...")
+    genotypeData$genotype <- convertGenotypeString(genotypeData$genotypeRaw)
 
-  # Step 4: Build allele table from genotype data for harmonization
-  alleleInfo <- unique(genotypeData[, c("snpId", "referenceAllele", "alternateAllele")])
-  # In VARIANT_OCCURRENCE, genotype counts the alternate allele
-  genotypeAlleles <- data.frame(
-    snp_id = alleleInfo$snpId,
-    allele_coded = alleleInfo$alternateAllele,
-    allele_noncoded = alleleInfo$referenceAllele,
-    stringsAsFactors = FALSE
-  )
+    # Step 4: Build allele table from genotype data for harmonization
+    alleleInfo <- unique(genotypeData[, c("snpId", "referenceAllele", "alternateAllele")])
+    # In VARIANT_OCCURRENCE, genotype counts the alternate allele
+    genotypeAlleles <- data.frame(
+      snp_id = alleleInfo$snpId,
+      allele_coded = alleleInfo$alternateAllele,
+      allele_noncoded = alleleInfo$referenceAllele,
+      stringsAsFactors = FALSE
+    )
 
-  # Step 5: Harmonize alleles
-  message("Harmonizing alleles...")
-  cohortAlleleFreqs <- computeCohortAlleleFrequencies(genotypeData)
-  harmonized <- harmonizeAlleles(
-    instrumentTable,
-    genotypeAlleles,
-    cohortAlleleFrequencies = cohortAlleleFreqs
-  )
-  instrumentTable <- harmonized$instrumentTable
+    # Step 5: Harmonize alleles
+    message("Harmonizing alleles...")
+    cohortAlleleFreqs <- computeCohortAlleleFrequencies(genotypeData)
+    harmonized <- harmonizeAlleles(
+      instrumentTable,
+      genotypeAlleles,
+      cohortAlleleFrequencies = cohortAlleleFreqs
+    )
+    instrumentTable <- harmonized$instrumentTable
 
-  if (nrow(instrumentTable) == 0) {
-    stop("No instruments remain after allele harmonization. ",
-         "Check that VARIANT_OCCURRENCE alleles match the instrument table.")
+    if (nrow(instrumentTable) == 0) {
+      stop("No instruments remain after allele harmonization. ",
+           "Check that VARIANT_OCCURRENCE alleles match the instrument table.")
+    }
+
+    # Step 6: Reshape genotypes to wide format and merge
+    message("Reshaping genotype data...")
+    genotypeWide <- reshapeGenotypes(genotypeData, instrumentTable)
   }
-
-  # Step 6: Reshape genotypes to wide format and merge
-  message("Reshaping genotype data...")
-  genotypeWide <- reshapeGenotypes(genotypeData, instrumentTable)
 
   # Step 7: Merge cohort with genotypes
   result <- dplyr::left_join(
@@ -319,6 +354,9 @@ buildMRCohort <- function(connectionDetails,
 
   message(sprintf("Cohort build complete: %d persons, %d fully genotyped.",
                   nrow(result), nGenotyped))
+
+  attr(result, "harmonizedInstrumentTable") <- instrumentTable
+  attr(result, "genotypeSource") <- genotypeSource
 
   result
 }

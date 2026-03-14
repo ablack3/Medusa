@@ -109,6 +109,56 @@ validateInstrumentTable <- function(instrumentTable) {
 }
 
 
+#' Prefer a cohort-attached harmonized instrument table when available
+#'
+#' @param cohortData Data frame returned by \code{buildMRCohort()}.
+#' @param instrumentTable Instrument table supplied by the caller.
+#'
+#' @return Instrument table to use for downstream modeling.
+#'
+#' @keywords internal
+resolveInstrumentTableForCohort <- function(cohortData, instrumentTable) {
+  validateInstrumentTable(instrumentTable)
+
+  harmonized <- attr(cohortData, "harmonizedInstrumentTable", exact = TRUE)
+  if (is.null(harmonized)) {
+    return(instrumentTable)
+  }
+
+  if (!is.data.frame(harmonized) || !"snp_id" %in% names(harmonized)) {
+    warning(
+      "Ignoring malformed harmonizedInstrumentTable attribute on cohortData."
+    )
+    return(instrumentTable)
+  }
+
+  matched <- harmonized[harmonized$snp_id %in% instrumentTable$snp_id, , drop = FALSE]
+  if (nrow(matched) == 0) {
+    warning(
+      "Ignoring cohortData harmonizedInstrumentTable because it does not overlap the supplied instrumentTable."
+    )
+    return(instrumentTable)
+  }
+
+  matched <- matched[match(instrumentTable$snp_id, matched$snp_id, nomatch = 0L), ,
+                     drop = FALSE]
+  matched <- matched[matched$snp_id != "", , drop = FALSE]
+  rownames(matched) <- NULL
+
+  if (nrow(matched) != nrow(instrumentTable)) {
+    warning(
+      sprintf(
+        "Using cohort-attached harmonized instruments for %d of %d requested SNPs; downstream modeling will drop the remaining SNPs.",
+        nrow(matched),
+        nrow(instrumentTable)
+      )
+    )
+  }
+
+  matched
+}
+
+
 #' Validate Beta Grid
 #'
 #' @description Checks that a beta grid is a sorted numeric vector with

@@ -134,6 +134,7 @@ fitOutcomeModel <- function(cohortData,
                             modelBackend = "glm") {
   # Input validation
   checkmate::assertDataFrame(cohortData, min.rows = 1)
+  instrumentTable <- resolveInstrumentTableForCohort(cohortData, instrumentTable)
   validateInstrumentTable(instrumentTable)
   validateBetaGrid(betaGrid)
   checkmate::assertNumber(regularizationVariance, lower = 0, finite = FALSE)

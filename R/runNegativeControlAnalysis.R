@@ -100,6 +100,7 @@ runNegativeControlAnalysis <- function(cohortData,
                                        primaryEstimate = NULL,
                                        modelBackend = "glm") {
   checkmate::assertDataFrame(cohortData, min.rows = 1)
+  instrumentTable <- resolveInstrumentTableForCohort(cohortData, instrumentTable)
   validateInstrumentTable(instrumentTable)
   checkmate::assertChoice(modelBackend, c("glm", "cyclops"))
 

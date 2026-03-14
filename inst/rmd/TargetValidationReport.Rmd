@@ -1,0 +1,144 @@
+---
+title: "Medusa Target Validation Report"
+output:
+  html_document:
+    self_contained: true
+params:
+  studySpec: !r NULL
+  cisMrResults: !r NULL
+  colocResults: !r NULL
+  diagnosticResults: !r NULL
+  ancestryDiagnostics: !r NULL
+  overlapDiagnostics: !r NULL
+  trialContext: !r NULL
+  decision: !r NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+study <- params$studySpec
+decision <- params$decision
+```
+
+# Summary
+
+**Study ID:** `r study$studyId`
+
+**Target:** `r paste(study$targetGene, collapse = ", ")`
+
+**Outcome:** `r if (!is.null(study$outcomeDefinition$label)) study$outcomeDefinition$label else study$outcomeDefinition$cancer`
+
+**Recommendation:** `r toupper(decision$recommendation)`
+
+## Decision Rationale
+
+```{r}
+knitr::kable(
+  data.frame(reason = unlist(decision$reasons), stringsAsFactors = FALSE),
+  col.names = "Reason"
+)
+```
+
+# Evidence Summary
+
+## Cis-MR
+
+```{r}
+if (!is.null(params$cisMrResults) && !is.null(params$cisMrResults$summary)) {
+  knitr::kable(params$cisMrResults$summary, digits = 3)
+} else {
+  cat("No cis-MR results provided.")
+}
+```
+
+## Colocalization
+
+```{r}
+if (!is.null(params$colocResults)) {
+  colocSummary <- data.frame(
+    hypothesis = names(params$colocResults$posterior),
+    posterior = unname(params$colocResults$posterior),
+    stringsAsFactors = FALSE
+  )
+  knitr::kable(colocSummary, digits = 3)
+} else {
+  cat("No colocalization results provided.")
+}
+```
+
+## Diagnostics
+
+```{r}
+diagRows <- list()
+if (!is.null(params$diagnosticResults) && !is.null(params$diagnosticResults$diagnosticFlags)) {
+  diagRows[["instrument"]] <- data.frame(
+    check = names(params$diagnosticResults$diagnosticFlags),
+    flag = unname(params$diagnosticResults$diagnosticFlags),
+    stringsAsFactors = FALSE
+  )
+}
+if (!is.null(params$ancestryDiagnostics)) {
+  diagRows[["ancestry"]] <- data.frame(
+    check = c("exposureOutcomeDistance", "outcomeLdDistance", "failClosed"),
+    flag = c(
+      params$ancestryDiagnostics$exposureOutcomeDistance,
+      params$ancestryDiagnostics$outcomeLdDistance,
+      params$ancestryDiagnostics$failClosed
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+if (!is.null(params$overlapDiagnostics)) {
+  diagRows[["overlap"]] <- data.frame(
+    check = c("overlapProportion", "biasIndex", "riskLevel"),
+    flag = c(
+      params$overlapDiagnostics$overlapProportion,
+      params$overlapDiagnostics$biasIndex,
+      params$overlapDiagnostics$riskLevel
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+if (length(diagRows) > 0) {
+  knitr::kable(do.call(rbind, diagRows))
+} else {
+  cat("No diagnostics provided.")
+}
+```
+
+# STROBE-MR Appendix
+
+```{r}
+appendix <- data.frame(
+  item = c(
+    "Exposure source",
+    "Instrument mode",
+    "Primary population",
+    "Negative controls",
+    "Decision thresholds"
+  ),
+  value = c(
+    study$exposureSource,
+    study$instrumentMode,
+    study$primaryPopulation,
+    paste(study$negativeControls, collapse = ", "),
+    paste(
+      sprintf("%s=%s", names(study$decisionThresholds), unlist(study$decisionThresholds)),
+      collapse = "; "
+    )
+  ),
+  stringsAsFactors = FALSE
+)
+knitr::kable(appendix)
+```
+
+# Trial Context
+
+```{r}
+if (!is.null(params$trialContext) && length(params$trialContext) > 0) {
+  cat(paste0("- ", params$trialContext, collapse = "\n"))
+} else {
+  cat("No trial context provided.")
+}
+```

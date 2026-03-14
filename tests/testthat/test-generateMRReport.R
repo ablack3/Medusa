@@ -9,10 +9,10 @@ test_that("generateMRReport renders a report with a stubbed renderer", {
 
   mockery::stub(
     reportFn,
-    "rmarkdown::render",
-    function(input, output_file, output_dir, ...) {
-      writeLines("<html><body>ok</body></html>", file.path(output_dir, output_file))
-      invisible(file.path(output_dir, output_file))
+    "renderMedusaHtmlReport",
+    function(templateName, outputPath, ...) {
+      writeLines("<html><body>ok</body></html>", outputPath)
+      invisible(outputPath)
     }
   )
 
@@ -36,7 +36,7 @@ test_that("generateMRReport wraps renderer failures with a report-specific error
   reportFn <- generateMRReport
   mockery::stub(
     reportFn,
-    "rmarkdown::render",
+    "renderMedusaHtmlReport",
     function(...) stop("render failed")
   )
 
@@ -90,8 +90,11 @@ test_that("generateMRReport validates dependencies and template fallback paths",
   )
 
   missingTemplateFn <- generateMRReport
-  mockery::stub(missingTemplateFn, "system.file", function(...) "")
-  mockery::stub(missingTemplateFn, "file.exists", function(...) FALSE)
+  mockery::stub(
+    missingTemplateFn,
+    "renderMedusaHtmlReport",
+    function(...) stop("Cannot find report template")
+  )
   expect_error(
     suppressMessages(
       missingTemplateFn(
@@ -143,10 +146,10 @@ test_that("generateMRReport creates nested output directories when needed", {
 
   mockery::stub(
     reportFn,
-    "rmarkdown::render",
-    function(input, output_file, output_dir, ...) {
-      writeLines("<html><body>ok</body></html>", file.path(output_dir, output_file))
-      invisible(file.path(output_dir, output_file))
+    "renderMedusaHtmlReport",
+    function(templateName, outputPath, ...) {
+      writeLines("<html><body>ok</body></html>", outputPath)
+      invisible(outputPath)
     }
   )
 
